@@ -2,8 +2,8 @@ object ShortCutManForm: TShortCutManForm
   Left = 0
   Top = 0
   Caption = 'ShortCut Manager'
-  ClientHeight = 446
-  ClientWidth = 632
+  ClientHeight = 504
+  ClientWidth = 765
   Color = clBtnFace
   Font.Charset = ANSI_CHARSET
   Font.Color = clWindowText
@@ -15,12 +15,12 @@ object ShortCutManForm: TShortCutManForm
   OnDestroy = FormDestroy
   OnShow = FormShow
   DesignSize = (
-    632
-    446)
+    765
+    504)
   TextHeight = 13
   object btnCancel0: TBitBtn
-    Left = 549
-    Top = 413
+    Left = 682
+    Top = 471
     Width = 75
     Height = 25
     Hint = 'Cancel all modification'
@@ -32,10 +32,12 @@ object ShortCutManForm: TShortCutManForm
     ShowHint = True
     TabOrder = 4
     TabStop = False
+    ExplicitLeft = 547
+    ExplicitTop = 405
   end
   object btnOK: TBitBtn
-    Left = 468
-    Top = 413
+    Left = 601
+    Top = 471
     Width = 75
     Height = 25
     Hint = 'Save and close this window'
@@ -65,12 +67,14 @@ object ShortCutManForm: TShortCutManForm
     ShowHint = True
     TabOrder = 1
     TabStop = False
+    ExplicitLeft = 466
+    ExplicitTop = 405
   end
   object lvShortCut: TListView
     Left = 0
     Top = 28
-    Width = 632
-    Height = 399
+    Width = 765
+    Height = 457
     Align = alClient
     Columns = <
       item
@@ -83,6 +87,10 @@ object ShortCutManForm: TShortCutManForm
       end
       item
         Caption = 'Param Type'
+        Width = 100
+      end
+      item
+        Caption = 'RunAs'
         Width = 100
       end
       item
@@ -116,7 +124,7 @@ object ShortCutManForm: TShortCutManForm
     AlignWithMargins = True
     Left = 3
     Top = 3
-    Width = 626
+    Width = 759
     Height = 22
     AutoSize = True
     ButtonWidth = 111
@@ -125,6 +133,7 @@ object ShortCutManForm: TShortCutManForm
     List = True
     AllowTextButtons = True
     TabOrder = 2
+    ExplicitWidth = 624
     object btnAdd: TToolButton
       Left = 0
       Top = 0
@@ -202,11 +211,13 @@ object ShortCutManForm: TShortCutManForm
   end
   object statShortCutMan: TStatusBar
     Left = 0
-    Top = 427
-    Width = 632
+    Top = 485
+    Width = 765
     Height = 19
     Panels = <>
     SimplePanel = True
+    ExplicitTop = 419
+    ExplicitWidth = 630
   end
   object actlstShortCut: TActionList
     Images = ilShortCutMan

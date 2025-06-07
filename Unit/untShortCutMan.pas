@@ -974,6 +974,7 @@ begin
           lvwitm.Caption := ShortCutItem.ShortCut;
           lvwitm.SubItems.Add(ShortCutItem.Name);
           lvwitm.SubItems.Add(ParamTypeToString(ShortCutItem.ParamType));
+          lvwitm.SubItems.Add(RunAsToString(ShortCutItem.RunAsAdmin));
           lvwitm.SubItems.Add(ShortCutItem.CommandLine);
           lvwitm.Data := Pointer(ShortCutItem.Freq);
           lvwitm.ImageIndex := Ord(siItem);
@@ -983,6 +984,7 @@ begin
         begin
           lvwitm := lvw.Items.Add;
           lvwitm.Caption := '';
+          lvwitm.SubItems.Add('');
           lvwitm.SubItems.Add('');
           lvwitm.SubItems.Add('');
           lvwitm.SubItems.Add('');

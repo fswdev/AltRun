@@ -186,13 +186,13 @@ begin
 
   try
     ShortCutForm := TShortCutForm.Create(Self);
-    with ShortCutForm do
+//    with ShortCutForm do
     begin
-      lbledtShortCut.Text := lvShortCut.Selected.Caption;
-      lbledtName.Text := lvShortCut.Selected.SubItems[0];
-      lbledtCommandLine.Text := lvShortCut.Selected.SubItems[2];
+      ShortCutForm.lbledtShortCut.Text := lvShortCut.Selected.Caption;
+      ShortCutForm.lbledtName.Text := lvShortCut.Selected.SubItems[0];
+      ShortCutForm.lbledtCommandLine.Text := lvShortCut.Selected.SubItems[3];
       ShortCutMan.StringToParamType(lvShortCut.Selected.SubItems[1], ParamType);
-      rgParam.ItemIndex := Ord(ParamType);
+      ShortCutForm.rgParam.ItemIndex := Ord(ParamType);
 
       ShowModal;
 
@@ -203,12 +203,12 @@ begin
       try
         itm := TListItem.Create(lvShortCut.Items);
 
-        if (Trim(lbledtShortCut.Text) <> '') and (Trim(lbledtCommandLine.Text) <> '') then
+        if (Trim(ShortCutForm.lbledtShortCut.Text) <> '') and (Trim(ShortCutForm.lbledtCommandLine.Text) <> '') then
         begin
-          itm.Caption := lbledtShortCut.Text;
-          itm.SubItems.Add(lbledtName.Text);
-          itm.SubItems.Add(ShortCutMan.ParamTypeToString(TParamType(rgParam.ItemIndex)));
-          itm.SubItems.Add(lbledtCommandLine.Text);
+          itm.Caption := ShortCutForm.lbledtShortCut.Text;
+          itm.SubItems.Add(ShortCutForm.lbledtName.Text);
+          itm.SubItems.Add(ShortCutMan.ParamTypeToString(TParamType(ShortCutForm.rgParam.ItemIndex)));
+          itm.SubItems.Add(ShortCutForm.lbledtCommandLine.Text);
           itm.ImageIndex := Ord(siItem);
         end
         else
@@ -232,6 +232,7 @@ begin
         lvShortCut.Selected.SubItems[0] := itm.SubItems[0];
         lvShortCut.Selected.SubItems[1] := itm.SubItems[1];
         lvShortCut.Selected.SubItems[2] := itm.SubItems[2];
+        lvShortCut.Selected.SubItems[3] := itm.SubItems[3];
         lvShortCut.Selected.ImageIndex := itm.ImageIndex;
 
         //使其可见
@@ -282,17 +283,17 @@ begin
   for i := 0 to lvShortCut.Items.Count - 1 do
   begin
     //解析出快捷项
-    CommandLine := lvShortCut.Items.Item[i].SubItems[2];
+    CommandLine := lvShortCut.Items.Item[i].SubItems[3];
 
     if IsAbsoluteToRelative and (Pos(LowerCase(ExtractFileDir(Application.ExeName)), LowerCase(CommandLine)) > 1) then
     begin
       Inc(Count);
-      lvShortCut.Items.Item[i].SubItems[2] := StringReplace(CommandLine, ExtractFileDir(Application.ExeName), '.', [rfReplaceAll, rfIgnoreCase]);
+      lvShortCut.Items.Item[i].SubItems[3] := StringReplace(CommandLine, ExtractFileDir(Application.ExeName), '.', [rfReplaceAll, rfIgnoreCase]);
     end
     else if (not IsAbsoluteToRelative) and (Pos('.\', LowerCase(CommandLine)) > 0) then
     begin
       Inc(Count);
-      lvShortCut.Items.Item[i].SubItems[2] := StringReplace(CommandLine, '.\', ExtractFilePath(Application.ExeName), [rfReplaceAll, rfIgnoreCase]);
+      lvShortCut.Items.Item[i].SubItems[3] := StringReplace(CommandLine, '.\', ExtractFilePath(Application.ExeName), [rfReplaceAll, rfIgnoreCase]);
     end;
   end;
 
@@ -335,6 +336,7 @@ begin
         lvwitm.SubItems.Add(lvShortCut.Items.Item[i].SubItems[0]);
         lvwitm.SubItems.Add(lvShortCut.Items.Item[i].SubItems[1]);
         lvwitm.SubItems.Add(lvShortCut.Items.Item[i].SubItems[2]);
+        lvwitm.SubItems.Add(lvShortCut.Items.Item[i].SubItems[3]);
         lvwitm.ImageIndex := Ord(siItem);
         lvwitm.Checked := True;
 
@@ -366,7 +368,7 @@ begin
       lvShortCut.Items.Delete(Integer(InvalidForm.lvShortCut.Items[i].Data));
     end;
   finally
-   FreeAndNil( InvalidForm);
+    FreeAndNil(InvalidForm);
   end;
 end;
 
@@ -542,7 +544,8 @@ begin
   lvShortCut.Columns.Items[0].Caption := resShortCut;
   lvShortCut.Columns.Items[1].Caption := resName;
   lvShortCut.Columns.Items[2].Caption := resParamType;
-  lvShortCut.Columns.Items[3].Caption := resCommandLine;
+  lvShortCut.Columns.Items[3].Caption := resRunAsAdmin;
+  lvShortCut.Columns.Items[4].Caption := resCommandLine;
 
   actAdd.Caption := resBtnAdd;
   actEdit.Caption := resBtnEdit;
@@ -619,6 +622,7 @@ begin
     tempItem2.SubItems.Add(m_SrcItem.SubItems[0]);
     tempItem2.SubItems.Add(m_SrcItem.SubItems[1]);
     tempItem2.SubItems.Add(m_SrcItem.SubItems[2]);
+    tempItem2.SubItems.Add(m_SrcItem.SubItems[3]);
     tempItem2.ImageIndex := m_SrcItem.ImageIndex;
 
     m_SrcItem.Delete;
@@ -709,12 +713,14 @@ begin
         ListItem.Caption := lbledtShortCut.Text;
         ListItem.SubItems.Add(lbledtName.Text);
         ListItem.SubItems.Add(ShortCutMan.ParamTypeToString(TParamType(rgParam.ItemIndex)));
+        ListItem.SubItems.Add(ShortCutMan.RunAsToString(ShortCutItem.RunAsAdmin));
         ListItem.SubItems.Add(lbledtCommandLine.Text);
         ListItem.ImageIndex := Ord(siItem);
       end
       else
       begin
         ListItem.Caption := '';
+        ListItem.SubItems.Add('');
         ListItem.SubItems.Add('');
         ListItem.SubItems.Add('');
         ListItem.SubItems.Add('');
