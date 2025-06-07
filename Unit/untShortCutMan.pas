@@ -1858,6 +1858,7 @@ end;
 
 function TShortCutMan.SaveShortCutList(FileName: string = ''): Boolean;
 var
+  backPath, backFileName, backFileExt: string;
   i: Cardinal;
   MyFile: TextFile;
   TempFileName, BackupFileName: string;
@@ -1866,6 +1867,14 @@ begin
   TraceMsg('SaveShortCutList');
 
   Result := False;
+
+  backFileExt := ExtractFileExt(m_ShortCutFileName);
+  backFileName := replacestr(extractFileName(m_ShortCutFileName), backFileExt, '');
+
+  backPath := extractfilepath(m_ShortCutFileName) + 'cfgbak\';
+  if not DirectoryExists(backPath) then
+    forceDirectories(backPath);
+
 
   //若参数不空，则替换文件名
   if FileName <> '' then
@@ -1877,7 +1886,7 @@ begin
 
   // 使用临时文件写入，写完后再替换原文件，防止写入过程中丢失
   TempFileName := m_ShortCutFileName + '.tmp';
-  BackupFileName := m_ShortCutFileName + '.bak';
+  BackupFileName := format('%s%s-%s.%s', [backPath, backFileName, formatdatetime('yymmdd-hhnn', now), backFileExt]);
   SaveSuccess := False;
 
   try
@@ -1903,8 +1912,8 @@ begin
     // 先备份原文件
     if FileExists(m_ShortCutFileName) then
     begin
-      CopyFile(PChar(m_ShortCutFileName), PChar(BackupFileName), False);
-      deletefile(m_shortcutfileName);
+      if CopyFile(PChar(m_ShortCutFileName), PChar(BackupFileName), False) then
+        deletefile(m_shortcutfileName);
     end;
 
     // 用临时文件替换原文件

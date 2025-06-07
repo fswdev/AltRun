@@ -106,6 +106,7 @@ Bin/ALTRun.admin.log
 Bin/ALTRun_Y.admin.log
 __recovery/
 __history/
+cfgbak/
 
 Bin/ALTRun_Y.exe
 
