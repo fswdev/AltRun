@@ -1,30 +1,18 @@
 unit untShortCutMan;
 
 interface
+
 uses
-  Windows,
-  Dialogs,
-  SysUtils,
-  Classes,
-  Forms,
-  Contnrs,
-  ComCtrls,
-  ShellAPI,
-  RegExpr,
-  Controls,
-  frmParam,
-  untClipboard,
-  untUtilities,
-  untALTRunOption,
+  Windows, Dialogs, SysUtils, Classes, Forms, Contnrs, ComCtrls, ShellAPI,
+  RegExpr, Controls, frmParam, untClipboard, untUtilities, untALTRunOption,
   untLogger;
 
 const
   SHORTCUT_FILENAME = 'ShortCutList.txt';
   FAVOURIT_FILENAME = 'FavoriteList.txt';
-
   PARAM_DELIMITER = '/\';
-
   MAX_LATEST_NUM = 10;
+
 type
   //快捷项类型
   TShortCutType = (scOther, scItem, scBlank, scRemark);
@@ -49,7 +37,7 @@ type
     ShortCutType: TShortCutType;
     ParamType: TParamType;
     ShortCut: string;
-      Name: string;
+    Name: string;
     CommandLine: string;
     Rank: Integer;
     Freq: Integer;
@@ -94,17 +82,14 @@ type
     function LoadFavoriteList: Boolean;
     function SaveFavoriteList: Boolean;
 
-    function AddLatestShortCutItem(ShortCutItem: TShortCutItem):Boolean;
+    function AddLatestShortCutItem(ShortCutItem: TShortCutItem): Boolean;
     function GetLatestShortCutItemList(var StringList: TStringList): Boolean;
-    function GetLatestShortCutIndexList:string;
+    function GetLatestShortCutIndexList: string;
     function SetLatestShortCutIndexList(IndexList: string): Boolean;
-    function LoadLatestList: Boolean;
-    function SaveLatestList: Boolean;
 
     function ParamTypeToString(ParamType: TParamType): string;
     function StringToParamType(str: string; var ParamType: TParamType): Boolean;
-    function ShortCutItemToString(ShortCutType: TShortCutType; ParamType: TParamType = ptNone;
-      ShortCut: string = ''; Name: string = ''; CommandLine: string = ''; Freq: Integer = 0): string; overload;
+    function ShortCutItemToString(ShortCutType: TShortCutType; ParamType: TParamType = ptNone; ShortCut: string = ''; Name: string = ''; CommandLine: string = ''; Freq: Integer = 0): string; overload;
     function ShortCutItemToString(ShortCutItem: TShortCutItem): string; overload;
     function StringToShortCutItem(str: string; var ShortCutItem: TShortCutItem): Boolean;
 
@@ -113,11 +98,9 @@ type
     procedure AppendShortCutItem(ShortCutItem: TShortCutItem); overload;
     procedure ModifyShortCutItem(ShortCutType: TShortCutType; ShortCut, Name, CommandLine: string; Index: Integer); overload;
     procedure ModifyShortCutItem(ShortCutItem: TShortCutItem; Index: Integer); overload;
-    function ContainShortCutItem(ShortCutType: TShortCutType;
-      ParamType: TParamType; ShortCut, Name, CommandLine: string): Boolean; overload;
+    function ContainShortCutItem(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string): Boolean; overload;
     function ContainShortCutItem(ShortCutItem: TShortCutItem): Boolean; overload;
-    function InsertShortCutItem(ShortCutType: TShortCutType;
-      ParamType: TParamType; ShortCut, Name, CommandLine: string; Index: Integer): Boolean; overload;
+    function InsertShortCutItem(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string; Index: Integer): Boolean; overload;
     function InsertShortCutItem(ShortCutItem: TShortCutItem; Index: Integer): Boolean; overload;
     function DeleteShortCutItem(Index: Integer): Boolean; overload;
     function GetShortCutItemIndex(ShortCutItem: TShortCutItem): Integer;
@@ -153,215 +136,215 @@ var
   ShortCutMan: TShortCutMan;
 
 implementation
+
 uses
   frmShortCut;
 
-function ExecuteCmd(cmd: Pointer): LongInt; stdcall;
-var
-  PCommandStr, PParamStr, PWorkingDir: PChar;
-  cmdobj: TCmdObject;
-  Regex: TRegExpr;
-  strCommand, strTemp: string;
-  ret: Integer;
-  ShowCmd: Integer;
-begin
-  cmdobj := TCmdObject(cmd);
-
-  ShowCmd := SW_SHOWNORMAL;
-  if Pos(SHOW_MAX_FLAG, cmdobj.Command) = 1 then
-  begin
-    cmdobj.Command := Trim(CutLeftString(cmdobj.Command, Length(SHOW_MAX_FLAG)));
-    ShowCmd := SW_SHOWMAXIMIZED;
-  end
-  else if Pos(SHOW_MIN_FLAG, cmdobj.Command) = 1 then
-  begin
-    cmdobj.Command := Trim(CutLeftString(cmdobj.Command, Length(SHOW_MIN_FLAG)));
-    ShowCmd := SW_SHOWMINIMIZED;
-  end
-  else if Pos(SHOW_HIDE_FLAG, cmdobj.Command) = 1 then
-  begin
-    cmdobj.Command := Trim(CutLeftString(cmdobj.Command, Length(SHOW_HIDE_FLAG)));
-    ShowCmd := SW_HIDE
-  end;
-
-  //处理相对路径 ".\", "..\"，如果有，就将本程序的路径代入
-  if (Pos('.\', cmdobj.Command) > 0) or (Pos('..\', cmdobj.Command) > 0) then
-    cmdobj.WorkingDir := ExtractFileDir(Application.ExeName);
-
-  case cmdobj.ParamType of
-    ptNone:
-      begin
-        PCommandStr := PChar(cmdobj.Command);
-        PParamStr := nil;
-        PWorkingDir := PChar(cmdobj.WorkingDir);
-      end;
-
-    ptNoEncoding:
-      begin
-        //如果命令行有参数标志，则替换参数
-        if Pos(NEW_PARAM_FLAG, cmdobj.Command) > 0 then
-        begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := NEW_PARAM_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := nil;
-        end
-        else if Pos(PARAM_FLAG, cmdobj.Command) > 0 then
-        begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := PARAM_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := nil;
-        end
-        else if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then
-        begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := CLIPBOARD_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := nil;
-        end
-        else if Pos(FOREGROUND_WINDOW_ID_FLAG, cmdobj.Command) > 0 then
-        begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := FOREGROUND_WINDOW_ID_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := nil;
-        end
-        else if Pos(FOREGROUND_WINDOW_TEXT_FLAG, cmdobj.Command) > 0 then
-        begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := FOREGROUND_WINDOW_TEXT_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := nil;
-        end
-        else if Pos(FOREGROUND_WINDOW_CLASS_FLAG, cmdobj.Command) > 0 then
-        begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := FOREGROUND_WINDOW_CLASS_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := nil;
-        end
-        else
-        begin
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := PChar(cmdobj.Param);
-        end;
-
-        PWorkingDir := PChar(cmdobj.WorkingDir);
-      end;
-
-    ptURLQuery, ptUTF8Query:
-      begin
-        //如果命令行有参数标志，则替换参数
-        if Pos(NEW_PARAM_FLAG, cmdobj.Command) > 0 then
-        begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := NEW_PARAM_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
-          PCommandStr := PChar(cmdobj.Command);
-        end
-        else if Pos(PARAM_FLAG, cmdobj.Command) > 0 then
-        begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := PARAM_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
-          PCommandStr := PChar(cmdobj.Command);
-        end
-        else if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then
-        begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := CLIPBOARD_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
-          PCommandStr := PChar(cmdobj.Command);
-        end
-        else
-        begin
-          PCommandStr := PChar(cmdobj.Command + cmdobj.Param);
-        end;
-
-        PParamStr := nil;
-        PWorkingDir := nil;
-      end;
-  end;
-
-  //替换环境变量
-  PCommandStr := PChar(ReplaceEnvStr(StrPas(PCommandStr)));
-
-  ret := ShellExecute(GetDesktopWindow, nil, PCommandStr, PParamStr, PWorkingDir, ShowCmd);
-  if ret < 33 then
-  begin
-    TraceMsg('ShellExecute(%s, %s, %s) Failed',
-      [StrPas(PCommandStr), StrPas(PParamStr), StrPas(PWorkingDir)]);
-
-    ret := WinExec(PCommandStr, ShowCmd);
-    if ret < 33 then
-    begin
-      TraceMsg('WinExec(%s) Failed', [StrPas(PCommandStr)]);
-
-      Application.MessageBox(PChar(Format(resCanNotExecute, [StrPas(PCommandStr),
-        StrPas(PParamStr)])), PChar(resWarning), MB_OK + MB_ICONWARNING);
-    end;
-  end;
-
-  //释放对象；
-  cmdobj.Free;
-end;
+//function ExecuteCmd(cmd: Pointer): LongInt; stdcall;
+//var
+//  PCommandStr, PParamStr, PWorkingDir: PAnsiChar;
+//  cmdobj: TCmdObject;
+//  Regex: TRegExpr;
+//  strCommand, strTemp: string;
+//  ret: Integer;
+//  ShowCmd: Integer;
+//begin
+//  cmdobj := TCmdObject(cmd);
+//
+//  ShowCmd := SW_SHOWNORMAL;
+//  if Pos(SHOW_MAX_FLAG, cmdobj.Command) = 1 then
+//  begin
+//    cmdobj.Command := Trim(CutLeftString(cmdobj.Command, Length(SHOW_MAX_FLAG)));
+//    ShowCmd := SW_SHOWMAXIMIZED;
+//  end
+//  else if Pos(SHOW_MIN_FLAG, cmdobj.Command) = 1 then
+//  begin
+//    cmdobj.Command := Trim(CutLeftString(cmdobj.Command, Length(SHOW_MIN_FLAG)));
+//    ShowCmd := SW_SHOWMINIMIZED;
+//  end
+//  else if Pos(SHOW_HIDE_FLAG, cmdobj.Command) = 1 then
+//  begin
+//    cmdobj.Command := Trim(CutLeftString(cmdobj.Command, Length(SHOW_HIDE_FLAG)));
+//    ShowCmd := SW_HIDE
+//  end;
+//
+//  //处理相对路径 ".\", "..\"，如果有，就将本程序的路径代入
+//  if (Pos('.\', cmdobj.Command) > 0) or (Pos('..\', cmdobj.Command) > 0) then
+//    cmdobj.WorkingDir := ExtractFileDir(Application.ExeName);
+//
+//  case cmdobj.ParamType of
+//    ptNone:
+//      begin
+//        PCommandStr := PansiChar(ansistring(cmdobj.Command));
+//        PParamStr := nil;
+//        PWorkingDir := PansiChar(ansiString(cmdobj.WorkingDir));
+//      end;
+//
+//    ptNoEncoding:
+//      begin
+//        //如果命令行有参数标志，则替换参数
+//        if Pos(NEW_PARAM_FLAG, cmdobj.Command) > 0 then
+//        begin
+//          try
+//            Regex := TRegExpr.Create;
+//            Regex.Expression := NEW_PARAM_FLAG;
+//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+//          finally
+//           freeandNil( Regex);
+//          end;
+//
+//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
+//          PParamStr := nil;
+//        end
+//        else if Pos(PARAM_FLAG, cmdobj.Command) > 0 then
+//        begin
+//          try
+//            Regex := TRegExpr.Create;
+//            Regex.Expression := PARAM_FLAG;
+//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+//          finally
+//            Regex.Free;
+//          end;
+//
+//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
+//          PParamStr := nil;
+//        end
+//        else if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then
+//        begin
+//          try
+//            Regex := TRegExpr.Create;
+//            Regex.Expression := CLIPBOARD_FLAG;
+//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+//          finally
+//            Regex.Free;
+//          end;
+//
+//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
+//          PParamStr := nil;
+//        end
+//        else if Pos(FOREGROUND_WINDOW_ID_FLAG, cmdobj.Command) > 0 then
+//        begin
+//          try
+//            Regex := TRegExpr.Create;
+//            Regex.Expression := FOREGROUND_WINDOW_ID_FLAG;
+//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+//          finally
+//            Regex.Free;
+//          end;
+//
+//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
+//          PParamStr := nil;
+//        end
+//        else if Pos(FOREGROUND_WINDOW_TEXT_FLAG, cmdobj.Command) > 0 then
+//        begin
+//          try
+//            Regex := TRegExpr.Create;
+//            Regex.Expression := FOREGROUND_WINDOW_TEXT_FLAG;
+//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+//          finally
+//            Regex.Free;
+//          end;
+//
+//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
+//          PParamStr := nil;
+//        end
+//        else if Pos(FOREGROUND_WINDOW_CLASS_FLAG, cmdobj.Command) > 0 then
+//        begin
+//          try
+//            Regex := TRegExpr.Create;
+//            Regex.Expression := FOREGROUND_WINDOW_CLASS_FLAG;
+//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+//          finally
+//            Regex.Free;
+//          end;
+//
+////          PCommandStr := PChar(cmdobj.Command);
+//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
+//          PParamStr := nil;
+//        end
+//        else
+//        begin
+////          PCommandStr := PChar(cmdobj.Command);
+//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
+//          PParamStr := PansiChar(ansistring(cmdobj.Param));
+//        end;
+//
+//        PWorkingDir := PansiChar(ansistring(cmdobj.WorkingDir));
+//      end;
+//
+//    ptURLQuery, ptUTF8Query:
+//      begin
+//        //如果命令行有参数标志，则替换参数
+//        if Pos(NEW_PARAM_FLAG, cmdobj.Command) > 0 then
+//        begin
+//          try
+//            Regex := TRegExpr.Create;
+//            Regex.Expression := NEW_PARAM_FLAG;
+//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+//          finally
+//            Regex.Free;
+//          end;
+//
+//          PCommandStr := PANSIChar(ANSISTRING(cmdobj.Command));
+//        end
+//        else if Pos(PARAM_FLAG, cmdobj.Command) > 0 then
+//        begin
+//          try
+//            Regex := TRegExpr.Create;
+//            Regex.Expression := PARAM_FLAG;
+//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+//          finally
+//            Regex.Free;
+//          end;
+//
+//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
+//        end
+//        else if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then
+//        begin
+//          try
+//            Regex := TRegExpr.Create;
+//            Regex.Expression := CLIPBOARD_FLAG;
+//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+//          finally
+//            Regex.Free;
+//          end;
+//
+//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
+//        end
+//        else
+//        begin
+//          PCommandStr := PansiChar(ansistring(cmdobj.Command + cmdobj.Param));
+//        end;
+//
+//        PParamStr := nil;
+//        PWorkingDir := nil;
+//      end;
+//  end;
+//
+//  //替换环境变量
+//  PCommandStr := PAnsiChar(ansistring(ReplaceEnvStr(string(StrPas(PCommandStr)))));
+//
+//  ret := ShellExecuteA(GetDesktopWindow, nil, PCommandStr, PParamStr, PWorkingDir, ShowCmd);
+//  if ret < 33 then
+//  begin
+//    TraceMsg('ShellExecute(%s, %s, %s) Failed', [StrPas(PCommandStr), StrPas(PParamStr), StrPas(PWorkingDir)]);
+//
+//    ret := WinExec(PCommandStr, ShowCmd);
+//    if ret < 33 then
+//    begin
+//      TraceMsg('WinExec(%s) Failed', [StrPas(PCommandStr)]);
+//
+//      Application.MessageBox(PChar(Format(resCanNotExecute, [StrPas(PCommandStr), StrPas(PParamStr)])), PChar(resWarning), MB_OK + MB_ICONWARNING);
+//    end;
+//  end;
+//
+//  //释放对象；
+//  cmdobj.Free;
+//end;
 
 { TShortCutMan }
 
-procedure TShortCutMan.AppendShortCutItem(ShortCutType: TShortCutType;
-  ShortCut, Name, CommandLine: string);
+procedure TShortCutMan.AppendShortCutItem(ShortCutType: TShortCutType; ShortCut, Name, CommandLine: string);
 var
   Item: TShortCutItem;
 begin
@@ -379,7 +362,6 @@ var
   ShortCutForm: TShortCutForm;
   Item: TShortCutItem;
   ExistItem: TShortCutItem;
-  TempFileName: string;
 begin
   TraceMsg('AddFileShortCut(%s)', [FileName]);
 
@@ -393,8 +375,7 @@ begin
     begin
       if not ExtractShortCutItemFromFileName(Item, FileName) then
       begin
-        Application.MessageBox(PChar(resGetFileNameFail), PChar(resInfo),
-          MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+        Application.MessageBox(PChar(resGetFileNameFail), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
 
         Item.Free;
         Exit;
@@ -423,8 +404,7 @@ begin
       end
       else
       begin
-        Application.MessageBox(PChar(resBlankLineAdded), PChar(resInfo),
-          MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+        Application.MessageBox(PChar(resBlankLineAdded), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
 
         Item.ShortCutType := scBlank;
         Item.ParamType := ptNone;
@@ -436,8 +416,7 @@ begin
       //相对路径建议
       if Pos(LowerCase(ExtractFileDir(Application.ExeName)), LowerCase(Item.CommandLine)) > 0 then
       begin
-        if Application.MessageBox(PChar(resRelativePathSuggestion), PChar(resInfo),
-          MB_OKCANCEL + MB_ICONQUESTION + MB_TOPMOST) = IDOK then
+        if Application.MessageBox(PChar(resRelativePathSuggestion), PChar(resInfo), MB_OKCANCEL + MB_ICONQUESTION + MB_TOPMOST) = IDOK then
         begin
           Item.CommandLine := StringReplace(Item.CommandLine, ExtractFileDir(Application.ExeName), '.', [rfReplaceAll, rfIgnoreCase]);
         end;
@@ -457,9 +436,7 @@ begin
       //如有ShortCut相同(或者Name相同)，则提示是否替换原有的
       if (Item.ShortCutType = scItem) and GetShortCutItemByShortCut(Item.ShortCut, ExistItem) then
       begin
-        if Application.MessageBox(PChar(Format(resShortCutExisted,
-          [ExistItem.ShortCut, ExistItem.Name, ExistItem.CommandLine])),
-          PChar(resInfo), MB_YESNO + MB_ICONINFORMATION + MB_TOPMOST) = IDYES then
+        if Application.MessageBox(PChar(Format(resShortCutExisted, [ExistItem.ShortCut, ExistItem.Name, ExistItem.CommandLine])), PChar(resInfo), MB_YESNO + MB_ICONINFORMATION + MB_TOPMOST) = IDYES then
         begin
           CloneShortCutItem(Item, ExistItem);
           Item.Free;
@@ -489,8 +466,8 @@ end;
 function TShortCutMan.AddLatestShortCutItem(ShortCutItem: TShortCutItem): Boolean;
 var
   ItemIndex: Integer;
-  ShortCutItemIndex: Integer;
 begin
+  result := false;
   ItemIndex := m_LatestList.IndexOfObject(ShortCutItem);
 
   //如果此项已经在最近列表中，则移到第一项
@@ -499,7 +476,8 @@ begin
   else
   begin
     //如果当前列表已经超过最大项，则删除最后一个
-    if m_LatestList.Count >= MAX_LATEST_NUM then m_LatestList.Delete(MAX_LATEST_NUM - 1);
+    if m_LatestList.Count >= MAX_LATEST_NUM then
+      m_LatestList.Delete(MAX_LATEST_NUM - 1);
 
     m_LatestList.InsertObject(0, ShortCutItem.Name, ShortCutItem);
   end;
@@ -513,12 +491,12 @@ end;
 procedure TShortCutMan.BubbleSort(var StringList: TObjectList; p, r: integer);
 var
   i, j: Integer;
-  v: Integer;
   Flag: Boolean;
 begin
   PrintStringList(Format('Before BubbleSort(%d, %d)', [p, r]), StringList, p, r);
 
-  if (r - p) < 1 then Exit;
+  if (r - p) < 1 then
+    Exit;
 
   if (r - p) = 1 then
     if TShortCutItem(StringList.Items[p]).Rank < TShortCutItem(StringList.Items[r]).Rank then
@@ -535,7 +513,8 @@ begin
           Flag := False;
         end;
 
-      if Flag then Exit;
+      if Flag then
+        Exit;
     end;
 
   PrintStringList(Format('After BubbleSort(%d, %d)', [p, r]), StringList, p, r);
@@ -543,7 +522,8 @@ end;
 
 procedure TShortCutMan.CloneShortCutItem(ShortCutItem: TShortCutItem; var NewItem: TShortCutItem);
 begin
-  if ShortCutItem = nil then ShowMessage('Error NIL');
+  if ShortCutItem = nil then
+    ShowMessage('Error NIL');
 
   NewItem.ShortCutType := ShortCutItem.ShortCutType;
   NewItem.ParamType := ShortCutItem.ParamType;
@@ -557,7 +537,8 @@ var
   i: Cardinal;
 begin
   NewList.Clear;
-  if SrcList.Count = 0 then Exit;
+  if SrcList.Count = 0 then
+    Exit;
 
   for i := 0 to SrcList.Count - 1 do
     NewList.Add(SrcList.Items[i]);
@@ -571,21 +552,19 @@ begin
   Result := False;
 
   //列表为空，当然不存在
-  if m_ShortCutList.Count = 0 then Exit;
+  if m_ShortCutList.Count = 0 then
+    Exit;
 
   //只要不是快捷项类型，随便加
-  if ShortCutItem.ShortCutType <> scItem then Exit;
+  if ShortCutItem.ShortCutType <> scItem then
+    Exit;
 
   for i := 0 to m_ShortCutList.Count - 1 do
   begin
     Item := TShortCutItem(m_ShortCutList.Items[i]);
 
     //全都一样，就是包含了
-    if (Item.ShortCutType = scItem) and
-      (Item.ParamType = ShortCutItem.ParamType) and
-      (Item.ShortCut = ShortCutItem.ShortCut) and
-      (Item.Name = ShortCutItem.Name) and
-      (Item.CommandLine = ShortCutItem.CommandLine) then
+    if (Item.ShortCutType = scItem) and (Item.ParamType = ShortCutItem.ParamType) and (Item.ShortCut = ShortCutItem.ShortCut) and (Item.Name = ShortCutItem.Name) and (Item.CommandLine = ShortCutItem.CommandLine) then
     begin
       Result := True;
       Exit;
@@ -593,11 +572,11 @@ begin
   end;
 end;
 
-function TShortCutMan.ContainShortCutItem(ShortCutType: TShortCutType;
-  ParamType: TParamType; ShortCut, Name, CommandLine: string): Boolean;
+function TShortCutMan.ContainShortCutItem(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string): Boolean;
 var
   ShortCutItem: TShortCutItem;
 begin
+  ShortCutItem := TShortCutItem.Create;
   ShortCutItem.ShortCutType := ShortCutType;
   ShortCutItem.ShortCut := ShortCut;
   ShortCutItem.Name := Name;
@@ -605,6 +584,7 @@ begin
   ShortCutItem.ParamType := ParamType;
 
   Result := ContainShortCutItem(ShortCutItem);
+  ShortCutItem.free;
 end;
 
 constructor TShortCutMan.Create;
@@ -639,14 +619,16 @@ var
 begin
   Result := False;
 
-  if (Index < 0) or (Index >= m_ShortCutList.Count) then Exit;
+  if (Index < 0) or (Index >= m_ShortCutList.Count) then
+    Exit;
 
   //如果最近列表中包含此项，则删除之
   ItemIndex := m_LatestList.IndexOfObject(m_ShortCutList.Items[Index]);
-  if ItemIndex >= 0 then m_LatestList.Delete(ItemIndex);
+  if ItemIndex >= 0 then
+    m_LatestList.Delete(ItemIndex);
 
   m_ShortCutList.Delete(Index);
-  
+
   SaveShortCutList(m_ShortCutFileName);
   LoadShortCutList(m_ShortCutFileName);
 
@@ -658,7 +640,7 @@ begin
   //备份 m_ShortCutFileName
   TraceMsg('Backup the ShortCutFileName file');
 
-  if GetFileSize(m_ShortCutFileName) >0  then
+  if GetFileSize(m_ShortCutFileName) > 0 then
     CopyFile(PChar(m_ShortCutFileName), PChar(m_ShortCutFileName + '.bak'), False);
 
   m_Regex.Free;
@@ -679,7 +661,8 @@ var
 begin
   Result := False;
 
-  if ShortCutItem.ShortCutType <> scItem then Exit;
+  if ShortCutItem.ShortCutType <> scItem then
+    Exit;
 
   //注意: 这个对象不在这里释放，需要在线程里面释放！
   cmdobj := TCmdObject.Create;
@@ -752,18 +735,15 @@ begin
     begin
       cmdobj.Param := m_Param[0];
     end
-    else
-    if Pos(FOREGROUND_WINDOW_ID_FLAG, cmdobj.Command) > 0 then    // 前台窗口ID
+    else if Pos(FOREGROUND_WINDOW_ID_FLAG, cmdobj.Command) > 0 then    // 前台窗口ID
     begin
       cmdobj.Param := m_Param[1];
     end
-    else
-    if Pos(FOREGROUND_WINDOW_TEXT_FLAG, cmdobj.Command) > 0 then  // 前台窗口Text
+    else if Pos(FOREGROUND_WINDOW_TEXT_FLAG, cmdobj.Command) > 0 then  // 前台窗口Text
     begin
       cmdobj.Param := m_Param[2];
     end
-    else
-    if Pos(FOREGROUND_WINDOW_CLASS_FLAG, cmdobj.Command) > 0 then  // 前台窗口Class
+    else if Pos(FOREGROUND_WINDOW_CLASS_FLAG, cmdobj.Command) > 0 then  // 前台窗口Class
     begin
       cmdobj.Param := m_Param[3];
     end
@@ -783,7 +763,8 @@ begin
     cmdobj.ParamType := ShortCutItem.ParamType;
 
     case ShortCutItem.ParamType of
-      ptNoEncoding: ;
+      ptNoEncoding:
+        ;
 
       ptURLQuery:
         cmdobj.Param := GetURLQueryString(cmdobj.Param);
@@ -800,7 +781,7 @@ function TShortCutMan.ExtractShortCutItemFromFileName(var ShortCutItem: TShortCu
 var
   TempFileName: string;
 begin
-  Result := False;
+ // Result := False;
 
   if Trim(FileName) = '' then
   begin
@@ -817,11 +798,7 @@ begin
   begin
     //如果是LNK快捷方式文件，则提取里面的文件路径
     //要考虑到"....lnk"这种前后带有"的文件
-    if (LowerCase(Copy(FileName, Length(FileName) - 3, 4)) = '.lnk') or
-      ( (FileName[1] = '"') and
-        (FileName[Length(FileName)] = '"') and
-        (LowerCase(Copy(FileName, Length(FileName) - 4, 4)) = '.lnk'))
-    then
+    if (LowerCase(Copy(FileName, Length(FileName) - 3, 4)) = '.lnk') or ((FileName[1] = '"') and (FileName[Length(FileName)] = '"') and (LowerCase(Copy(FileName, Length(FileName) - 4, 4)) = '.lnk')) then
     begin
       TempFileName := ResolveLink(FileName);
 
@@ -888,7 +865,8 @@ var
   lvwitm: TListItem;
 begin
   lvw.Clear;
-  if m_ShortCutList.Count = 0 then Exit;
+  if m_ShortCutList.Count = 0 then
+    Exit;
 
   for i := 0 to m_ShortCutList.Count - 1 do
   begin
@@ -916,34 +894,36 @@ begin
           lvwitm.ImageIndex := Ord(siInfo);
         end;
 
-      scRemark, scOther: ;
-    else ;
+      scRemark, scOther:
+        ;
+    else
+      ;
     end;
   end;
 end;
 
 function TShortCutMan.FilterKeyWord(KeyWord: string; var StringList: TStringList): Boolean;
 var
-  i, j, k: Cardinal;
+  i: Cardinal;
   Item: TShortCutItem;
-  Rank, ExistRank: Integer;
-  IsInserted: Boolean;
   CostTick: Cardinal;
 begin
   Result := False;
 
   CostTick := GetTickCount;
 
-  TraceMsg('FilterKeyWord(%s)',[KeyWord]);
+  TraceMsg('FilterKeyWord(%s)', [KeyWord]);
 
   //清空结果列表
   StringList.Clear;
 
   //如果没有东西，退出
-  if m_SortedShortCutList.Count = 0 then Exit;
+  if m_SortedShortCutList.Count = 0 then
+    Exit;
 
   //如果KeyWord为' '，则退出
-  if KeyWord = ' ' then Exit;
+  if KeyWord = ' ' then
+    Exit;
 
   //如果KeyWord为空，则按照使用频率显示全部内容，否则只显示过滤内容
   if KeyWord = '' then
@@ -987,19 +967,23 @@ begin
       Item := TShortCutItem(m_SortedShortCutList.Objects[i]);
 
       //不是快捷项，不理
-      if Item.ShortCutType <> scItem then Continue;
+      if Item.ShortCutType <> scItem then
+        Continue;
 
       //如果长度太小，不理
-      if Length(KeyWord) > Length(Item.ShortCut) then Continue;
+      if Length(KeyWord) > Length(Item.ShortCut) then
+        Continue;
 
       if EnableRegex then
       begin
         m_Regex.Expression := KeyWord;
         try
-          if not m_Regex.Exec(LowerCase(Item.ShortCut)) then Continue;
+          if not m_Regex.Exec(LowerCase(Item.ShortCut)) then
+            Continue;
         except
           on E: Exception do
-            Result := False;
+            Continue; // 直接跳到下一个循环迭代
+//            Result := False;
         end;
 
         //如果必须从头匹配
@@ -1013,7 +997,8 @@ begin
         Item.Rank := Pos(LowerCase(KeyWord), LowerCase(Item.ShortCut));
 
         //如果必须从头匹配
-        if (not MatchAnywhere) and (Item.Rank > 1) then Continue;
+        if (not MatchAnywhere) and (Item.Rank > 1) then
+          Continue;
       end;
 
       TraceMsg('FilterKeyWord - 30');
@@ -1090,18 +1075,19 @@ end;
 
 function TShortCutMan.GetLatestShortCutIndexList: string;
 var
-  i: Cardinal;
-  Item: TShortCutItem;
+  i: integer;
 begin
   Result := '';
 
   //如果没有东西，退出
-  if m_LatestList.Count = 0 then Exit;
+  if m_LatestList.Count = 0 then
+    Exit;
 
   //取出对应的快捷方式
   for i := 0 to m_LatestList.Count - 1 do
   begin
-    if m_ShortCutList.IndexOf(m_LatestList.Objects[i]) < 0 then Continue;
+    if m_ShortCutList.IndexOf(m_LatestList.Objects[i]) < 0 then
+      Continue;
 
     Result := Result + IntToStr(m_ShortCutList.IndexOf(m_LatestList.Objects[i]));
 
@@ -1121,7 +1107,8 @@ begin
   StringList.Clear;
 
   //如果没有东西，退出
-  if m_LatestList.Count = 0 then Exit;
+  if m_LatestList.Count = 0 then
+    Exit;
 
   //取出对应的快捷方式
   for i := 0 to m_LatestList.Count - 1 do
@@ -1132,7 +1119,7 @@ begin
         Item := TShortCutItem(m_LatestList.Objects[i]);
         StringList.AddObject(Format(ListFormat, [Item.ShortCut, Item.Name]), TObject(Item));
       except
-        TraceErr('StringList.AddObject Error = %d',[i]);
+        TraceErr('StringList.AddObject Error = %d', [i]);
       end;
     end;
   end;
@@ -1170,7 +1157,6 @@ end;
 function TShortCutMan.GetShortCutItemByShortCut(ShortCut: string; var ShortCutItem: TShortCutItem): Boolean;
 var
   i: Cardinal;
-  Item: TShortCutItem;
 begin
   Result := False;
 
@@ -1197,9 +1183,7 @@ begin
   begin
     Item := TShortCutItem(m_ShortCutList.Items[i]);
 
-    if (ShortCutItem.ShortCut = Item.ShortCut)
-      and (ShortCutItem.Name = Item.Name)
-      and (ShortCutItem.CommandLine = Item.CommandLine) then
+    if (ShortCutItem.ShortCut = Item.ShortCut) and (ShortCutItem.Name = Item.Name) and (ShortCutItem.CommandLine = Item.CommandLine) then
     begin
       Result := i;
       Break;
@@ -1207,14 +1191,14 @@ begin
   end;
 end;
 
-function TShortCutMan.InsertShortCutItem(ShortCutType: TShortCutType;
-  ParamType: TParamType; ShortCut, Name, CommandLine: string; Index: Integer): Boolean;
+function TShortCutMan.InsertShortCutItem(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string; Index: Integer): Boolean;
 var
   Item: TShortCutItem;
 begin
   Result := False;
 
-  if (Index < 0) or (Index >= m_ShortCutList.Count) then Exit;
+  if (Index < 0) or (Index >= m_ShortCutList.Count) then
+    Exit;
 
   Item := TShortCutItem.Create;
   Item.ShortCutType := ShortCutType;
@@ -1230,12 +1214,12 @@ end;
 procedure TShortCutMan.BubbleSort(var StringList: TStringList; p, r: integer);
 var
   i, j: Integer;
-  v: Integer;
   Flag: Boolean;
 begin
   PrintStringList(Format('Before BubbleSort(%d, %d)', [p, r]), StringList, p, r);
 
-  if (r - p) < 1 then Exit;
+  if (r - p) < 1 then
+    Exit;
 
   if (r - p) = 1 then
     if TShortCutItem(StringList.Objects[p]).Rank < TShortCutItem(StringList.Objects[r]).Rank then
@@ -1252,7 +1236,8 @@ begin
           Flag := False;
         end;
 
-      if Flag then Exit;
+      if Flag then
+        Exit;
     end;
 
   PrintStringList(Format('After BubbleSort(%d, %d)', [p, r]), StringList, p, r);
@@ -1262,7 +1247,8 @@ function TShortCutMan.InsertShortCutItem(ShortCutItem: TShortCutItem; Index: Int
 begin
   Result := False;
 
-  if (Index < 0) or (Index >= m_ShortCutList.Count) then Exit;
+  if (Index < 0) or (Index >= m_ShortCutList.Count) then
+    Exit;
 
   m_ShortCutList.Insert(Index, ShortCutItem);
 
@@ -1273,10 +1259,7 @@ function TShortCutMan.LoadFavoriteList: Boolean;
 var
   MyFile: TextFile;
   strLine: string;
-  NewFileModifyTime: string;
   ParamItem: TStringList;
-  cnt: Integer;
-  Param: string;
 begin
   Result := False;
 
@@ -1332,7 +1315,8 @@ var
 begin
   m_ShortCutList.Clear;
 
-  if lvw.Items.Count = 0 then Exit;
+  if lvw.Items.Count = 0 then
+    Exit;
 
   for i := 0 to lvw.Items.Count - 1 do
   begin
@@ -1352,28 +1336,22 @@ begin
   end;
 end;
 
-function TShortCutMan.LoadLatestList: Boolean;
-begin
-
-end;
-
 function TShortCutMan.LoadShortCutList(FileName: string = ''): Boolean;
 var
   MyFile: TextFile;
   strLine: string;
   Item: TShortCutItem;
   NewFileModifyTime: string;
-  CmdDir: string;
-  CmdFile: string;
-  CmdList: TStringList;
 begin
   Result := False;
 
   //若参数不空，则替换文件名
-  if FileName <> '' then m_ShortCutFileName := FileName;
+  if FileName <> '' then
+    m_ShortCutFileName := FileName;
 
   //若文件名为空，则返回
-  if Trim(m_ShortCutFileName) = '' then Exit;
+  if Trim(m_ShortCutFileName) = '' then
+    Exit;
 
   //其实没必要添加一个自定义命令的目录
   {
@@ -1479,7 +1457,8 @@ begin
     TraceErr('Size of ShortCutFileName = 0, restore the backup file');
 
     CopyFile(PChar(m_ShortCutFileName + '.bak'), PChar(m_ShortCutFileName), False);
-  end;  
+  end;
+
 
   //取得文件修改时间
   NewFileModifyTime := GetFileModifyTime(m_ShortCutFileName);
@@ -1534,8 +1513,7 @@ begin
   Result := True;
 end;
 
-procedure TShortCutMan.ModifyShortCutItem(ShortCutType: TShortCutType; ShortCut,
-  Name, CommandLine: string; Index: Integer);
+procedure TShortCutMan.ModifyShortCutItem(ShortCutType: TShortCutType; ShortCut, Name, CommandLine: string; Index: Integer);
 var
   Item: TShortCutItem;
 begin
@@ -1550,10 +1528,7 @@ begin
   LoadShortCutList(m_ShortCutFileName);
 end;
 
-procedure TShortCutMan.ModifyShortCutItem(ShortCutItem: TShortCutItem;
-  Index: Integer);
-var
-  Item: TShortCutItem;
+procedure TShortCutMan.ModifyShortCutItem(ShortCutItem: TShortCutItem; Index: Integer);
 begin
   with ShortCutItem do
     ModifyShortCutItem(ShortCutType, ShortCut, Name, CommandLine, Index);
@@ -1591,8 +1566,7 @@ begin
     //移动右指针，注意这里不能用while循环
     repeat
       j := j - 1
-    until TShortCutItem(StringList.Items[j]).Rank
-      >= PivotValue;
+    until TShortCutItem(StringList.Items[j]).Rank >= PivotValue;
 
     //移动左指针，注意这里不能用while循环
     repeat
@@ -1601,17 +1575,16 @@ begin
 
     if i < j then
       StringList.Exchange(i, j)                        //交换L[i]和L[j]
+    else if j <> r then
+    begin
+      Result := j;                                   //返回j的值作为分割点
+      Break;
+    end
     else
-      if j <> r then
-      begin
-        Result := j;                                   //返回j的值作为分割点
-        Break;
-      end
-      else
-      begin
-        Result := j - 1;                               //返回j前一位置作为分割点
-        Break;
-      end;
+    begin
+      Result := j - 1;                               //返回j前一位置作为分割点
+      Break;
+    end;
   end;
 
   PrintStringList(Format('After Partition(%d, %d) = %d', [p, r, Result]), StringList, p, r);
@@ -1622,14 +1595,16 @@ var
   i: Cardinal;
   Item: TShortCutItem;
 begin
-  if not DEBUG_SORT then Exit;
+  if not DEBUG_SORT then
+    Exit;
 
   TraceMsg('  - %s', [Title]);
 
   for i := p to q do
   begin
     Item := TShortCutItem(StringList.Items[i]);
-    with Item do TraceMsg('  - [%d] = %d', [i, Freq]);
+    with Item do
+      TraceMsg('  - [%d] = %d', [i, Freq]);
   end;
 end;
 
@@ -1654,28 +1629,25 @@ begin
     //移动右指针，注意这里不能用while循环
     repeat
       j := j - 1
-    until TShortCutItem(StringList.Objects[j]).Rank
-      >= PivotValue;
+    until TShortCutItem(StringList.Objects[j]).Rank >= PivotValue;
 
     //移动左指针，注意这里不能用while循环
     repeat
       i := i + 1
-    until TShortCutItem(StringList.Objects[i]).Rank
-      <= PivotValue;
+    until TShortCutItem(StringList.Objects[i]).Rank <= PivotValue;
 
     if i < j then
       StringList.Exchange(i, j)                        //交换L[i]和L[j]
+    else if j <> r then
+    begin
+      Result := j;                                   //返回j的值作为分割点
+      Break;
+    end
     else
-      if j <> r then
-      begin
-        Result := j;                                   //返回j的值作为分割点
-        Break;
-      end
-      else
-      begin
-        Result := j - 1;                               //返回j前一位置作为分割点
-        Break;
-      end;
+    begin
+      Result := j - 1;                               //返回j前一位置作为分割点
+      Break;
+    end;
   end;
 
   PrintStringList(Format('After Partition(%d, %d) = %d', [p, r, Result]), StringList, p, r);
@@ -1686,14 +1658,16 @@ var
   i: Cardinal;
   Item: TShortCutItem;
 begin
-  if not DEBUG_SORT then Exit;
+  if not DEBUG_SORT then
+    Exit;
 
   TraceMsg('  - %s', [Title]);
 
   for i := p to q do
   begin
     Item := TShortCutItem(StringList.Objects[i]);
-    with Item do TraceMsg('  - [%d] = %d', [i, Freq]);
+    with Item do
+      TraceMsg('  - [%d] = %d', [i, Freq]);
   end;
 end;
 
@@ -1759,10 +1733,6 @@ function TShortCutMan.SaveFavoriteList: Boolean;
 var
   i: Cardinal;
   MyFile: TextFile;
-  strLine: string;
-  ParamItem: TStringList;
-  MaxCnt: Integer;
-  Param: string;
 begin
   Result := False;
 
@@ -1775,8 +1745,7 @@ begin
       if m_FavoriteList.Count > 0 then
         for i := 0 to m_FavoriteList.Count - 1 do
         begin
-          WriteLn(MyFile, Format('%-30s|%-30s%',
-            [LowerCase(m_FavoriteList.Names[i]), m_FavoriteList.Values[m_FavoriteList.Names[i]]]));
+          WriteLn(MyFile, Format('%-30s|%-30s%', [LowerCase(m_FavoriteList.Names[i]), m_FavoriteList.Values[m_FavoriteList.Names[i]]]));
         end;
     except
       Exit;
@@ -1786,27 +1755,22 @@ begin
   end;
 end;
 
-function TShortCutMan.SaveLatestList: Boolean;
-begin
-
-end;
-
 function TShortCutMan.SaveShortCutList(FileName: string = ''): Boolean;
 var
   i: Cardinal;
   MyFile: TextFile;
-  strLine: string;
-  Item: TShortCutItem;
 begin
   TraceMsg('SaveShortCutList');
 
   Result := False;
 
   //若参数不空，则替换文件名
-  if FileName <> '' then m_ShortCutFileName := FileName;
+  if FileName <> '' then
+    m_ShortCutFileName := FileName;
 
   //若文件名为空，则返回
-  if Trim(m_ShortCutFileName) = '' then Exit;
+  if Trim(m_ShortCutFileName) = '' then
+    Exit;
 
   //若文件不存在，则写入缺省内容
   try
@@ -1844,10 +1808,12 @@ var
 begin
   Result := False;
 
-  if Trim(IndexList) = '' then Exit;
+  if Trim(IndexList) = '' then
+    Exit;
 
   SplitString(IndexList, ',', m_LatestList);
-  if m_LatestList.Count = 0 then Exit;
+  if m_LatestList.Count = 0 then
+    Exit;
 
   //因为有时会出现最后一个字符是','，导致报错
   for i := m_LatestList.Count - 1 downto 0 do
@@ -1871,13 +1837,11 @@ begin
   m_Param[Index] := Value;
 end;
 
-function TShortCutMan.ShortCutItemToString(ShortCutType: TShortCutType;
-  ParamType: TParamType; ShortCut, Name, CommandLine: string; Freq: Integer): string;
+function TShortCutMan.ShortCutItemToString(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string; Freq: Integer): string;
 begin
   case ShortCutType of
     scItem:
-      Result := Format('F%-8d|%-20s|%-30s|%-30s|%s',
-        [Freq, ParamTypeToString(ParamType), ShortCut, Name, CommandLine]);
+      Result := Format('F%-8d|%-20s|%-30s|%-30s|%s', [Freq, ParamTypeToString(ParamType), ShortCut, Name, CommandLine]);
     scBlank:
       Result := '';
     scRemark, scOther:
@@ -1896,7 +1860,8 @@ var
   i, j, k: Integer;
   Item: TShortCutItem;
 begin
-  if m_ShortCutList.Count = 0 then Exit;
+  if m_ShortCutList.Count = 0 then
+    Exit;
 
   m_SortedShortCutList.Clear;
 
@@ -1951,8 +1916,6 @@ var
   CmdPos: Integer;
   strTemp: string;
 begin
-  Result := False;
-
   //将全角逗号替换为半角逗号
   str := StringReplace(Trim(str), '，', ',', [rfReplaceAll]);
 
@@ -2059,10 +2022,6 @@ begin
 end;
 
 function TShortCutMan.Test: Boolean;
-var
-  ret: Integer;
-  str, querystr: string;
-  i: Cardinal;
 begin
 
   Result := True;
@@ -2077,24 +2036,18 @@ begin
 end;
 
 function TShortCutMan.Execute(cmdobj: TCmdObject): Boolean;
-var
-  hThread: THandle;
-  ThreadID: DWORD;
-  str: string;
 begin
   Result := False;
 
-  if cmdobj.Command = '' then Exit;
+  if cmdobj.Command = '' then
+    Exit;
 
-  hThread := CreateThread(nil, 0, @ExecuteCmd, Pointer(cmdobj), 0, ThreadID);
 
   //Count ++
   Inc(ShortCutRunCount);
 
   if (ShortCutRunCount mod 10000) = 0 then
-    Application.MessageBox(
-      PChar(Format(resCongratulations, [ShortCutRunCount])),
-      PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+    Application.MessageBox(PChar(Format(resCongratulations, [ShortCutRunCount])), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
 
   Result := True;
 end;

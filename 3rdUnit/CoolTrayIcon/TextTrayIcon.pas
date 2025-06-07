@@ -25,9 +25,7 @@ uses
 type
   TOffsetOptions = class(TPersistent)
   private
-    FOffsetX,
-    FOffsetY,
-    FLineDistance: Integer;
+    FOffsetX, FOffsetY, FLineDistance: Integer;
     FOnChange: TNotifyEvent;           // Procedure var.
     procedure SetOffsetX(Value: Integer);
     procedure SetOffsetY(Value: Integer);
@@ -48,7 +46,7 @@ type
     FInvertTextColor: TColor;
     FBorder: Boolean;
     FBorderColor: TColor;
-    FText: String;
+    FText: string;
     FTextBitmap: TBitmap;
     FOffsetOptions: TOffsetOptions;
     FBackgroundIcon: TIcon;
@@ -61,30 +59,27 @@ type
     function LoadDefaultIcon: Boolean; override;
     function LoadDefaultBackgroundIcon: Boolean; virtual;
     procedure Paint; virtual;
-    procedure SetText(Value: String);
+    procedure SetText(Value: string);
     procedure SetTextBitmap(Value: TBitmap);
     procedure SetFont(Value: TFont);
     procedure SetColor(Value: TColor);
     procedure SetBorder(Value: Boolean);
     procedure SetBorderColor(Value: TColor);
     procedure SetOffsetOptions(Value: TOffsetOptions);
-    function TransparentBitmapToIcon(const Bitmap: TBitmap; const Icon: TIcon;
-      MaskColor: TColor): Boolean;
+    function TransparentBitmapToIcon(const Bitmap: TBitmap; const Icon: TIcon; MaskColor: TColor): Boolean;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Draw;
   published
     property BackgroundIcon: TIcon read FBackgroundIcon write SetBackgroundIcon;
-    property Text: String read FText write SetText;
+    property Text: string read FText write SetText;
     property Font: TFont read FFont write SetFont;
     property Color: TColor read FColor write SetColor default clBtnFace;
     property Border: Boolean read FBorder write SetBorder;
-    property BorderColor: TColor read FBorderColor write SetBorderColor
-      default clBlack;
+    property BorderColor: TColor read FBorderColor write SetBorderColor default clBlack;
     property Options: TOffsetOptions read FOffsetOptions write SetOffsetOptions;
   end;
-
 
 implementation
 
@@ -95,9 +90,9 @@ uses
 
 procedure TOffsetOptions.Changed;
 begin
-  if Assigned(FOnChange) then FOnChange(Self);
+  if Assigned(FOnChange) then
+    FOnChange(Self);
 end;
-
 
 procedure TOffsetOptions.SetOffsetX(Value: Integer);
 begin
@@ -108,7 +103,6 @@ begin
   end;
 end;
 
-
 procedure TOffsetOptions.SetOffsetY(Value: Integer);
 begin
   if Value <> FOffsetY then
@@ -117,7 +111,6 @@ begin
     Changed;
   end;
 end;
-
 
 procedure TOffsetOptions.SetLineDistance(Value: Integer);
 begin
@@ -159,7 +152,6 @@ begin
       end;
 end;
 
-
 destructor TTextTrayIcon.Destroy;
 begin
   try
@@ -172,12 +164,12 @@ begin
     except
       on Exception do
         // Do nothing; the background icon seems to be invalid
+
     end;
   finally
     inherited Destroy;
   end;
 end;
-
 
 procedure TTextTrayIcon.Loaded;
 begin
@@ -185,14 +177,12 @@ begin
   // No extra handling needed
 end;
 
-
 function TTextTrayIcon.LoadDefaultIcon: Boolean;
 { We don't want a default icon, so we override this method inherited
   from CoolTrayIcon. }
 begin
   Result := False;           // No thanks, no default icon
 end;
-
 
 function TTextTrayIcon.LoadDefaultBackgroundIcon: Boolean;
 { This method is called to determine whether to assign a default bg. icon
@@ -202,7 +192,6 @@ begin
   Result := False;           // No thanks, no default bg. icon
 end;
 
-
 procedure TTextTrayIcon.FontChanged(Sender: TObject);
 { This method is invoked when user assigns to Font (but not when Font is set
   directly to another TFont var.) }
@@ -210,13 +199,11 @@ begin
   Draw;
 end;
 
-
-procedure TTextTrayIcon.SetText(Value: String);
+procedure TTextTrayIcon.SetText(Value: string);
 begin
   FText := Value;
   Draw;
 end;
-
 
 procedure TTextTrayIcon.SetTextBitmap(Value: TBitmap);
 begin
@@ -224,13 +211,11 @@ begin
   Draw;
 end;
 
-
 procedure TTextTrayIcon.SetFont(Value: TFont);
 begin
   FFont.Assign(Value);
   Draw;
 end;
-
 
 procedure TTextTrayIcon.SetColor(Value: TColor);
 begin
@@ -238,20 +223,17 @@ begin
   Draw;
 end;
 
-
 procedure TTextTrayIcon.SetBorder(Value: Boolean);
 begin
   FBorder := Value;
   Draw;
 end;
 
-
 procedure TTextTrayIcon.SetBorderColor(Value: TColor);
 begin
   FBorderColor := Value;
   Draw;
 end;
-
 
 procedure TTextTrayIcon.SetOffsetOptions(Value: TOffsetOptions);
 { This method will only be invoked if the user creates a new
@@ -262,7 +244,6 @@ begin
   Draw;
 end;
 
-
 procedure TTextTrayIcon.OffsetOptionsChanged(OffsetOptions: TObject);
 { This method will be invoked when the user changes the values of the
   existing TOffsetOptions object. }
@@ -270,13 +251,11 @@ begin
   Draw;
 end;
 
-
 procedure TTextTrayIcon.SetBackgroundIcon(Value: TIcon);
 begin
   FBackgroundIcon.Assign(Value);
   Draw;
 end;
-
 
 procedure TTextTrayIcon.Draw;
 var
@@ -305,9 +284,7 @@ begin
   end;
 end;
 
-
-function TTextTrayIcon.TransparentBitmapToIcon(const Bitmap: TBitmap;
-  const Icon: TIcon; MaskColor: TColor): Boolean;
+function TTextTrayIcon.TransparentBitmapToIcon(const Bitmap: TBitmap; const Icon: TIcon; MaskColor: TColor): Boolean;
 { Render an icon from a 16x16 bitmap. Return false if error.
   MaskColor is a color that will be rendered transparently. Use clNone for
   no transparency. }
@@ -316,9 +293,10 @@ var
   Bmp: TBitmap;
   FInvertColor: TColor;
 begin
+  Result := False;
   BitmapImageList := TImageList.CreateSize(16, 16);
   try
-    Result := False;
+
     BitmapImageList.AddIcon(FBackgroundIcon);
     Bmp := TBitmap.Create;
 
@@ -342,13 +320,12 @@ begin
   end;
 end;
 
-
 procedure TTextTrayIcon.Paint;
 var
   Bitmap: TBitmap;
   Left, Top, LinesTop, LineHeight: Integer;
-  Substr: PChar;
-  Strings: TList;
+  Substr: string;
+  Strings: TStringlist;
   I: Integer;
 begin
   Bitmap := TBitmap.Create;
@@ -368,7 +345,7 @@ begin
     // Render text; check for line breaks
     Bitmap.Canvas.Font.Assign(FFont);
     Substr := StrPos(PChar(FText), #13);
-    if Substr = nil then
+    if length(Substr) = 0 then
     begin
       // No line breaks
       Left := (15 - Bitmap.Canvas.TextWidth(FText)) div 2;
@@ -382,15 +359,16 @@ begin
     else
     begin
       // Line breaks
-      Strings := TList.Create;
-      SplitText(Strings);
+      Strings := TStringlist.Create;
+      Strings.text := self.FText;
+//      SplitText(Strings);
       LineHeight := Bitmap.Canvas.TextHeight(Substr);
       if FOffsetOptions <> nil then
         LineHeight := LineHeight + FOffsetOptions.LineDistance;
       LinesTop := (15 - (LineHeight * Strings.Count)) div 2;
       if FOffsetOptions <> nil then
         LinesTop := LinesTop + FOffsetOptions.OffsetY;
-      for I := 0 to Strings.Count -1 do
+      for I := 0 to Strings.Count - 1 do
       begin
         Substr := Strings[I];
         Left := (15 - Bitmap.Canvas.TextWidth(Substr)) div 2;
@@ -399,8 +377,7 @@ begin
         Top := LinesTop + (LineHeight * I);
         Bitmap.Canvas.TextOut(Left, Top, Substr);
       end;
-      for I := 0 to Strings.Count -1 do
-        StrDispose(Strings[I]);
+
       Strings.Free;
     end;
 
@@ -419,10 +396,9 @@ begin
   end;
 end;
 
-
 procedure TTextTrayIcon.SplitText(const Strings: TList);
 
-  function PeekedString(S: String): String;
+  function PeekedString(S: string): string;
   var
     P: Integer;
   begin
@@ -430,11 +406,11 @@ procedure TTextTrayIcon.SplitText(const Strings: TList);
     if P = 0 then
       Result := S
     else
-      Result := Copy(S, 1, P-1);
+      Result := Copy(S, 1, P - 1);
   end;
 
 var
-  Substr: String;
+  Substr: string;
   P: Integer;
   S: PChar;
 begin

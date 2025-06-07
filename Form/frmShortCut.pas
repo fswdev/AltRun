@@ -3,23 +3,9 @@ unit frmShortCut;
 interface
 
 uses
-  Windows,
-  Messages,
-  SysUtils,
-  Variants,
-  Classes,
-  Graphics,
-  Controls,
-  Forms,
-  Dialogs,
-  Buttons,
-  StdCtrls,
-  ExtCtrls,
-  ShellAPI,
-  FileCtrl,
-  frmHelp,
-  untALTRunOption,
-  untUtilities;
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, Buttons, StdCtrls, ExtCtrls, ShellAPI, FileCtrl, frmHelp,
+  untALTRunOption, untUtilities, Vcl.Mask;
 
 type
   TShortCutForm = class(TForm)
@@ -43,8 +29,8 @@ type
     procedure btnHelpClick(Sender: TObject);
     procedure btnTestClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure CreateParams(var params: TCreateParams); override;
   private
-    procedure Createparams(var params: TCreateParams); override;
   public
     { Public declarations }
   end;
@@ -53,6 +39,7 @@ var
   ShortCutForm: TShortCutForm;
 
 implementation
+
 uses
   untShortCutMan;
 
@@ -67,8 +54,7 @@ begin
   //为了防止点击文件/文件夹对话框出来后，被挡在后面
   Self.FormStyle := fsNormal;
 
-  SelectDirectory(PChar(resSelectDir), '', strDir,
-    [sdNewFolder, sdShowShares, sdNewUI, sdValidateDir]);
+  SelectDirectory(PChar(resSelectDir), '', strDir, [sdNewFolder, sdShowShares, sdNewUI, sdValidateDir]);
 
   if strDir <> '' then
   begin
@@ -82,25 +68,22 @@ begin
         Break;
       end;
 
-    if SlashPos = 0 then Exit;
+    if SlashPos = 0 then
+      Exit;
 
     strShortDir := Copy(strDir, SlashPos + 1, Length(strDir) - SlashPos);
 
     if lbledtShortCut.Text = '' then
       lbledtShortCut.Text := strShortDir
-    else
-      if lbledtShortCut.Text <> strShortDir then
-        if Application.MessageBox(PChar(Format(resReplaceConfirm, [lbledtShortCut.Text, strShortDir])),
-          PChar(resReplaceShortCutConfirm), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES then
-          lbledtShortCut.Text := strShortDir;
+    else if lbledtShortCut.Text <> strShortDir then
+      if Application.MessageBox(PChar(Format(resReplaceConfirm, [lbledtShortCut.Text, strShortDir])), PChar(resReplaceShortCutConfirm), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES then
+        lbledtShortCut.Text := strShortDir;
 
     if lbledtName.Text = '' then
       lbledtName.Text := strShortDir
-    else
-      if lbledtName.Text <> strShortDir then
-        if Application.MessageBox(PChar(Format(resReplaceConfirm, [lbledtName.Text, strShortDir])),
-          PChar(resReplaceNameConfirm), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES then
-          lbledtName.Text := strShortDir;
+    else if lbledtName.Text <> strShortDir then
+      if Application.MessageBox(PChar(Format(resReplaceConfirm, [lbledtName.Text, strShortDir])), PChar(resReplaceNameConfirm), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES then
+        lbledtName.Text := strShortDir;
   end;
 
   Self.FormStyle := fsStayOnTop;
@@ -122,19 +105,15 @@ begin
 
     if lbledtShortCut.Text = '' then
       lbledtShortCut.Text := strShortFileName
-    else
-      if lbledtShortCut.Text <> strShortFileName then
-        if Application.MessageBox(PChar(Format(resReplaceConfirm, [lbledtShortCut.Text, strShortFileName])),
-          PChar(resReplaceShortCutConfirm), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES then
-          lbledtShortCut.Text := strShortFileName;
+    else if lbledtShortCut.Text <> strShortFileName then
+      if Application.MessageBox(PChar(Format(resReplaceConfirm, [lbledtShortCut.Text, strShortFileName])), PChar(resReplaceShortCutConfirm), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES then
+        lbledtShortCut.Text := strShortFileName;
 
     if lbledtName.Text = '' then
       lbledtName.Text := strShortFileName
-    else
-      if lbledtName.Text <> strShortFileName then
-        if Application.MessageBox(PChar(Format(resReplaceConfirm, [lbledtName.Text, strShortFileName])),
-          PChar(resReplaceNameConfirm), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES then
-          lbledtName.Text := strShortFileName;
+    else if lbledtName.Text <> strShortFileName then
+      if Application.MessageBox(PChar(Format(resReplaceConfirm, [lbledtName.Text, strShortFileName])), PChar(resReplaceNameConfirm), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES then
+        lbledtName.Text := strShortFileName;
   end;
 
   Self.FormStyle := fsStayOnTop;
@@ -148,7 +127,7 @@ begin
     HelpForm := THelpForm.Create(Self);
     HelpForm.ShowModal;
   finally
-    HelpForm.Free;
+    freeAndNil(HelpForm);
   end;
 end;
 
@@ -157,8 +136,7 @@ begin
   //判断Name是否含逗号
   if Pos(',', lbledtName.Text) > 0 then
   begin
-    Application.MessageBox(PChar(resNameCanNotInclude), PChar(resInfo),
-      MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+    Application.MessageBox(PChar(resNameCanNotInclude), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
 
     lbledtName.SetFocus;
     Exit;
@@ -167,15 +145,9 @@ begin
   //如果选中无参数，而命令行中有参数匹配符，提示
   if rgParam.ItemIndex = 0 then
   begin
-    if (Pos(NEW_PARAM_FLAG, lbledtCommandLine.Text) > 0)
-      or (Pos(PARAM_FLAG, lbledtCommandLine.Text) > 0)
-      or (Pos(CLIPBOARD_FLAG, lbledtCommandLine.Text) > 0)
-      or (Pos(FOREGROUND_WINDOW_ID_FLAG, lbledtCommandLine.Text) > 0)
-      or (Pos(FOREGROUND_WINDOW_CLASS_FLAG, lbledtCommandLine.Text) > 0)
-      or (Pos(FOREGROUND_WINDOW_TEXT_FLAG, lbledtCommandLine.Text) > 0) then
+    if (Pos(NEW_PARAM_FLAG, lbledtCommandLine.Text) > 0) or (Pos(PARAM_FLAG, lbledtCommandLine.Text) > 0) or (Pos(CLIPBOARD_FLAG, lbledtCommandLine.Text) > 0) or (Pos(FOREGROUND_WINDOW_ID_FLAG, lbledtCommandLine.Text) > 0) or (Pos(FOREGROUND_WINDOW_CLASS_FLAG, lbledtCommandLine.Text) > 0) or (Pos(FOREGROUND_WINDOW_TEXT_FLAG, lbledtCommandLine.Text) > 0) then
     begin
-      if Application.MessageBox(PChar(resParamConfirm),
-        PChar(resInfo), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES then
+      if Application.MessageBox(PChar(resParamConfirm), PChar(resInfo), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES then
       begin
         rgParam.SetFocus;
         Exit;
@@ -193,8 +165,7 @@ begin
   //命令行不能为空
   if lbledtCommandLine.Text = '' then
   begin
-    Application.MessageBox(PChar(resCommandLineEempty), PChar(resInfo),
-      MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+    Application.MessageBox(PChar(resCommandLineEempty), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
     Exit;
   end;
 
@@ -276,8 +247,7 @@ begin
 
     if not ShortCutMan.ExtractShortCutItemFromFileName(Item, FileName) then
     begin
-      Application.MessageBox(PChar(resGetFileNameFail), PChar(resInfo),
-        MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+      Application.MessageBox(PChar(resGetFileNameFail), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
 
       Exit;
     end;

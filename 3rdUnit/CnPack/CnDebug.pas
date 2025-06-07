@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2008 CnPack 开发组                       }
+{                   (C)Copyright 2001-2022 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -24,13 +24,41 @@ unit CnDebug;
 * 软件名称：CnDebugger
 * 单元名称：CnDebug 调试信息输出接口单元
 * 单元作者：刘啸（liuxiao@cnpack.org）
-* 备    注：该单元定义并实现了 CnDebugger 输出信息的接口内容
-*           部分内容引用了 overseer 的 udbg 单元内容
+* 备    注：该单元定义并实现了 CnDebugger 输出信息的接口内容，
+*           支持 Win32 和 Win64 以及 Unicode 与非 Unicode
+*           部分接口内容引用了 overseer 的 udbg 单元内容
 * 开发平台：PWin2000Pro + Delphi 7
 * 兼容测试：PWin9X/2000/XP + Delphi 5/6/7 + C++Builder 5/6
 * 本 地 化：该单元中的字符串均符合本地化处理方式
-* 单元标识：$Id: CnDebug.pas,v 1.27 2008/08/05 15:27:23 zjy Exp $
-* 修改记录：2008.07.16
+* 修改记录：2020.05.08
+*               用 CnRTLUtils 取代 JCL 的堆栈捕获功能，留行号获取功能，待测试
+*           2019.03.25
+*               移植部分功能包括写文件到 MACOS
+*           2018.07.29
+*               增加遍历全局组件与控件的功能
+*           2018.01.31
+*               增加记录 Windows 消息的功能
+*           2017.04.12
+*               默认改为 LOCAL_SESSION，需要更新 CnDebugViewer 至 1.6
+*           2016.07.29
+*               修正 CPU 周期计时时超界的问题，需要同步更新 CnDebugViewer 至 1.5
+*           2015.06.16
+*               增加四个记录 Class/Interface 的方法
+*           2015.06.03
+*               增加两个记录 array of const 的方法
+*           2015.05.15
+*               修正多线程同时启动 CnDebugViewer 时可能导致丢信息的问题
+*           2015.04.13
+*               增加两个记录字符串的方法，带十六进制输出，可供 Ansi/Unicode 使用
+*           2014.10.03
+*               增加两个记录 Exception 的方法
+*           2012.10.15
+*               修正 tkUString 对 D2009 版本以上的支持
+*           2012.05.10
+*               超长信息将拆分发送而不是截断
+*           2009.12.31
+*               不输出至 CnDebugViewer 时也可输出至文件
+*           2008.07.16
 *               增加部分声明以区分对宽字符的支持。
 *           2008.05.01
 *               增加部分记录入文件的属性。
@@ -63,11 +91,16 @@ unit CnDebug;
 
 interface
 
-//{$I CnPack.inc}
+{$I CnPack.inc}
 
 // {$DEFINE DUMP_TO_FILE}
 // 定义此条件可重定向到文件.
 // Define this flag to log message to a file.
+
+{$DEFINE LOCAL_SESSION}
+// 定义此条件可将发送限制在当前用户会话内，不走全局，
+// 自动启动相应的 DebugViewer 时也将通过命令行参数指定非全局。
+// Define this flag to use local session, not global.
 
 {$IFDEF NDEBUG}
   {$UNDEF DEBUG}
@@ -82,12 +115,21 @@ interface
   {$DEFINE SUPPORT_EVALUATE}
 {$ENDIF}
 
+{$IFDEF MACOS}
+  {$UNDEF USE_JCL} // JCL Does NOT Support MACOS.
+  {$UNDEF SUPPORT_EVALUATE}
+{$ENDIF}
+{$IFDEF WIN64}
+  {$UNDEF USE_JCL} // JCL Does NOT Support WIN64.
+{$ENDIF}
+
 uses
-  SysUtils, Classes, Windows, TypInfo, Graphics, Registry
-  {$IFDEF USE_JCL}
-  ,JclDebug, JclHookExcept
-  {$ENDIF USE_JCL}
-  ;
+  SysUtils, Classes, TypInfo
+  {$IFDEF MSWINDOWS}, Windows, Controls, Graphics, Registry, Messages, Forms
+  {$ELSE}, System.Types, System.UITypes, System.SyncObjs, System.UIConsts,
+  Posix.Unistd, Posix.Pthread, FMX.Controls, FMX.Forms {$ENDIF}
+  {$IFDEF SUPPORT_ENHANCED_RTTI}, Rtti {$ENDIF}
+  {$IFDEF USE_JCL}, JclDebug, CnRtlUtils {$ENDIF USE_JCL};
 
 const
   CnMaxTagLength = 8; // 不可改变
@@ -95,7 +137,11 @@ const
   CnDebugMagicLength = 8;
   CnDebugMapEnabled = $7F3D92E0; // 定义的一个 Magic 值表示 MapEnable
 
+{$IFDEF LOCAL_SESSION}
+  SCnDebugPrefix = 'Local\';
+{$ELSE}
   SCnDebugPrefix = 'Global\';
+{$ENDIF}
   SCnDebugMapName = SCnDebugPrefix + 'CnDebugMap';
   SCnDebugQueueEventName = SCnDebugPrefix + 'CnDebugQueueEvent';
   SCnDebugQueueMutexName = SCnDebugPrefix + 'CnDebugQueueMutex';
@@ -110,7 +156,8 @@ type
   // 输出的信息类型
   TCnMsgType = (cmtInformation, cmtWarning, cmtError, cmtSeparator, cmtEnterProc,
     cmtLeaveProc, cmtTimeMarkStart, cmtTimeMarkStop, cmtMemoryDump, cmtException,
-    cmtObject, cmtComponent, cmtCustom, cmtSystem);
+    cmtObject, cmtComponent, cmtCustom, cmtSystem, cmtUDPMsg, cmtWatch,
+    cmtClearWatch);
   TCnMsgTypes = set of TCnMsgType;
 
   // 时间戳格式类型
@@ -121,15 +168,15 @@ type
   {* 放入数据区的每条信息的头描述结构 }
     Level:     Integer;                            // 自定义 Level 数，供用户过滤用
     Indent:    Integer;                            // 缩进数目，由 Enter 和 Leave 控制
-    ProcessId: DWORD;                              // 调用者的进程 ID
-    ThreadId:  DWORD;                              // 调用者的线程 ID
+    ProcessId: LongWord;                           // 调用者的进程 ID
+    ThreadId:  LongWord;                           // 调用者的线程 ID
     Tag: array[0..CnMaxTagLength - 1] of AnsiChar; // 自定义 Tag 值，供用户过滤用
-    MsgType:   DWORD;                              // 消息类型
-    MsgCPInterval: DWORD;                          // 计时结束时的 CPU 周期数
-    TimeStampType: DWORD;                          // 消息输出的时间戳类型
+    MsgType:   LongWord;                           // 消息类型
+    MsgCPInterval: Int64;                          // 计时结束时的 CPU 周期数
+    TimeStampType: LongWord;                       // 消息输出的时间戳类型
     case Integer of
       1: (MsgDateTime:   TDateTime);               // 消息输出的时间戳值 DateTime
-      2: (MsgTickCount:  DWORD);                   // 消息输出的时间戳值 TickCount
+      2: (MsgTickCount:  LongWord);                // 消息输出的时间戳值 TickCount
       3: (MsgCPUPeriod:  Int64);                   // 消息输出的时间戳值 CPU 周期
   end;
 
@@ -147,13 +194,13 @@ type
   {$NODEFINE PCnMapFilter}
   TCnMapFilter = packed record
   {* 用内存映射文件传送数据时的内存区头中的过滤器格式}
-    NeedRefresh: DWORD;                            // 非 0 时需要更新
+    NeedRefresh: LongWord;                         // 非 0 时需要更新
     Enabled: Integer;                              // 非 0 时表示使能
     Level: Integer;                                // 限定的 Level
     Tag: array[0..CnMaxTagLength - 1] of AnsiChar; // 限定的 Tag
     case Integer of
       0: (MsgTypes: TCnMsgTypes);                  // 限定的 MsgTypes
-      1: (DummyPlace: DWORD);
+      1: (DummyPlace: LongWord);
   end;
   PCnMapFilter = ^TCnMapFilter;
 
@@ -162,8 +209,8 @@ type
   TCnMapHeader = packed record
   {* 用内存映射文件传送数据时的内存区头格式}
     MagicName:  array[0..CnDebugMagicLength - 1] of AnsiChar;  // 'CNDEBUG'
-    MapEnabled: DWORD;              // 为一 CnDebugMapEnabled 时，表示区域可用
-    MapSize:    DWORD;              // 整个 Map 的大小，不包括尾保护区
+    MapEnabled: LongWord;           // 为一 CnDebugMapEnabled 时，表示区域可用
+    MapSize:    LongWord;           // 整个 Map 的大小，不包括尾保护区
     DataOffset: Integer;            // 数据区相对于头部的偏移量，目前定为 64
     QueueFront: Integer;            // 队列头指针，是相对于数据区的偏移量
     QueueTail:  Integer;            // 队列尾指针，是相对于数据区的偏移量
@@ -173,11 +220,30 @@ type
 
   // ===================== 以上结构定义需要和 Viewer 共享 ======================
 
+{$IFDEF MSWINDOWS}
+  TCnCriticalSection = TRTLCriticalSection;
+{$ELSE}
+  TCnCriticalSection = TCriticalSection;
+{$ENDIF}
+
+  TCnFindComponentEvent = procedure(Sender: TObject; AComponent: TComponent;
+    var Cancel: Boolean) of object;
+  {* 寻找 Component 时的回调}
+
+  TCnFindControlEvent = procedure(Sender: TObject; AControl: TControl;
+    var Cancel: Boolean) of object;
+  {* 寻找 Control 时的回调}
+
+  TCnAnsiCharSet = set of AnsiChar; // 32 字节大小
+{$IFDEF UNICODE}
+  TCnWideCharSet = set of WideChar; // D2009 以上的 set 支持 WideChar 但实际上是裁剪到 AnsiChar，大小仍然是 32
+{$ENDIF}
+
   TCnTimeDesc = packed record
     Tag: array[0..CnMaxTagLength - 1] of AnsiChar;
     PassCount: Integer;
     StartTime: Int64;
-    AccuTime: Int64;
+    AccuTime: Int64;  // 计时的和
   end;
   PCnTimeDesc = ^TCnTimeDesc;
 
@@ -205,7 +271,7 @@ type
     FTimes: TList;
     FFilter: TCnDebugFilter;
     FChannel: TCnDebugChannel;
-    FCSThrdId: TRTLCriticalSection;
+    FCSThrdId: TCnCriticalSection;
     FAutoStart: Boolean;
     FViewerAutoStartCalled: Boolean;
     // 内部变量，控制不朝 Viewer 输出
@@ -219,20 +285,51 @@ type
     FDumpFile: TFileStream;
     FUseAppend: Boolean;
     FAfterFirstWrite: Boolean;
+    FFindAbort: Boolean;
+    FComponentFindList: TList;
+    FOnFindComponent: TCnFindComponentEvent;
+{$IFDEF MSWINDOWS}
+    FControlFindList: TList;
+    FOnFindControl: TCnFindControlEvent;
+{$ENDIF}
     procedure CreateChannel;
 
     function GetActive: Boolean;
     procedure SetActive(const Value: Boolean);
-
+    function SizeToString(ASize: TSize): string;
     function PointToString(APoint: TPoint): string;
     function RectToString(ARect: TRect): string;
+    function BitsToString(ABits: TBits): string;
     function GetExceptTracking: Boolean;
     procedure SetExceptTracking(const Value: Boolean);
     function GetDiscardedMessageCount: Integer;
-
+{$IFDEF MSWINDOWS}
     function VirtualKeyToString(AKey: Word): string;
+    function WindowMessageToStr(AMessage: Cardinal): string;
+{$ENDIF}
     procedure SetDumpFileName(const Value: string);
     procedure SetDumpToFile(const Value: Boolean);
+    function GetAutoStart: Boolean;
+    function GetChannel: TCnDebugChannel;
+    function GetDumpFileName: string;
+    function GetDumpToFile: Boolean;
+    function GetFilter: TCnDebugFilter;
+    function GetUseAppend: Boolean;
+    procedure SetAutoStart(const Value: Boolean);
+    procedure SetUseAppend(const Value: Boolean);
+    function GetMessageCount: Integer;
+    function GetPostedMessageCount: Integer;
+{$IFDEF SUPPORT_ENHANCED_RTTI}
+    function GetEnumTypeStr<T>: string;
+{$ENDIF}
+    procedure InternalFindComponent(AComponent: TComponent);
+{$IFDEF MSWINDOWS}
+    procedure InternalFindControl(AControl: TControl);
+{$ENDIF}
+{$IFDEF USE_JCL}
+     procedure ExceptionRecorder(ExceptObj: Exception; ExceptAddr: Pointer;
+      IsOSException: Boolean; StackList: TCnStackInfoList);
+{$ENDIF}
   protected
     function CheckEnabled: Boolean;
     {* 检测当前输出功能是否使能 }
@@ -240,9 +337,9 @@ type
     {* 检测当前输出信息是否被允许输出，True 允许，False 允许 }
 
     // 处理 Indent
-    function GetCurrentIndent(ThrdID: DWORD): Integer;
-    function IncIndent(ThrdID: DWORD): Integer;
-    function DecIndent(ThrdID: DWORD): Integer;
+    function GetCurrentIndent(ThrdID: LongWord): Integer;
+    function IncIndent(ThrdID: LongWord): Integer;
+    function DecIndent(ThrdID: LongWord): Integer;
 
     // 处理计时
     function IndexOfTime(const ATag: string): PCnTimeDesc;
@@ -250,9 +347,17 @@ type
 
     // 统一处理 Format
     function FormatMsg(const AFormat: string; Args: array of const): string;
+    function FormatConstArray(Args: array of const): string;
+    function FormatClassString(AClass: TClass): string;
+    function FormatInterfaceString(AIntf: IUnknown): string;
+    function FormatObjectInterface(AObj: TObject): string;
+    function GUIDToString(const GUID: TGUID): string;
 
-    procedure InternalOutputMsg(const AMsg: AnsiString; Size: Integer; const ATag: AnsiString;
-      ALevel, AIndent: Integer; AType: TCnMsgType; ThreadID: DWORD; CPUPeriod: Int64);
+    procedure GetCurrentTrace(Strings: TStrings);
+    procedure GetTraceFromAddr(StackBaseAddr: Pointer; Strings: TStrings);
+
+    procedure InternalOutputMsg(const AMsg: PAnsiChar; Size: Integer; const ATag: AnsiString;
+      ALevel, AIndent: Integer; AType: TCnMsgType; ThreadID: LongWord; CPUPeriod: Int64);
     procedure InternalOutput(var Data; Size: Integer);
   public
     constructor Create;
@@ -262,7 +367,10 @@ type
 
     // 利用 CPU 周期计时 == Start ==
     procedure StartTimeMark(const ATag: Integer; const AMsg: string = ''); overload;
+    {* 标记此 Tag 的一次计时开始的时刻，不发送内容}
     procedure StopTimeMark(const ATag: Integer; const AMsg: string = ''); overload;
+    {* 标记此 Tag 的一次计时结束的时刻，并将本次计时耗时叠加至同 Tag 计时上发出}
+
     {* 此两函数不使用局部字符串变量，误差相对较小，所以推荐使用}
 
     // 以下两函数由于使用了 Delphi 字符串，误差较大（几万左右个 CPU 周期）
@@ -293,29 +401,64 @@ type
     procedure LogMsgWarning(const AMsg: string);
     procedure LogMsgError(const AMsg: string);
     procedure LogErrorFmt(const AFormat: string; Args: array of const);
-
+{$IFDEF MSWINDOWS}
     procedure LogLastError;
+{$ENDIF}
     procedure LogAssigned(Value: Pointer; const AMsg: string = '');
     procedure LogBoolean(Value: Boolean; const AMsg: string = '');
     procedure LogColor(Color: TColor; const AMsg: string = '');
     procedure LogFloat(Value: Extended; const AMsg: string = '');
     procedure LogInteger(Value: Integer; const AMsg: string = '');
+    procedure LogInt64(Value: Int64; const AMsg: string = '');
+{$IFDEF SUPPORT_UINT64}
+    procedure LogUInt64(Value: UInt64; const AMsg: string = '');
+{$ENDIF}
     procedure LogChar(Value: Char; const AMsg: string = '');
+    procedure LogAnsiChar(Value: AnsiChar; const AMsg: string = '');
+    procedure LogWideChar(Value: WideChar; const AMsg: string = '');
+    procedure LogSet(const ASet; ASetSize: Integer; SetElementTypInfo: PTypeInfo = nil;
+      const AMsg: string = '');
+    procedure LogCharSet(const ASet: TSysCharSet; const AMsg: string = '');
+    procedure LogAnsiCharSet(const ASet: TCnAnsiCharSet; const AMsg: string = '');
+{$IFDEF UNICODE}
+    procedure LogWideCharSet(const ASet: TCnWideCharSet; const AMsg: string = '');
+{$ENDIF}
     procedure LogDateTime(Value: TDateTime; const AMsg: string = '' );
     procedure LogDateTimeFmt(Value: TDateTime; const AFmt: string; const AMsg: string = '' );
     procedure LogPointer(Value: Pointer; const AMsg: string = '');
     procedure LogPoint(Point: TPoint; const AMsg: string = '');
+    procedure LogSize(Size: TSize; const AMsg: string = '');
     procedure LogRect(Rect: TRect; const AMsg: string = '');
+    procedure LogBits(Bits: TBits; const AMsg: string = '');
+    procedure LogGUID(const GUID: TGUID; const AMsg: string = '');
+    procedure LogRawString(const Value: string);
+    procedure LogRawAnsiString(const Value: AnsiString);
+    procedure LogRawWideString(const Value: WideString);
     procedure LogStrings(Strings: TStrings; const AMsg: string = '');
+{$IFDEF SUPPORT_ENHANCED_RTTI}
+    procedure LogEnumType<T>(const AMsg: string = '');
+{$ENDIF}
+    procedure LogException(E: Exception; const AMsg: string = '');
     procedure LogMemDump(AMem: Pointer; Size: Integer);
+    procedure LogBitmapMemory(ABmp: TBitmap);
+{$IFDEF MSWINDOWS}
     procedure LogVirtualKey(AKey: Word);
     procedure LogVirtualKeyWithTag(AKey: Word; const ATag: string);
+    procedure LogWindowMessage(AMessage: Cardinal);
+    procedure LogWindowMessageWithTag(AMessage: Cardinal; const ATag: string);
+{$ENDIF}
     procedure LogObject(AObject: TObject);
     procedure LogObjectWithTag(AObject: TObject; const ATag: string);
     procedure LogCollection(ACollection: TCollection);
     procedure LogCollectionWithTag(ACollection: TCollection; const ATag: string);
     procedure LogComponent(AComponent: TComponent);
     procedure LogComponentWithTag(AComponent: TComponent; const ATag: string);
+    procedure LogCurrentStack(const AMsg: string = '');
+    procedure LogConstArray(const Arr: array of const; const AMsg: string = '');
+    procedure LogClass(const AClass: TClass; const AMsg: string = '');
+    procedure LogClassByName(const AClassName: string; const AMsg: string = '');
+    procedure LogInterface(const AIntf: IUnknown; const AMsg: string = '');
+    procedure LogStackFromAddress(Addr: Pointer; const AMsg: string = '');
     // Log 系列输出函数 == End ==
 
     // Trace 系列输出函数 == Start ==
@@ -341,30 +484,70 @@ type
     procedure TraceMsgWarning(const AMsg: string);
     procedure TraceMsgError(const AMsg: string);
     procedure TraceErrorFmt(const AFormat: string; Args: array of const);
-
+{$IFDEF MSWINDOWS}
     procedure TraceLastError;
+{$ENDIF}
     procedure TraceAssigned(Value: Pointer; const AMsg: string = '');
     procedure TraceBoolean(Value: Boolean; const AMsg: string = '');
     procedure TraceColor(Color: TColor; const AMsg: string = '');
     procedure TraceFloat(Value: Extended; const AMsg: string = '');
     procedure TraceInteger(Value: Integer; const AMsg: string = '');
+    procedure TraceInt64(Value: Int64; const AMsg: string = '');
+{$IFDEF SUPPORT_UINT64}
+    procedure TraceUInt64(Value: UInt64; const AMsg: string = '');
+{$ENDIF}
     procedure TraceChar(Value: Char; const AMsg: string = '');
+    procedure TraceAnsiChar(Value: AnsiChar; const AMsg: string = '');
+    procedure TraceWideChar(Value: WideChar; const AMsg: string = '');
+    procedure TraceSet(const ASet; ASetSize: Integer; SetElementTypInfo: PTypeInfo = nil;
+      const AMsg: string = '');
+    procedure TraceCharSet(const ASet: TSysCharSet; const AMsg: string = '');
+    procedure TraceAnsiCharSet(const ASet: TCnAnsiCharSet; const AMsg: string = '');
+{$IFDEF UNICODE}
+    procedure TraceWideCharSet(const ASet: TCnWideCharSet; const AMsg: string = '');
+{$ENDIF}
     procedure TraceDateTime(Value: TDateTime; const AMsg: string = '' );
     procedure TraceDateTimeFmt(Value: TDateTime; const AFmt: string; const AMsg: string = '' );
     procedure TracePointer(Value: Pointer; const AMsg: string = '');
     procedure TracePoint(Point: TPoint; const AMsg: string = '');
+    procedure TraceSize(Size: TSize; const AMsg: string = '');
     procedure TraceRect(Rect: TRect; const AMsg: string = '');
+    procedure TraceBits(Bits: TBits; const AMsg: string = '');
+    procedure TraceGUID(const GUID: TGUID; const AMsg: string = '');
+    procedure TraceRawString(const Value: string);
+    procedure TraceRawAnsiString(const Value: AnsiString);
+    procedure TraceRawWideString(const Value: WideString);
     procedure TraceStrings(Strings: TStrings; const AMsg: string = '');
+{$IFDEF SUPPORT_ENHANCED_RTTI}
+    procedure TraceEnumType<T>(const AMsg: string = '');
+{$ENDIF}
+    procedure TraceException(E: Exception; const AMsg: string = '');
     procedure TraceMemDump(AMem: Pointer; Size: Integer);
+    procedure TraceBitmapMemory(ABmp: TBitmap);
+{$IFDEF MSWINDOWS}
     procedure TraceVirtualKey(AKey: Word);
     procedure TraceVirtualKeyWithTag(AKey: Word; const ATag: string);
+    procedure TraceWindowMessage(AMessage: Cardinal);
+    procedure TraceWindowMessageWithTag(AMessage: Cardinal; const ATag: string);
+{$ENDIF}
     procedure TraceObject(AObject: TObject);
     procedure TraceObjectWithTag(AObject: TObject; const ATag: string);
     procedure TraceCollection(ACollection: TCollection);
     procedure TraceCollectionWithTag(ACollection: TCollection; const ATag: string);
     procedure TraceComponent(AComponent: TComponent);
     procedure TraceComponentWithTag(AComponent: TComponent; const ATag: string);
+    procedure TraceCurrentStack(const AMsg: string = '');
+    procedure TraceConstArray(const Arr: array of const; const AMsg: string = '');
+    procedure TraceClass(const AClass: TClass; const AMsg: string = '');
+    procedure TraceClassByName(const AClassName: string; const AMsg: string = '');
+    procedure TraceInterface(const AIntf: IUnknown; const AMsg: string = '');
+    procedure TraceStackFromAddress(Addr: Pointer; const AMsg: string = '');
     // Trace 系列输出函数 == End ==
+
+    // 监视变量函数
+    procedure WatchMsg(const AVarName: string; const AValue: string);
+    procedure WatchFmt(const AVarName: string; const AFormat: string; Args: array of const);
+    procedure WatchClear(const AVarName: string);
 
     // 异常过滤函数
     procedure AddFilterExceptClass(E: ExceptClass); overload;
@@ -373,31 +556,56 @@ type
     procedure RemoveFilterExceptClass(const EClassName: string); overload;
 
     // 查看对象函数
-    procedure EvaluateObject(AObject: TObject); overload;
-    procedure EvaluateObject(APointer: Pointer); overload;
+    procedure EvaluateObject(AObject: TObject; SyncMode: Boolean = False); overload;
+    procedure EvaluateObject(APointer: Pointer; SyncMode: Boolean = False); overload;
+    procedure EvaluateControlUnderPos(const ScreenPos: TPoint);
+    procedure EvaluateInterfaceInstance(const AIntf: IUnknown; SyncMode: Boolean = False);
+
+    // 辅助过程
+    function ObjectFromInterface(const AIntf: IUnknown): TObject;
+
+    procedure FindComponent;
+    {* 全局范围内发起 Component 遍历，每个组件触发 OnFindComponent 事件，用于查找}
+{$IFDEF MSWINDOWS}
+    procedure FindControl;
+    {* 全局范围内发起 Control 遍历，每个组件触发 OnFindComponent 事件，用于查找}
+{$ENDIF}
+
+    procedure Enable;
+    procedure Disable;
 
     // 其他属性
-    property Channel: TCnDebugChannel read FChannel;
-    property Filter: TCnDebugFilter read FFilter;
+    property Channel: TCnDebugChannel read GetChannel;
+    property Filter: TCnDebugFilter read GetFilter;
 
     property Active: Boolean read GetActive write SetActive;
     {* 是否使能，也就是是否输出信息}
     property ExceptTracking: Boolean read GetExceptTracking write SetExceptTracking;
     {* 是否捕捉异常}
-    property AutoStart: Boolean read FAutoStart write FAutoStart;
+    property AutoStart: Boolean read GetAutoStart write SetAutoStart;
     {* 是否自动启动 Viewer}
 
-    property DumpToFile: Boolean read FDumpToFile write SetDumpToFile;
+    property DumpToFile: Boolean read GetDumpToFile write SetDumpToFile;
     {* 是否把输出信息同时输出到文件}
-    property DumpFileName: string read FDumpFileName write SetDumpFileName;
+    property DumpFileName: string read GetDumpFileName write SetDumpFileName;
     {* 输出的文件名}
-    property UseAppend: Boolean read FUseAppend write FUseAppend;
+    property UseAppend: Boolean read GetUseAppend write SetUseAppend;
     {* 每次运行时，如果文件已存在，是否追加到已有内容后还是重写}
 
     // 输出消息统计
-    property MessageCount: Integer read FMessageCount;
-    property PostedMessageCount: Integer read FPostedMessageCount;
+    property MessageCount: Integer read GetMessageCount;
+    {* 调用而输出的拆包消息数。注意一条长消息可能会被拆包拆成多条消息}
+    property PostedMessageCount: Integer read GetPostedMessageCount;
+    {* 实际输出成功的拆包后的消息数。}
     property DiscardedMessageCount: Integer read GetDiscardedMessageCount;
+    {* 未输出的拆包消息数。}
+
+    property OnFindComponent: TCnFindComponentEvent read FOnFindComponent write FOnFindComponent;
+    {* 全局遍历 Component 时的回调}
+{$IFDEF MSWINDOWS}
+    property OnFindControl: TCnFindControlEvent read FOnFindControl write FOnFindControl;
+    {* 全局遍历 Control 时的回调}
+{$ENDIF}
   end;
 
   TCnDebugChannel = class(TObject)
@@ -432,6 +640,8 @@ type
 
   TCnDebugChannelClass = class of TCnDebugChannel;
 
+{$IFDEF MSWINDOWS}
+
   TCnMapFileChannel = class(TCnDebugChannel)
   {* 使用内存映射文件来传输数据的 Channel 实现类}
   private
@@ -461,10 +671,12 @@ type
     procedure SendContent(var MsgDesc; Size: Integer); override;
   end;
 
+{$ENDIF}
+
 function CnDebugger: TCnDebugger;
 
 var
-  CnDebugChannelClass: TCnDebugChannelClass = TCnMapFileChannel;
+  CnDebugChannelClass: TCnDebugChannelClass = nil;
   // 当前 Channel 的 Class
 
   CnDebugMagicName: string = 'CNDEBUG';
@@ -499,31 +711,98 @@ const
 
   SCnColor = 'Color: ';
   SCnInteger = 'Integer: ';
+  SCnInt64 = 'Int64: ';
+  SCnUInt64 = 'UInt64: ';
+{$IFDEF UNICODE}
+  SCnCharFmt = 'Char: ''%s''(%d/$%4.4x)';
+{$ELSE}
   SCnCharFmt = 'Char: ''%s''(%d/$%2.2x)';
+{$ENDIF}
+  SCnAnsiCharFmt = 'AnsiChar: ''%s''(%d/$%2.2x)';
+  SCnWideCharFmt = 'WideChar: ''%s''(%d/$%4.4x)';
   SCnDateTime = 'A Date/Time: ';
   SCnPointer = 'Pointer Address: ';
   SCnFloat = 'Float: ';
   SCnPoint = 'Point: ';
+  SCnSize = 'Size: ';
   SCnRect = 'Rect: ';
+  SCnGUID = 'GUID: ';
   SCnVirtualKeyFmt = 'VirtualKey: %d($%2.2x), %s';
   SCnException = 'Exception:';
   SCnNilComponent = 'Component is nil.';
   SCnObjException = '*** Exception ***';
   SCnUnknownError = 'Unknown Error! ';
   SCnLastErrorFmt = 'Last Error (Code: %d): %s';
+  SCnConstArray = 'Array of Const:';
+  SCnClass = 'Class:';
+  SCnHierarchy = 'Hierarchy:';
+  SCnClassFmt = '%s ClassName %s. InstanceSize %d%s%s';
+  SCnInterface = 'Interface: ';
+  SCnInterfaceFmt = '%s %s';
+  SCnStackTraceFromAddress = 'Stack Trace';
+  SCnStackTraceFromAddressFmt = '';
+  SCnStackTraceNil = 'No Stack Trace.';
+  SCnStackTraceNotSupport = 'Stack Trace NOT Support.';
 
   CnDebugWaitingMutexTime = 1000;  // Mutex 的等待时间顶多 1 秒
   CnDebugStartingEventTime = 5000; // 启动 Viewer 的 Event 的等待时间顶多 5 秒
   CnDebugFlushEventTime = 100;     // 写队列后等待读取完成的时间顶多 0.1 秒
 
+{$IFDEF WIN64}
+  CN_HEX_DIGITS = 16;
+{$ELSE}
+  CN_HEX_DIGITS = 8;
+{$ENDIF}
+
+type
+{$IFDEF WIN64}
+  TCnNativeInt = NativeInt;
+{$ELSE}
+  TCnNativeInt = Integer;
+{$ENDIF}
+
+{$IFNDEF SUPPORT_INTERFACE_AS_OBJECT}
+  PPointer = ^Pointer;
+  TObjectFromInterfaceStub = packed record
+    Stub: Cardinal;
+    case Integer of
+      0: (ShortJmp: ShortInt);
+      1: (LongJmp:  LongInt)
+  end;
+  PObjectFromInterfaceStub = ^TObjectFromInterfaceStub;
+{$ENDIF}
+
 var
   FCnDebugger: TCnDebugger = nil;
+  FCnDebuggerCriticalSection: TCnCriticalSection;
+  FStartCriticalSection: TCnCriticalSection; // 用于多线程内控制启动 CnDebugViewer
 
   FFixedCalling: Cardinal = 0;
 
-{$IFDEF USE_JCL}
-  FCSExcept: TRTLCriticalSection;
+  FUseLocalSession: Boolean = {$IFDEF LOCAL_SESSION}True{$ELSE}False{$ENDIF};
+
+procedure CnEnterCriticalSection(Section: TCnCriticalSection);
+begin
+{$IFDEF MSWINDOWS}
+  EnterCriticalSection(Section);
+{$ELSE}
+  Section.Acquire;
 {$ENDIF}
+end;
+
+procedure CnLeaveCriticalSection(Section: TCnCriticalSection);
+begin
+{$IFDEF MSWINDOWS}
+  LeaveCriticalSection(Section);
+{$ELSE}
+  Section.Release;
+{$ENDIF}
+end;
+
+function GetEBP: Pointer;
+asm
+        MOV     EAX, EBP
+end;
 
 function GetCPUPeriod: Int64; assembler;
 asm
@@ -536,7 +815,9 @@ var
   I: Integer;
   TestDesc: PCnTimeDesc;
 begin
-  CnDebugger.Channel.Active := False;
+  if CnDebugger.Channel <> nil then
+    CnDebugger.Channel.Active := False;
+
   CnDebugger.FIgnoreViewer := True;
   for I := 1 to 1000 do
   begin
@@ -547,7 +828,9 @@ begin
 
   CnDebugger.FMessageCount := 0;
   CnDebugger.FPostedMessageCount := 0;
-  CnDebugger.Channel.Active := True;
+
+  if CnDebugger.Channel <> nil then
+    CnDebugger.Channel.Active := True;
   TestDesc := CnDebugger.IndexOfTime('');
   if TestDesc <> nil then
     FFixedCalling := TestDesc^.AccuTime div 1000;
@@ -558,14 +841,87 @@ begin
   // MessageBox(0, PChar(AMsg), 'Error', MB_OK or MB_ICONWARNING);
 end;
 
-function PropInfoName(PropInfo: PPropInfo): string;
-begin
-  Result := string(PropInfo^.Name);
-end;
-
 function TypeInfoName(TypeInfo: PTypeInfo): string;
 begin
   Result := string(TypeInfo^.Name);
+end;
+
+// 根据 set 值与 set 的类型获得 set 的字符串，TypInfo 参数必须是枚举的类型，
+// 而不能是 set of 后的类型，如无 TypInfo，则返回数值
+function GetSetStr(TypInfo: PTypeInfo; Value: Integer): string;
+var
+  I: Integer;
+  S: TIntegerSet;
+begin
+  if Value = 0 then
+  begin
+    Result := '[]';
+    Exit;
+  end;
+
+  Result := '';
+  Integer(S) := Value;
+  for I := 0 to SizeOf(Integer) * 8 - 1 do
+  begin
+    if I in S then
+    begin
+      if Result <> '' then
+        Result := Result + ',';
+
+      if TypInfo = nil then
+        Result := Result + IntToStr(I)
+      else
+      begin
+        try
+          Result := Result + GetEnumName(TypInfo, I);
+        except
+          Result := Result + IntToStr(I);
+        end;
+      end;
+    end;
+  end;
+  Result := '[' + Result + ']';
+end;
+
+function GetAnsiCharSetStr(AnsiCharSetAddr: Pointer; SizeInByte: Integer): string;
+var
+  I, ByteOffset, BitOffset: Integer;
+  EleByte, ByteMask: Byte;
+begin
+  Result := '';
+  if SizeInByte <> SizeOf(TCnAnsiCharSet) then
+  begin
+    Result := '<Error Set>';
+    Exit;
+  end;
+
+  for I := 0 to SizeInByte * 8 - 1 do
+  begin
+    ByteOffset := I div 8;
+    BitOffset := I mod 8;
+    ByteMask := 1 shl BitOffset;
+
+    EleByte := PByte(Integer(AnsiCharSetAddr) + ByteOffset)^;
+    if (EleByte and ByteMask) <> 0 then
+    begin
+      if Result <> '' then
+        Result := Result + ',';
+      Result := Result + '''' + Chr(I) + '''';
+    end;
+  end;
+  Result := '[' + Result + ']';
+end;
+
+function GetClassHierarchyString(AClass: TClass): string;
+begin
+  Result := '';
+  while AClass <> nil do
+  begin
+    Result := Result + AClass.ClassName;
+    AClass := AClass.ClassParent;
+    if AClass <> nil then
+      Result := Result + ' <- ';
+  end;
 end;
 
 // 移植自 uDbg
@@ -576,6 +932,7 @@ var
   PropIdx: Integer;
   PropertyList: ^TPropList;
   PropertyName: string;
+  PropertyTypeName: string;
   PropertyInfo: PPropInfo;
   PropertyType: PTypeInfo;
   PropertyKind: TTypeKind;
@@ -591,12 +948,21 @@ var
   NextObject: TObject;
   FollowObject: Boolean;
 begin
+  if PropOwner = nil then  if PropOwner.ClassInfo = nil then
+    Exit;
+
+  Prefix := StringOfChar(' ', 2 * Level);
+  List.Add(Prefix + SCnClass + PropOwner.ClassName);
+  List.Add(Prefix + SCnHierarchy + GetClassHierarchyString(PropOwner.ClassType));
+
+  if PropOwner.ClassInfo = nil then
+    Exit;
+
   GetMem(PropertyList, SizeOf(TPropList));
   try
-    Prefix := StringOfChar(' ', 2 * Level);
     // Build list of published properties
     FillChar(PropertyList^[0], SizeOf(TPropList), #00);
-    GetPropList(PropOwner.ClassInfo, tkProperties - [tkArray, tkRecord,
+    GetPropList(PropOwner.ClassInfo, tkAny - [tkArray, tkRecord, tkUnknown,
       tkInterface], @PropertyList^[0]);
     // Process property list
     PropIdx := 0;
@@ -606,12 +972,14 @@ begin
       PropertyInfo := PropertyList^[PropIdx];
       PropertyType := PropertyInfo^.PropType^;
       PropertyKind := PropertyType^.Kind;
-      PropertyName := PropInfoName(PropertyInfo);
+      PropertyName := string(PropertyInfo^.Name);
+      PropertyTypeName := string(PropertyType^.Name);
+
       // Write only property
       GetProc := PropertyInfo^.GetProc;
       if not Assigned(GetProc) then
       begin
-        NewLine := Prefix + '  ' + PropertyName + ' = <' +
+        NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName + ' = <' +
           TypeInfoName(PropertyType) + '> (can''t be read)';
         List.Add(NewLine);
       end
@@ -623,7 +991,7 @@ begin
               BaseType := GetTypeData(PropertyType)^.CompType^;
               BaseData := GetTypeData(BaseType);
               OrdValue := GetOrdProp(PropOwner, PropertyInfo);
-              NewLine := Prefix + '+ ' + PropertyName + ' = [' +
+              NewLine := Prefix + '+ ' + PropertyName + ': ' + PropertyTypeName + ' = [' +
                 TypeInfoName(BaseType) + ']';
               List.Add(NewLine);
               for N := BaseData^.MinValue to BaseData^.MaxValue do
@@ -642,20 +1010,20 @@ begin
           tkInteger:
             begin
               OrdValue := GetOrdProp(PropOwner, PropertyInfo);
-              NewLine := Prefix + '  ' + PropertyName + ' = ' + IntToStr(OrdValue);
+              NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName + ' = ' + IntToStr(OrdValue);
               List.Add(NewLine);
             end;
           tkChar:
             begin
               OrdValue := GetOrdProp(PropOwner, PropertyInfo);
-              NewLine := Prefix + '  ' + PropertyName + ' = ' + '#$' +
+              NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName + ' = ' + '#$' +
                 IntToHex(OrdValue, 2);
               List.Add(NewLine);
             end;
           tkWChar:
             begin
               OrdValue := GetOrdProp(PropOwner, PropertyInfo);
-              NewLine := Prefix + '  ' + PropertyName + ' = #$' + IntToHex(OrdValue, 4);
+              NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName + ' = #$' + IntToHex(OrdValue, 4);
               List.Add(NewLine);
             end;
           tkClass:
@@ -663,14 +1031,14 @@ begin
               OrdValue := GetOrdProp(PropOwner, PropertyInfo);
               if OrdValue = 0 then
               begin
-                NewLine := Prefix + '  ' + PropertyName + ' = <' +
+                NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName + ' = <' +
                   TypeInfoName(PropertyType) + '> (not assigned)';
                 List.Add(NewLine);
               end
               else
               begin
                 NextObject := TObject(OrdValue);
-                NewLine := Prefix + '  ' + PropertyName + ' = <' +
+                NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName + ' = <' +
                   TypeInfoName(PropertyType) + '>';
                 if NextObject is TComponent then
                 begin
@@ -696,39 +1064,43 @@ begin
           tkFloat:
             begin
               FloatValue := GetFloatProp(PropOwner, PropertyInfo);
-              NewLine := Prefix + '  ' + PropertyName + ' = ' +
+              NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName + ' = ' +
                 FormatFloat('n', FloatValue);
               List.Add(NewLine);
             end;
           tkEnumeration:
             begin
               OrdValue := GetOrdProp(PropOwner, PropertyInfo);
-              NewLine := Prefix + '  ' + PropertyName + ' = ' +
+              NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName + ' = ' +
                 GetEnumName(PropertyType, OrdValue);
               List.Add(NewLine);
             end;
-          tkString, tkLString, tkWString{$IFDEF VER200}, tkUString{$ENDIF}:
+          tkString, tkLString, tkWString {$IFNDEF VER130} {$IF RTLVersion > 19.00}, tkUString{$IFEND} {$ENDIF}:
             begin
-              NewLine := Prefix + '  ' + PropertyName + ' = ' + '''' +
+              NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName + ' = ' + '''' +
                 GetStrProp(PropOwner, PropertyInfo) + '''';
               List.Add(NewLine);
             end;
           tkVariant:
             begin
-              NewLine := Prefix + '  ' + PropertyName + ' = ' +
+              NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName + ' = ' +
                 GetVariantProp(PropOwner, PropertyInfo);
               List.Add(NewLine);
             end;
           tkMethod:
             begin
-              NewLine := Prefix + '  ' + PropertyName + ' = (' +
-                GetEnumName(TypeInfo(TMethodKind),
-                Ord(GetTypeData(PropertyType)^.MethodKind)) + ')';
+              OrdValue := GetOrdProp(PropOwner, PropertyInfo);
+              if OrdValue = 0 then
+                NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName + ' = (nil)'
+              else
+                NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName + ' = (' +
+                  GetEnumName(TypeInfo(TMethodKind),
+                  Ord(GetTypeData(PropertyType)^.MethodKind)) + ')';
               List.Add(NewLine);
             end;
         else
           begin
-            NewLine := Prefix + '  ' + PropertyName + ' = <' +
+            NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName + ' = <' +
               TypeInfoName(PropertyType) + '> ('
               + GetEnumName(TypeInfo(TTypeKind), Ord(PropertyKind)) + ')';
             List.Add(NewLine);
@@ -746,6 +1118,54 @@ begin
   end;
 end;
 
+procedure AddClassToStringList(PropClass: TClass; List: TStrings; Level: Integer);
+type
+  TIntegerSet = set of 0..SizeOf(Integer) * 8 - 1; // see Classes.pas
+var
+  PropIdx: Integer;
+  PropertyList: ^TPropList;
+  PropertyName: string;
+  PropertyInfo: PPropInfo;
+  PropertyType: PTypeInfo;
+  PropertyTypeName: string;
+  Prefix: string;
+  NewLine: string;
+begin
+  Prefix := StringOfChar(' ', 2 * Level);
+  List.Add(Prefix + SCnHierarchy + GetClassHierarchyString(PropClass));
+
+  if PropClass.ClassInfo = nil then
+    Exit;
+
+  GetMem(PropertyList, SizeOf(TPropList));
+  try
+
+    // Build list of published properties
+    FillChar(PropertyList^[0], SizeOf(TPropList), #00);
+    GetPropList(PropClass.ClassInfo, tkAny - [tkArray, tkRecord, tkUnknown,
+      tkInterface], @PropertyList^[0]);
+
+    // Process property list
+    PropIdx := 0;
+    while ((PropIdx < High(PropertyList^)) and (nil <> PropertyList^[PropIdx])) do
+    begin
+      // Get information about found properties
+      PropertyInfo := PropertyList^[PropIdx];
+      PropertyName := string(PropertyInfo^.Name);
+      PropertyType := PropertyInfo^.PropType^;
+      PropertyTypeName := string(PropertyType^.Name);
+
+      NewLine := Prefix + '  ' + PropertyName + ': ' + PropertyTypeName;
+      List.Add(NewLine);
+
+      // Next item in the property list
+      Inc(PropIdx);
+    end;
+  finally
+    FreeMem(PropertyList);
+  end;
+end;
+
 procedure CollectionToStringList(Collection: TCollection;
   AList: TStrings);
 var
@@ -753,8 +1173,9 @@ var
 begin
   if (AList = nil) or (Collection = nil) then Exit;
 
-  AList.Add('Collection: $' + IntToHex(Integer(Collection), 2) + ' ' + Collection.ClassName);
+  AList.Add('Collection: $' + IntToHex(Integer(Collection), CN_HEX_DIGITS) + ' ' + Collection.ClassName);
   AList.Add('  Count = ' + IntToStr(Collection.Count));
+  AddObjectToStringList(Collection, AList, 0);
   for I := 0 to Collection.Count - 1 do
   begin
     AList.Add('');
@@ -766,12 +1187,65 @@ begin
   AList.Add('end');
 end;
 
+function GetBitmapPixelBytesCount(APixelFormat: TPixelFormat): Integer;
+begin
+  case APixelFormat of
+    pf8bit: Result := 1;
+    pf15bit, pf16bit: Result := 2;
+    pf24bit: Result := 3;
+    pf32bit: Result := 4;
+  else
+    raise Exception.Create('NOT Suppport');
+  end;
+end;
+
+function IsWin64: Boolean;
+const
+  PROCESSOR_ARCHITECTURE_AMD64 = 9;
+  PROCESSOR_ARCHITECTURE_IA64 = 6;
+var
+  Kernel32Handle: THandle;
+  IsWow64Process: function(Handle: Windows.THandle; var Res: Windows.BOOL): Windows.BOOL; stdcall;
+  GetNativeSystemInfo : procedure(var lpSystemInfo: TSystemInfo); stdcall; isWoW64 :BOOL;SystemInfo :  TSystemInfo;
+begin
+  Result := False;
+  Kernel32Handle := GetModuleHandle(kernel32);
+
+  if Kernel32Handle = 0 then
+    Kernel32Handle := LoadLibrary(kernel32);
+
+  if Kernel32Handle <> 0 then
+  begin
+    IsWow64Process := GetProcAddress(Kernel32Handle, 'IsWow64Process');
+    GetNativeSystemInfo := GetProcAddress(Kernel32Handle, 'GetNativeSystemInfo');
+
+    if Assigned(IsWow64Process) then
+    begin
+      IsWow64Process(GetCurrentProcess, isWoW64);
+      Result := isWoW64 and Assigned(GetNativeSystemInfo);
+      if Result then
+      begin
+        GetNativeSystemInfo(SystemInfo);
+        Result := (SystemInfo.wProcessorArchitecture = PROCESSOR_ARCHITECTURE_AMD64)
+          or (SystemInfo.wProcessorArchitecture = PROCESSOR_ARCHITECTURE_IA64);
+      end;
+    end;
+  end;
+end;
 
 function CnDebugger: TCnDebugger;
 begin
 {$IFNDEF NDEBUG}
   if FCnDebugger = nil then
-    FCnDebugger := TCnDebugger.Create;
+  begin
+    CnEnterCriticalSection(FCnDebuggerCriticalSection);
+    try
+      if FCnDebugger = nil then
+        FCnDebugger := TCnDebugger.Create;
+    finally
+      CnLeaveCriticalSection(FCnDebuggerCriticalSection);
+    end;
+  end;
   Result := FCnDebugger;
 {$ELSE}
   Result := nil;
@@ -794,14 +1268,16 @@ function TCnDebugger.AddTimeDesc(const ATag: string): PCnTimeDesc;
 var
   ADesc: PCnTimeDesc;
   Len: Integer;
+  TTag: AnsiString;
 begin
   New(ADesc);
   FillChar(ADesc^, SizeOf(TCnTimeDesc), 0);
-  Len := Length(ATag);
+  TTag := AnsiString(ATag);
+  Len := Length(TTag);
   if Len > CnMaxTagLength then
     Len := CnMaxTagLength;
 
-  CopyMemory(@(ADesc^.Tag), PChar(ATag), Len);
+  Move(PAnsiChar(TTag)^, ADesc^.Tag, Len);
   FTimes.Add(ADesc);
   Result := ADesc;
 end;
@@ -846,13 +1322,17 @@ begin
   {$ENDIF}
 
   FDumpFileName := SCnDefaultDumpFileName;
+{$IFDEF MSWINDOWS}
   InitializeCriticalSection(FCSThrdId);
+{$ELSE}
+  FCSThrdId := TCnCriticalSection.Create;
+{$ENDIF}
   CreateChannel;
 
 {$IFDEF DUMP_TO_FILE}
   DumpToFile := True;
 {$ENDIF}
-  
+
   FActive := True;
 end;
 
@@ -869,7 +1349,7 @@ begin
   end;
 end;
 
-function TCnDebugger.DecIndent(ThrdID: DWORD): Integer;
+function TCnDebugger.DecIndent(ThrdID: LongWord): Integer;
 var
   Indent, Index: Integer;
 begin
@@ -883,10 +1363,10 @@ begin
   end
   else
   begin
-    EnterCriticalSection(FCSThrdId);
+    CnEnterCriticalSection(FCSThrdId);
     FThrdIDList.Add(Pointer(ThrdID));
     FIndentList.Add(nil);
-    LeaveCriticalSection(FCSThrdId);
+    CnLeaveCriticalSection(FCSThrdId);
     Result := 0;
   end;
 end;
@@ -895,7 +1375,12 @@ destructor TCnDebugger.Destroy;
 var
   I: Integer;
 begin
+{$IFDEF MSWINDOWS}
   DeleteCriticalSection(FCSThrdId);
+{$ELSE}
+  FCSThrdId.Free;
+{$ENDIF}
+
   FChannel.Free;
   FDumpFile.Free;
   FFilter.Free;
@@ -908,7 +1393,6 @@ begin
   FIndentList.Free;
   inherited;
 end;
-
 
 function TCnDebugger.FormatMsg(const AFormat: string;
   Args: array of const): string;
@@ -931,10 +1415,14 @@ end;
 
 function TCnDebugger.GetActive: Boolean;
 begin
+{$IFNDEF NDEBUG}
   Result := FActive;
+{$ELSE}
+  Result := False;
+{$ENDIF}
 end;
 
-function TCnDebugger.GetCurrentIndent(ThrdID: DWORD): Integer;
+function TCnDebugger.GetCurrentIndent(ThrdID: LongWord): Integer;
 var
   Index: Integer;
 begin
@@ -945,20 +1433,24 @@ begin
   end
   else
   begin
-    EnterCriticalSection(FCSThrdId);
+    CnEnterCriticalSection(FCSThrdId);
     FThrdIDList.Add(Pointer(ThrdID));
     FIndentList.Add(nil);
-    LeaveCriticalSection(FCSThrdId);
+    CnLeaveCriticalSection(FCSThrdId);
     Result := 0;
   end;
 end;
 
 function TCnDebugger.GetExceptTracking: Boolean;
 begin
+{$IFNDEF NDEBUG}
   Result := FExceptTracking;
+{$ELSE}
+  Result := False;
+{$ENDIF}
 end;
 
-function TCnDebugger.IncIndent(ThrdID: DWORD): Integer;
+function TCnDebugger.IncIndent(ThrdID: LongWord): Integer;
 var
   Indent, Index: Integer;
 begin
@@ -972,10 +1464,10 @@ begin
   end
   else
   begin
-    EnterCriticalSection(FCSThrdId);
+    CnEnterCriticalSection(FCSThrdId);
     FThrdIDList.Add(Pointer(ThrdID));
     FIndentList.Add(Pointer(1));
-    LeaveCriticalSection(FCSThrdId);
+    CnLeaveCriticalSection(FCSThrdId);
     Result := 1;
   end;
 end;
@@ -983,20 +1475,22 @@ end;
 function TCnDebugger.IndexOfTime(const ATag: string): PCnTimeDesc;
 var
   I, Len: Integer;
-  TmpTag: array[0..CnMaxTagLength - 1] of Char;
+  TTag: AnsiString;
+  TmpTag: array[0..CnMaxTagLength - 1] of AnsiChar;
 begin
   Result := nil;
+  TTag := AnsiString(ATag);
   FillChar(TmpTag, CnMaxTagLength, 0);
-  Len := Length(ATag);
+  Len := Length(TTag);
   if Len > CnMaxTagLength then
     Len := CnMaxTagLength;
-  CopyMemory(@TmpTag, PChar(ATag), Len);
 
+  Move(PAnsiChar(TTag)^, TmpTag, Len);
   for I := 0 to FTimes.Count - 1 do
   begin
     if FTimes[I] <> nil then
     begin
-      if ((ATag = '') and (PCnTimeDesc(FTimes[I])^.Tag[0] = #0))
+      if ((TTag = '') and (PCnTimeDesc(FTimes[I])^.Tag[0] = #0))
         or CompareMem(@(PCnTimeDesc(FTimes[I])^.Tag), @TmpTag, CnMaxTagLength) then
       begin
         Result := PCnTimeDesc(FTimes[I]);
@@ -1012,82 +1506,149 @@ begin
   if Size > 0 then
   begin
     FChannel.SendContent(Data, Size);
-    Inc(FPostedMessageCount);
+{$IFDEF MSWINDOWS}
+    InterlockedIncrement(FPostedMessageCount);
+{$ELSE}
+    TInterlocked.Increment(FPostedMessageCount);
+{$ENDIF}
   end;
 end;
 
-procedure TCnDebugger.InternalOutputMsg(const AMsg: AnsiString; Size: Integer;
+procedure TCnDebugger.InternalOutputMsg(const AMsg: PAnsiChar; Size: Integer;
   const ATag: AnsiString; ALevel, AIndent: Integer; AType: TCnMsgType;
-  ThreadID: DWORD; CPUPeriod: Int64);
+  ThreadID: LongWord; CPUPeriod: Int64);
 var
   TagLen, MsgLen: Integer;
   MsgDesc: TCnMsgDesc;
-begin
-  if FAutoStart and not FIgnoreViewer and not FViewerAutoStartCalled then
+  ChkReady, IsFirst: Boolean;
+  MsgBufPtr: PAnsiChar;
+  MsgBufSize: Integer;
+
+  procedure GenerateMsgDesc(MsgBuf: PAnsiChar; MsgSize: Integer);
   begin
-    StartDebugViewer;
-    FViewerAutoStartCalled := True;
-  end;
+    // 进行具体的组装工作
+    MsgLen := MsgSize;
+    if MsgLen > CnMaxMsgLength then
+      MsgLen := CnMaxMsgLength;
+    TagLen := Length(ATag);
+    if TagLen > CnMaxTagLength then
+      TagLen := CnMaxTagLength;
 
-  Inc(FMessageCount);
-  if not CheckEnabled or not FChannel.CheckReady then Exit;
-  if FChannel.CheckFilterChanged then
-    FChannel.RefreshFilter(FFilter);
+    FillChar(MsgDesc, SizeOf(MsgDesc), 0);
+    MsgDesc.Annex.Level := ALevel;
+    MsgDesc.Annex.Indent := AIndent;
+{$IFDEF MSWINDOWS}
+    MsgDesc.Annex.ProcessId := GetCurrentProcessId;
+{$ELSE}
+    MsgDesc.Annex.ProcessId := getpid;
+{$ENDIF}
+    MsgDesc.Annex.ThreadId := ThreadID;
+    MsgDesc.Annex.MsgType := Ord(AType);
+    MsgDesc.Annex.TimeStampType := Ord(TimeStampType);
 
-  if not CheckFiltered(string(ATag), ALevel, AType) then
-    Exit;
-  
-  // 进行具体的组装工作
-  MsgLen := Size;
-  if MsgLen > CnMaxMsgLength then
-    MsgLen := CnMaxMsgLength;
-  TagLen := Length(ATag);
-  if TagLen > CnMaxTagLength then
-    TagLen := CnMaxTagLength;
-
-  FillChar(MsgDesc, SizeOf(MsgDesc), 0);
-  MsgDesc.Annex.Level := ALevel;
-  MsgDesc.Annex.Indent := AIndent;
-  MsgDesc.Annex.ProcessId := GetCurrentProcessId;
-  MsgDesc.Annex.ThreadId := ThreadID;
-  MsgDesc.Annex.MsgType := Ord(AType);
-  MsgDesc.Annex.TimeStampType := Ord(TimeStampType);
-  
-  case TimeStampType of
-    ttDateTime: MsgDesc.Annex.MsgDateTime := Date + Time;
-    ttTickCount: MsgDesc.Annex.MsgTickCount := GetTickCount;
-    ttCPUPeriod: MsgDesc.Annex.MsgCPUPeriod := GetCPUPeriod;
-  else
-    MsgDesc.Annex.MsgCPUPeriod := 0; // 设为全 0
-  end;
-
-  // TimeMarkStop 时所耗 CPU 时钟周期数
-  MsgDesc.Annex.MsgCPInterval := CPUPeriod;
-
-  CopyMemory(@(MsgDesc.Annex.Tag), Pointer(ATag), TagLen);
-  CopyMemory(@(MsgDesc.Msg), Pointer(AMsg), MsgLen);
-
-  MsgLen := MsgLen + SizeOf(MsgDesc.Annex) + SizeOf(DWORD);
-  MsgDesc.Length := MsgLen;
-  InternalOutput(MsgDesc, MsgLen);
-
-  // 同时 DumpToFile
-  if FDumpToFile and not FIgnoreViewer and (FDumpFile <> nil) then
-  begin
-    if not FAfterFirstWrite then // 第一回写时需要判断是否重写
-    begin
-      if FUseAppend then
-        FDumpFile.Seek(0, soFromEnd)
-      else
-      begin
-        FDumpFile.Size := 0;
-        FDumpFile.Seek(0, soFromBeginning);
-      end;
-      FAfterFirstWrite := True; // 后续写就无需判断了
+    case TimeStampType of
+      ttDateTime: MsgDesc.Annex.MsgDateTime := Date + Time;
+      ttTickCount: MsgDesc.Annex.MsgTickCount := {$IFNDEF MSWINDOWS}TThread.{$ENDIF}GetTickCount;
+      ttCPUPeriod: MsgDesc.Annex.MsgCPUPeriod := GetCPUPeriod;
+    else
+      MsgDesc.Annex.MsgCPUPeriod := 0; // 设为全 0
     end;
-    
-    FDumpFile.Write(MsgDesc, MsgLen);
+
+    // TimeMarkStop 时所耗 CPU 时钟周期数
+    MsgDesc.Annex.MsgCPInterval := CPUPeriod;
+
+    Move(Pointer(ATag)^, MsgDesc.Annex.Tag, TagLen);
+    Move(Pointer(MsgBuf)^, MsgDesc.Msg, MsgLen);
+
+    MsgLen := MsgLen + SizeOf(MsgDesc.Annex) + SizeOf(LongWord);
+    MsgDesc.Length := MsgLen;
   end;
+
+begin
+  CnEnterCriticalSection(FStartCriticalSection);
+  try
+    if FAutoStart and not FIgnoreViewer and not FViewerAutoStartCalled then
+    begin
+      StartDebugViewer;
+      FViewerAutoStartCalled := True;
+    end;
+  finally
+    CnLeaveCriticalSection(FStartCriticalSection);
+  end;
+
+{$IFDEF MSWINDOWS}
+  InterlockedIncrement(FMessageCount);
+{$ELSE}
+  TInterlocked.Increment(FMessageCount);
+{$ENDIF}
+
+  if not CheckEnabled and not FDumpToFile then
+  begin
+    Sleep(0);
+    Exit;
+  end;
+
+  if FChannel <> nil then
+    ChkReady := FChannel.CheckReady
+  else
+    ChkReady := False;
+
+  if not ChkReady and not FDumpToFile then
+  begin
+    Sleep(0);
+    Exit;
+  end;
+
+  MsgBufPtr := AMsg;
+  IsFirst := True;
+  repeat
+    if Size > CnMaxMsgLength then
+      MsgBufSize := CnMaxMsgLength
+    else
+      MsgBufSize := Size;
+
+    GenerateMsgDesc(MsgBufPtr, MsgBufSize);
+    Dec(Size, MsgBufSize);
+    Inc(MsgBufPtr, MsgBufSize);
+
+    if IsFirst then
+      IsFirst := False
+    else
+    begin
+{$IFDEF MSWINDOWS}
+      InterlockedIncrement(FMessageCount); // 拆包消息也要计数，但第一条在上头已计了
+{$ELSE}
+      TInterlocked.Increment(FMessageCount);
+{$ENDIF}
+    end;
+
+    if ChkReady then
+    begin
+      if FChannel.CheckFilterChanged then
+        FChannel.RefreshFilter(FFilter);
+
+      if CheckFiltered(string(ATag), ALevel, AType) then
+        InternalOutput(MsgDesc, MsgLen);
+    end;
+
+    // 同时 DumpToFile
+    if FDumpToFile and not FIgnoreViewer and (FDumpFile <> nil) then
+    begin
+      if not FAfterFirstWrite then // 第一回写时需要判断是否重写
+      begin
+        if FUseAppend then
+          FDumpFile.Seek(0, soFromEnd)
+        else
+        begin
+          FDumpFile.Size := 0;
+          FDumpFile.Seek(0, soFromBeginning);
+        end;
+        FAfterFirstWrite := True; // 后续写就无需判断了
+      end;
+
+      FDumpFile.Write(MsgDesc, MsgLen);
+    end;
+  until Size <= 0;
 end;
 
 procedure TCnDebugger.LogAssigned(Value: Pointer; const AMsg: string);
@@ -1127,7 +1688,7 @@ begin
     else
       LogMsg(SCnBooleanFalse + AMsg);
   end;
-{$ENDIF}  
+{$ENDIF}
 end;
 
 procedure TCnDebugger.LogCollectionWithTag(ACollection: TCollection;
@@ -1146,7 +1707,7 @@ begin
     except
       List.Add(SCnObjException);
     end;
-    LogMsgWithType(List.Text, cmtObject);
+    LogMsgWithTypeTag(List.Text, cmtObject, ATag);
   finally
     List.Free;
   end;
@@ -1182,7 +1743,7 @@ procedure TCnDebugger.LogComponentWithTag(AComponent: TComponent;
 {$IFDEF DEBUG}
 var
   InStream, OutStream: TMemoryStream;
-  ThrdID: DWORD;
+  ThrdID: LongWord;
 {$ENDIF}
 begin
 {$IFDEF DEBUG}
@@ -1196,8 +1757,8 @@ begin
       InStream.WriteComponent(AComponent);
       InStream.Seek(0, soFromBeginning);
       ObjectBinaryToText(InStream, OutStream);
-      ThrdID := GetCurrentThreadID;
-      InternalOutputMsg(AnsiString(OutStream.Memory), OutStream.Size, AnsiString(ATag), CurrentLevel,
+      ThrdID := GetCurrentThreadId;
+      InternalOutputMsg(PAnsiChar(OutStream.Memory), OutStream.Size, AnsiString(ATag), CurrentLevel,
         GetCurrentIndent(ThrdID), cmtComponent, ThrdID, 0);
     end
     else
@@ -1214,6 +1775,33 @@ begin
 {$IFDEF DEBUG}
   LogFull(SCnEnterProc + AProcName, ATag, CurrentLevel, cmtEnterProc);
   IncIndent(GetCurrentThreadId);
+{$ENDIF}
+end;
+
+{$IFDEF SUPPORT_ENHANCED_RTTI}
+
+procedure TCnDebugger.LogEnumType<T>(const AMsg: string);
+begin
+{$IFDEF DEBUG}
+  if AMsg = '' then
+    LogMsg('EnumType: ' + GetEnumTypeStr<T>)
+  else
+    LogFmt('%s %s', [AMsg, GetEnumTypeStr<T>]);
+{$ENDIF}
+end;
+
+{$ENDIF}
+
+procedure TCnDebugger.LogException(E: Exception; const AMsg: string);
+begin
+{$IFDEF DEBUG}
+  if not Assigned(E) then
+    Exit;
+
+  if AMsg = '' then
+    LogFmt('%s %s - %s', [SCnException, E.ClassName, E.Message])
+  else
+    LogFmt('%s %s - %s', [AMsg, E.ClassName, E.Message]);
 {$ENDIF}
 end;
 
@@ -1285,16 +1873,25 @@ procedure TCnDebugger.LogFull(const AMsg, ATag: string; ALevel: Integer;
 {$IFDEF DEBUG}
 {$IFNDEF NDEBUG}
 var
-  ThrdID: DWORD;
+  ThrdID: LongWord;
+{$IFDEF UNICODE}
+  Msg: AnsiString;
+{$ENDIF}
 {$ENDIF}
 {$ENDIF}
 begin
 {$IFDEF DEBUG}
 {$IFNDEF NDEBUG}
   if AMsg = '' then Exit;
-  ThrdID := GetCurrentThreadID;
-  InternalOutputMsg(AnsiString(AMsg), Length(AnsiString(AMsg)), AnsiString(ATag),
+  ThrdID := GetCurrentThreadId;
+  {$IFDEF UNICODE}
+  Msg := AnsiString(AMsg);
+  InternalOutputMsg(PAnsiChar(Msg), Length(Msg), AnsiString(ATag),
     ALevel, GetCurrentIndent(ThrdID), AType, ThrdID, CPUPeriod);
+  {$ELSE}
+  InternalOutputMsg(PAnsiChar(AMsg), Length(AnsiString(AMsg)), AnsiString(ATag),
+    ALevel, GetCurrentIndent(ThrdID), AType, ThrdID, CPUPeriod);
+  {$ENDIF}
 {$ENDIF}
 {$ENDIF}
 end;
@@ -1309,13 +1906,84 @@ begin
 {$ENDIF}
 end;
 
+procedure TCnDebugger.LogInt64(Value: Int64; const AMsg: string);
+begin
+{$IFDEF DEBUG}
+  if AMsg = '' then
+    LogMsg(SCnInt64 + IntToStr(Value))
+  else
+    LogFmt('%s %d', [AMsg, Value]);
+{$ENDIF}
+end;
+
+{$IFDEF SUPPORT_UINT64}
+
+procedure TCnDebugger.LogUInt64(Value: UInt64; const AMsg: string);
+begin
+{$IFDEF DEBUG}
+  if AMsg = '' then
+    LogFmt('%s%u', [SCnUInt64, Value])
+  else
+    LogFmt('%s %u', [AMsg, Value]);
+{$ENDIF}
+end;
+
+{$ENDIF}
+
 procedure TCnDebugger.LogChar(Value: Char; const AMsg: string);
 begin
 {$IFDEF DEBUG}
   if AMsg = '' then
     LogFmt(SCnCharFmt, [Value, Ord(Value), Ord(Value)])
   else
+  begin
+{$IFDEF UNICODE}
+    LogFmt('%s ''%s''(%d/$%4.4x)', [AMsg, Value, Ord(Value), Ord(Value)]);
+{$ELSE}
     LogFmt('%s ''%s''(%d/$%2.2x)', [AMsg, Value, Ord(Value), Ord(Value)]);
+{$ENDIF}
+  end;
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogAnsiChar(Value: AnsiChar; const AMsg: string = '');
+begin
+{$IFDEF DEBUG}
+  if AMsg = '' then
+    LogFmt(SCnAnsiCharFmt, [Value, Ord(Value), Ord(Value)])
+  else
+    LogFmt('%s ''%s''(%d/$%2.2x)', [AMsg, Value, Ord(Value), Ord(Value)]);
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogWideChar(Value: WideChar; const AMsg: string = '');
+begin
+{$IFDEF DEBUG}
+  if AMsg = '' then
+    LogFmt(SCnWideCharFmt, [Value, Ord(Value), Ord(Value)])
+  else
+    LogFmt('%s ''%s''(%d/$%4.4x)', [AMsg, Value, Ord(Value), Ord(Value)]);
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogSet(const ASet; ASetSize: Integer;
+  SetElementTypInfo: PTypeInfo; const AMsg: string);
+var
+  SetVal: Integer;
+begin
+{$IFDEF DEBUG}
+  if (ASetSize <= 0) or (ASetSize > SizeOf(Integer)) then
+  begin
+    LogException(EInvalidCast.Create(AMsg));
+    Exit;
+  end;
+
+  SetVal := 0;
+  Move(ASet, SetVal, ASetSize);
+  if AMsg = '' then
+    LogMsg(GetSetStr(SetElementTypInfo, SetVal))
+  else
+    LogFmt('%s %s', [AMsg, GetSetStr(SetElementTypInfo, SetVal)]);
 {$ENDIF}
 end;
 
@@ -1360,15 +2028,35 @@ end;
 procedure TCnDebugger.LogMemDump(AMem: Pointer; Size: Integer);
 {$IFDEF DEBUG}
 var
-  ThrdID: DWORD;
-{$ENDIF}  
+  ThrdID: LongWord;
+{$ENDIF}
 begin
 {$IFDEF DEBUG}
-  ThrdID := GetCurrentThreadID;
-  InternalOutputMsg(AnsiString(AMem), Size, AnsiString(CurrentTag), CurrentLevel, GetCurrentIndent(ThrdID),
+  ThrdID := GetCurrentThreadId;
+  InternalOutputMsg(PAnsiChar(AMem), Size, AnsiString(CurrentTag), CurrentLevel, GetCurrentIndent(ThrdID),
     cmtMemoryDump, ThrdID, 0);
 {$ENDIF}
 end;
+
+procedure TCnDebugger.LogBitmapMemory(ABmp: TBitmap);
+{$IFDEF DEBUG}
+var
+  H, B: Integer;
+{$ENDIF}
+begin
+{$IFDEF DEBUG}
+  if (ABmp <> nil) and not (ABmp.Empty) then
+  begin
+    LogFmt('Bmp Width %d, Height %d.', [ABmp.Width, ABmp.Height]);
+
+    B := GetBitmapPixelBytesCount(ABmp.PixelFormat);
+    for H := 0 to ABmp.Height - 1 do
+      LogMemDump(ABmp.ScanLine[H], ABmp.Width * B);
+  end;
+{$ENDIF}
+end;
+
+{$IFDEF MSWINDOWS}
 
 procedure TCnDebugger.LogVirtualKey(AKey: Word);
 begin
@@ -1383,6 +2071,22 @@ begin
   LogFmtWithTag(SCnVirtualKeyFmt, [AKey, AKey, VirtualKeyToString(AKey)], ATag);
 {$ENDIF}
 end;
+
+procedure TCnDebugger.LogWindowMessage(AMessage: Cardinal);
+begin
+{$IFDEF DEBUG}
+  LogWindowMessageWithTag(AMessage, CurrentTag);
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogWindowMessageWithTag(AMessage: Cardinal; const ATag: string);
+begin
+{$IFDEF DEBUG}
+  LogMsgWithTag(WindowMessageToStr(AMessage), ATag);
+{$ENDIF}
+end;
+
+{$ENDIF}
 
 procedure TCnDebugger.LogMsg(const AMsg: string);
 begin
@@ -1437,12 +2141,16 @@ begin
 {$ENDIF}
 end;
 
+{$IFDEF MSWINDOWS}
+
 procedure TCnDebugger.LogLastError;
 begin
 {$IFDEF DEBUG}
   TraceLastError;
 {$ENDIF}
 end;
+
+{$ENDIF}
 
 procedure TCnDebugger.LogObject(AObject: TObject);
 begin
@@ -1456,19 +2164,32 @@ procedure TCnDebugger.LogObjectWithTag(AObject: TObject;
 {$IFDEF DEBUG}
 var
   List: TStringList;
+  Intfs: string;
 {$ENDIF}
 begin
 {$IFDEF DEBUG}
+  if AObject = nil then
+  begin
+    LogMsgWithTypeTag('Object: nil', cmtObject, ATag);
+    Exit;
+  end;
+
   List := nil;
   try
     List := TStringList.Create;
     try
       AddObjectToStringList(AObject, List, 0);
+      Intfs := FormatObjectInterface(AObject);
+      if Intfs <> '' then
+      begin
+        List.Add('Supports Interfaces:');
+        List.Add(Intfs);
+      end;
     except
       List.Add(SCnObjException);
     end;
-    LogMsgWithType('Object: $' + IntToHex(Integer(AObject), 2) + SCnCRLF +
-      List.Text, cmtObject);
+    LogMsgWithTypeTag('Object: $' + IntToHex(Integer(AObject), CN_HEX_DIGITS) + SCnCRLF +
+      List.Text, cmtObject, ATag);
   finally
     List.Free;
   end;
@@ -1485,6 +2206,16 @@ begin
 {$ENDIF}
 end;
 
+procedure TCnDebugger.LogSize(Size: TSize; const AMsg: string);
+begin
+{$IFDEF DEBUG}
+  if AMsg = '' then
+    LogMsg(SCnSize + SizeToString(Size))
+  else
+    LogFmt('%s %s', [AMsg, SizeToString(Size)]);
+{$ENDIF}
+end;
+
 procedure TCnDebugger.LogRect(Rect: TRect; const AMsg: string);
 begin
 {$IFDEF DEBUG}
@@ -1495,6 +2226,26 @@ begin
 {$ENDIF}
 end;
 
+procedure TCnDebugger.LogBits(Bits: TBits; const AMsg: string = '');
+begin
+{$IFDEF DEBUG}
+  if AMsg = '' then
+    LogMsg(BitsToString(Bits))
+  else
+    LogFmt('%s %s', [AMsg, BitsToString(Bits)]);
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogGUID(const GUID: TGUID; const AMsg: string);
+begin
+{$IFDEF DEBUG}
+  if AMsg = '' then
+    LogMsg(SCnGUID + GUIDToString(GUID))
+  else
+    LogFmt('%s %s', [AMsg, GUIDToString(GUID)]);
+{$ENDIF}
+end;
+
 procedure TCnDebugger.LogSeparator;
 begin
 {$IFDEF DEBUG}
@@ -1502,14 +2253,79 @@ begin
 {$ENDIF}
 end;
 
+
+procedure TCnDebugger.LogRawString(const Value: string);
+begin
+{$IFDEF DEBUG}
+  if Value <> '' then
+    TraceMemDump(Pointer(Value), Length(Value) * SizeOf(Char));
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogRawAnsiString(const Value: AnsiString);
+begin
+{$IFDEF DEBUG}
+  if Value <> '' then
+    TraceMemDump(Pointer(Value), Length(Value) * SizeOf(AnsiChar));
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogRawWideString(const Value: WideString);
+begin
+{$IFDEF DEBUG}
+  if Value <> '' then
+    TraceMemDump(Pointer(Value), Length(Value) * SizeOf(WideChar));
+{$ENDIF}
+end;
+
 procedure TCnDebugger.LogStrings(Strings: TStrings; const AMsg: string);
 begin
 {$IFDEF DEBUG}
+  if not Assigned(Strings) then
+    Exit;
+
   if AMsg = '' then
     TraceMsg(Strings.Text)
   else
     TraceMsg(AMsg + SCnCRLF + Strings.Text);
-{$ENDIF}    
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogCurrentStack(const AMsg: string);
+{$IFDEF DEBUG}
+{$IFDEF USE_JCL}
+var
+  Strings: TStrings;
+{$ENDIF}
+{$ENDIF}
+begin
+{$IFDEF DEBUG}
+{$IFDEF USE_JCL}
+  Strings := nil;
+
+  try
+    Strings := TStringList.Create;
+    GetCurrentTrace(Strings);
+
+    LogMsgWithType('Dump Call Stack: ' + AMsg + SCnCRLF + Strings.Text, cmtInformation);
+  finally
+    Strings.Free;
+  end;
+{$ENDIF}
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogConstArray(const Arr: array of const;
+  const AMsg: string);
+begin
+{$IFDEF DEBUG}
+  if AMsg = '' then
+    LogFull(FormatMsg('%s %s', [SCnConstArray, FormatConstArray(Arr)]),
+      CurrentTag, CurrentLevel, CurrentMsgType)
+  else
+    LogFull(FormatMsg('%s %s', [AMsg, FormatConstArray(Arr)]), CurrentTag,
+      CurrentLevel, CurrentMsgType);
+{$ENDIF}
 end;
 
 function TCnDebugger.PointToString(APoint: TPoint): string;
@@ -1517,10 +2333,35 @@ begin
   Result := '(' + IntToStr(APoint.x) + ',' + IntToStr(APoint.y) + ')';
 end;
 
+function TCnDebugger.SizeToString(ASize: TSize): string;
+begin
+  Result := '(cx: ' + IntToStr(ASize.cx) + ', cy: ' + IntToStr(ASize.cy) + ')';
+end;
+
 function TCnDebugger.RectToString(ARect: TRect): string;
 begin
-  Result := '(' + PointToString(ARect.TopLeft) + ',' +
+  Result := '(Left/Top: ' + PointToString(ARect.TopLeft) + ', Right/Bottom: ' +
     PointToString(ARect.BottomRight) + ')';
+end;
+
+function TCnDebugger.BitsToString(ABits: TBits): string;
+var
+  I: Integer;
+begin
+  if (ABits = nil) or (ABits.Size = 0) then
+    Result := 'No Bits.'
+  else
+  begin
+    SetLength(Result, ABits.Size);
+    for I := 0 to ABits.Size - 1 do
+    begin
+      if ABits.Bits[I] then
+        Result[I + 1] := '1'
+      else
+        Result[I + 1] := '0';
+    end;
+    Result := 'Size: ' + IntToStr(ABits.Size) + '. Bits: ' + Result;
+  end;
 end;
 
 procedure TCnDebugger.RemoveFilterExceptClass(E: ExceptClass);
@@ -1543,12 +2384,22 @@ end;
 
 procedure TCnDebugger.SetActive(const Value: Boolean);
 begin
+{$IFNDEF NDEBUG}
   FActive := Value;
+{$ENDIF}
 end;
 
 procedure TCnDebugger.SetExceptTracking(const Value: Boolean);
 begin
+{$IFNDEF NDEBUG}
   FExceptTracking := Value;
+  {$IFDEF USE_JCL}
+  if FExceptTracking then
+    CnHookException
+  else
+    CnUnHookException;
+  {$ENDIF}
+{$ENDIF}
 end;
 
 procedure TCnDebugger.StartDebugViewer;
@@ -1565,7 +2416,6 @@ var
 begin
 {$IFNDEF NDEBUG}
   // 根据 ATag 找是否存在以前的记录，不存在则新增
-//  if ATag = '' then Exit;
   ADesc := IndexOfTime(ATag);
   if ADesc = nil then
     ADesc := AddTimeDesc(ATag);
@@ -1601,12 +2451,12 @@ begin
 {$IFNDEF NDEBUG}
   // 马上记录当时的 CPU 周期
   Period := GetCPUPeriod;
-  // if ATag = '' then Exit;
   ADesc := IndexOfTime(ATag);
   if ADesc <> nil then
   begin
-    // 得到相应的旧记录，相减，并减去误差，作为记录发出去
-    Inc(ADesc^.AccuTime, Period - ADesc^.StartTime - FFixedCalling);
+    // 得到相应的旧记录，相减，并减去误差，叠加上一次的计时，作为记录发出去
+    ADesc^.AccuTime := ADesc^.AccuTime + (Period - ADesc^.StartTime - FFixedCalling);
+
     if AMsg <> '' then
       TraceFull(AMsg, ATag, CurrentLevel, cmtTimeMarkStop, ADesc^.AccuTime)
     else
@@ -1668,7 +2518,7 @@ procedure TCnDebugger.TraceCollectionWithTag(ACollection: TCollection;
 {$IFNDEF NDEBUG}
 var
   List: TStringList;
-{$ENDIF}  
+{$ENDIF}
 begin
 {$IFNDEF NDEBUG}
   List := nil;
@@ -1679,7 +2529,7 @@ begin
     except
       List.Add(SCnObjException);
     end;
-    TraceMsgWithType(List.Text, cmtObject);
+    TraceMsgWithTypeTag(List.Text, cmtObject, ATag);
   finally
     List.Free;
   end;
@@ -1704,7 +2554,7 @@ procedure TCnDebugger.TraceComponentWithTag(AComponent: TComponent;
 {$IFNDEF NDEBUG}
 var
   InStream, OutStream: TMemoryStream;
-  ThrdID: DWORD;
+  ThrdID: LongWord;
 {$ENDIF}
 begin
 {$IFNDEF NDEBUG}
@@ -1718,8 +2568,8 @@ begin
       InStream.WriteComponent(AComponent);
       InStream.Seek(0, soFromBeginning);
       ObjectBinaryToText(InStream, OutStream);
-      ThrdID := GetCurrentThreadID;
-      InternalOutputMsg(AnsiString(OutStream.Memory), OutStream.Size, AnsiString(ATag), CurrentLevel,
+      ThrdID := GetCurrentThreadId;
+      InternalOutputMsg(PAnsiChar(OutStream.Memory), OutStream.Size, AnsiString(ATag), CurrentLevel,
         GetCurrentIndent(ThrdID), cmtComponent, ThrdID, 0);
     end
     else
@@ -1734,7 +2584,34 @@ end;
 procedure TCnDebugger.TraceEnter(const AProcName, ATag: string);
 begin
   TraceFull(SCnEnterProc + AProcName, ATag, CurrentLevel, cmtEnterProc);
+{$IFNDEF NDEBUG}
   IncIndent(GetCurrentThreadId);
+{$ENDIF}
+end;
+
+{$IFDEF SUPPORT_ENHANCED_RTTI}
+
+procedure TCnDebugger.TraceEnumType<T>(const AMsg: string);
+begin
+{$IFDEF DEBUG}
+  if AMsg = '' then
+    TraceMsg('EnumType: ' + GetEnumTypeStr<T>)
+  else
+    TraceFmt('%s %s', [AMsg, GetEnumTypeStr<T>]);
+{$ENDIF}
+end;
+
+{$ENDIF}
+
+procedure TCnDebugger.TraceException(E: Exception; const AMsg: string);
+begin
+  if not Assigned(E) then
+    Exit;
+
+  if AMsg = '' then
+    TraceFmt('%s %s - %s', [SCnException, E.ClassName, E.Message])
+  else
+    TraceFmt('%s %s - %s', [AMsg, E.ClassName, E.Message]);
 end;
 
 procedure TCnDebugger.TraceFloat(Value: Extended; const AMsg: string);
@@ -1773,14 +2650,23 @@ procedure TCnDebugger.TraceFull(const AMsg, ATag: string; ALevel: Integer;
   AType: TCnMsgType; CPUPeriod: Int64 = 0);
 {$IFNDEF NDEBUG}
 var
-  ThrdID: DWORD;
+  ThrdID: LongWord;
+{$IFDEF UNICODE}
+  Msg: AnsiString;
+{$ENDIF}
 {$ENDIF}
 begin
 {$IFNDEF NDEBUG}
   if AMsg = '' then Exit;
-  ThrdID := GetCurrentThreadID;
-  InternalOutputMsg(AnsiString(AMsg), Length(AnsiString(AMsg)), AnsiString(ATag),
+  ThrdID := GetCurrentThreadId;
+  {$IFDEF UNICODE}
+  Msg := AnsiString(AMsg);
+  InternalOutputMsg(PAnsiChar(Msg), Length(Msg), AnsiString(ATag),
     ALevel, GetCurrentIndent(ThrdID), AType, ThrdID, CPUPeriod);
+  {$ELSE}
+  InternalOutputMsg(PAnsiChar(AMsg), Length(AMsg), AnsiString(ATag),
+    ALevel, GetCurrentIndent(ThrdID), AType, ThrdID, CPUPeriod);
+  {$ENDIF}
 {$ENDIF}
 end;
 
@@ -1793,12 +2679,74 @@ begin
     TraceFmt('%s %d', [AMsg, Value]);
 end;
 
+procedure TCnDebugger.TraceInt64(Value: Int64; const AMsg: string);
+begin
+  if AMsg = '' then
+    TraceMsg(SCnInt64 + IntToStr(Value))
+  else
+    TraceFmt('%s %d', [AMsg, Value]);
+end;
+
+{$IFDEF SUPPORT_UINT64}
+
+procedure TCnDebugger.TraceUInt64(Value: UInt64; const AMsg: string);
+begin
+  if AMsg = '' then
+    LogFmt('%s%u', [SCnUInt64, Value])
+  else
+    LogFmt('%s %u', [AMsg, Value]);
+end;
+
+{$ENDIF}
+
+
 procedure TCnDebugger.TraceChar(Value: Char; const AMsg: string);
 begin
   if AMsg = '' then
     TraceFmt(SCnCharFmt, [Value, Ord(Value), Ord(Value)])
   else
+  begin
+{$IFDEF UNICODE}
+    TraceFmt('%s ''%s''(%d/$%4.4x)', [AMsg, Value, Ord(Value), Ord(Value)]);
+{$ELSE}
     TraceFmt('%s ''%s''(%d/$%2.2x)', [AMsg, Value, Ord(Value), Ord(Value)]);
+{$ENDIF}
+  end;
+end;
+
+procedure TCnDebugger.TraceAnsiChar(Value: AnsiChar; const AMsg: string = '');
+begin
+  if AMsg = '' then
+    TraceFmt(SCnAnsiCharFmt, [Value, Ord(Value), Ord(Value)])
+  else
+    TraceFmt('%s ''%s''(%d/$%2.2x)', [AMsg, Value, Ord(Value), Ord(Value)]);
+end;
+
+procedure TCnDebugger.TraceWideChar(Value: WideChar; const AMsg: string = '');
+begin
+  if AMsg = '' then
+    TraceFmt(SCnWideCharFmt, [Value, Ord(Value), Ord(Value)])
+  else
+    TraceFmt('%s ''%s''(%d/$%4.4x)', [AMsg, Value, Ord(Value), Ord(Value)]);
+end;
+
+procedure TCnDebugger.TraceSet(const ASet; ASetSize: Integer;
+  SetElementTypInfo: PTypeInfo; const AMsg: string);
+var
+  SetVal: Integer;
+begin
+  if (ASetSize <= 0) or (ASetSize > SizeOf(Integer)) then
+  begin
+    TraceException(EInvalidCast.Create(AMsg));
+    Exit;
+  end;
+
+  SetVal := 0;
+  Move(ASet, SetVal, ASetSize);
+  if AMsg = '' then
+    TraceMsg(GetSetStr(SetElementTypInfo, SetVal))
+  else
+    TraceFmt('%s %s', [AMsg, GetSetStr(SetElementTypInfo, SetVal)]);
 end;
 
 procedure TCnDebugger.TraceDateTime(Value: TDateTime; const AMsg: string = '' );
@@ -1827,22 +2775,44 @@ end;
 
 procedure TCnDebugger.TraceLeave(const AProcName, ATag: string);
 begin
+{$IFNDEF NDEBUG}
   DecIndent(GetCurrentThreadId);
+{$ENDIF}
   TraceFull(SCnLeaveProc + AProcName, ATag, CurrentLevel, cmtLeaveProc);
 end;
 
 procedure TCnDebugger.TraceMemDump(AMem: Pointer; Size: Integer);
 {$IFNDEF NDEBUG}
 var
-  ThrdID: DWORD;
+  ThrdID: LongWord;
 {$ENDIF}
 begin
 {$IFNDEF NDEBUG}
-  ThrdID := GetCurrentThreadID;
-  InternalOutputMsg(AnsiString(AMem), Size, AnsiString(CurrentTag), CurrentLevel, GetCurrentIndent(ThrdID),
+  ThrdID := GetCurrentThreadId;
+  InternalOutputMsg(PAnsiChar(AMem), Size, AnsiString(CurrentTag), CurrentLevel, GetCurrentIndent(ThrdID),
     cmtMemoryDump, ThrdID, 0);
 {$ENDIF}
 end;
+
+procedure TCnDebugger.TraceBitmapMemory(ABmp: TBitmap);
+{$IFNDEF NDEBUG}
+var
+  H, B: Integer;
+{$ENDIF}
+begin
+{$IFNDEF NDEBUG}
+  if (ABmp <> nil) and not (ABmp.Empty) then
+  begin
+    TraceFmt('Bmp Width %d, Height %d.', [ABmp.Width, ABmp.Height]);
+
+    B := GetBitmapPixelBytesCount(ABmp.PixelFormat);
+    for H := 0 to ABmp.Height - 1 do
+      TraceMemDump(ABmp.ScanLine[H], ABmp.Width * B);
+  end;
+{$ENDIF}
+end;
+
+{$IFDEF MSWINDOWS}
 
 procedure TCnDebugger.TraceVirtualKey(AKey: Word);
 begin
@@ -1853,6 +2823,18 @@ procedure TCnDebugger.TraceVirtualKeyWithTag(AKey: Word; const ATag: string);
 begin
   TraceFmtWithTag(SCnVirtualKeyFmt, [AKey, AKey, VirtualKeyToString(AKey)], ATag);
 end;
+
+procedure TCnDebugger.TraceWindowMessage(AMessage: Cardinal);
+begin
+  TraceWindowMessageWithTag(AMessage, CurrentTag);
+end;
+
+procedure TCnDebugger.TraceWindowMessageWithTag(AMessage: Cardinal; const ATag: string);
+begin
+  TraceMsgWithTag(WindowMessageToStr(AMessage), ATag);
+end;
+
+{$ENDIF}
 
 procedure TCnDebugger.TraceMsg(const AMsg: string);
 begin
@@ -1904,19 +2886,32 @@ procedure TCnDebugger.TraceObjectWithTag(AObject: TObject;
 {$IFNDEF NDEBUG}
 var
   List: TStringList;
-{$ENDIF}  
+  Intfs: string;
+{$ENDIF}
 begin
 {$IFNDEF NDEBUG}
+  if AObject = nil then
+  begin
+    TraceMsgWithTypeTag('Object: nil', cmtObject, ATag);
+    Exit;
+  end;
+
   List := nil;
   try
     List := TStringList.Create;
     try
       AddObjectToStringList(AObject, List, 0);
+      Intfs := FormatObjectInterface(AObject);
+      if Intfs <> '' then
+      begin
+        List.Add('Supports Interfaces:');
+        List.Add(Intfs);
+      end;
     except
       List.Add(SCnObjException);
     end;
-    TraceMsgWithType('Object: ' + IntToHex(Integer(AObject), 2) + SCnCRLF +
-      List.Text, cmtObject);
+    TraceMsgWithTypeTag('Object: ' + IntToHex(Integer(AObject), CN_HEX_DIGITS) + SCnCRLF +
+      List.Text, cmtObject, ATag);
   finally
     List.Free;
   end;
@@ -1931,6 +2926,14 @@ begin
     TraceFmt('%s %s', [AMsg, PointToString(Point)]);
 end;
 
+procedure TCnDebugger.TraceSize(Size: TSize; const AMsg: string);
+begin
+  if AMsg = '' then
+    TraceMsg(SCnSize + SizeToString(Size))
+  else
+    TraceFmt('%s %s', [AMsg, SizeToString(Size)]);
+end;
+
 procedure TCnDebugger.TraceRect(Rect: TRect; const AMsg: string);
 begin
   if AMsg = '' then
@@ -1939,13 +2942,50 @@ begin
     TraceFmt('%s %s', [AMsg, RectToString(Rect)]);
 end;
 
+procedure TCnDebugger.TraceBits(Bits: TBits; const AMsg: string = '');
+begin
+  if AMsg = '' then
+    TraceMsg(BitsToString(Bits))
+  else
+    TraceFmt('%s %s', [AMsg, BitsToString(Bits)]);
+end;
+
+procedure TCnDebugger.TraceGUID(const GUID: TGUID; const AMsg: string);
+begin
+  if AMsg = '' then
+    LogMsg(SCnGUID + GUIDToString(GUID))
+  else
+    LogFmt('%s %s', [AMsg, GUIDToString(GUID)]);
+end;
+
 procedure TCnDebugger.TraceSeparator;
 begin
   TraceFull('-', CurrentTag, CurrentLevel, cmtSeparator);
 end;
 
+procedure TCnDebugger.TraceRawString(const Value: string);
+begin
+  if Value <> '' then
+    TraceMemDump(Pointer(Value), Length(Value) * SizeOf(Char));
+end;
+
+procedure TCnDebugger.TraceRawAnsiString(const Value: AnsiString);
+begin
+  if Value <> '' then
+    TraceMemDump(Pointer(Value), Length(Value) * SizeOf(AnsiChar));
+end;
+
+procedure TCnDebugger.TraceRawWideString(const Value: WideString);
+begin
+  if Value <> '' then
+    TraceMemDump(Pointer(Value), Length(Value) * SizeOf(WideChar));
+end;
+
 procedure TCnDebugger.TraceStrings(Strings: TStrings; const AMsg: string);
 begin
+  if not Assigned(Strings) then
+    Exit;
+
   if AMsg = '' then
     TraceMsg(Strings.Text)
   else
@@ -1968,6 +3008,8 @@ begin
   TraceFull(AMsg, CurrentTag, CurrentLevel, cmtWarning);
 end;
 
+{$IFDEF MSWINDOWS}
+
 procedure TCnDebugger.TraceLastError;
 var
   ErrNo: Integer;
@@ -1979,24 +3021,95 @@ begin
   TraceErrorFmt(SCnLastErrorFmt, [ErrNo, Buf]);
 end;
 
+{$ENDIF}
+
+procedure TCnDebugger.TraceCurrentStack(const AMsg: string);
+{$IFDEF USE_JCL}
+var
+  Strings: TStrings;
+{$ENDIF}
+begin
+{$IFDEF USE_JCL}
+  Strings := nil;
+
+  try
+    Strings := TStringList.Create;
+    GetCurrentTrace(Strings);
+
+    TraceMsgWithType('Dump Call Stack: ' + AMsg + SCnCRLF + Strings.Text, cmtInformation);
+  finally
+    Strings.Free;
+  end;
+{$ENDIF}
+end;
+
+procedure TCnDebugger.TraceConstArray(const Arr: array of const;
+  const AMsg: string);
+begin
+  if AMsg = '' then
+    TraceFull(FormatMsg('%s %s', [SCnConstArray, FormatConstArray(Arr)]),
+      CurrentTag, CurrentLevel, CurrentMsgType)
+  else
+    TraceFull(FormatMsg('%s %s', [AMsg, FormatConstArray(Arr)]), CurrentTag,
+      CurrentLevel, CurrentMsgType);
+end;
+
 function TCnDebugger.GetDiscardedMessageCount: Integer;
 begin
+{$IFNDEF NDEBUG}
   Result := FMessageCount - FPostedMessageCount;
-end;
-
-procedure TCnDebugger.EvaluateObject(AObject: TObject);
-begin
-{$IFDEF SUPPORT_EVALUATE}
-  EvaluatePointer(AObject);
+{$ELSE}
+  Result := 0;
 {$ENDIF}
 end;
 
-procedure TCnDebugger.EvaluateObject(APointer: Pointer);
+procedure TCnDebugger.EvaluateObject(AObject: TObject; SyncMode: Boolean = False);
 begin
 {$IFDEF SUPPORT_EVALUATE}
-  EvaluatePointer(APointer);
+  EvaluatePointer(AObject, nil, nil, SyncMode);
 {$ENDIF}
 end;
+
+procedure TCnDebugger.EvaluateObject(APointer: Pointer; SyncMode: Boolean = False);
+begin
+{$IFDEF SUPPORT_EVALUATE}
+  EvaluatePointer(APointer, nil, nil, SyncMode);
+{$ENDIF}
+end;
+
+procedure TCnDebugger.EvaluateControlUnderPos(const ScreenPos: TPoint);
+{$IFDEF SUPPORT_EVALUATE}
+var
+  Control: TWinControl;
+{$ENDIF}
+begin
+{$IFDEF SUPPORT_EVALUATE}
+  Control := FindVCLWindow(ScreenPos);
+  if Control <> nil then
+    EvaluateObject(Control);
+{$ENDIF}
+end;
+
+// 移植自 A.Bouchez 的实现
+function TCnDebugger.ObjectFromInterface(const AIntf: IUnknown): TObject;
+begin
+  Result := nil;
+  if AIntf = nil then
+    Exit;
+
+{$IFDEF SUPPORT_INTERFACE_AS_OBJECT}
+  Result := AIntf as TObject;
+{$ELSE}
+  with PObjectFromInterfaceStub(PPointer(PPointer(AIntf)^)^)^ do
+  case Stub of
+    $04244483: Result := Pointer(Integer(AIntf) + ShortJmp);
+    $04244481: Result := Pointer(Integer(AIntf) + LongJmp);
+    else       Result := nil;
+  end;
+{$ENDIF}
+end;
+
+{$IFDEF MSWINDOWS}
 
 function TCnDebugger.VirtualKeyToString(AKey: Word): string;
 begin
@@ -2176,10 +3289,328 @@ begin
   end;
 end;
 
+function TCnDebugger.WindowMessageToStr(AMessage: Cardinal): string;
+begin
+  case AMessage of  // Windows Messages
+    WM_NULL                 : Result := Format('WM_NULL: %d/$%x', [AMessage, AMessage]);
+    WM_CREATE               : Result := Format('WM_CREATE: %d/$%x', [AMessage, AMessage]);
+    WM_DESTROY              : Result := Format('WM_DESTROY: %d/$%x', [AMessage, AMessage]);
+    WM_MOVE                 : Result := Format('WM_MOVE: %d/$%x', [AMessage, AMessage]);
+    WM_SIZE                 : Result := Format('WM_SIZE: %d/$%x', [AMessage, AMessage]);
+    WM_ACTIVATE             : Result := Format('WM_ACTIVATE: %d/$%x', [AMessage, AMessage]);
+    WM_SETFOCUS             : Result := Format('WM_SETFOCUS: %d/$%x', [AMessage, AMessage]);
+    WM_KILLFOCUS            : Result := Format('WM_KILLFOCUS: %d/$%x', [AMessage, AMessage]);
+    WM_ENABLE               : Result := Format('WM_ENABLE: %d/$%x', [AMessage, AMessage]);
+    WM_SETREDRAW            : Result := Format('WM_SETREDRAW: %d/$%x', [AMessage, AMessage]);
+    WM_SETTEXT              : Result := Format('WM_SETTEXT: %d/$%x', [AMessage, AMessage]);
+    WM_GETTEXT              : Result := Format('WM_GETTEXT: %d/$%x', [AMessage, AMessage]);
+    WM_GETTEXTLENGTH        : Result := Format('WM_GETTEXTLENGTH: %d/$%x', [AMessage, AMessage]);
+    WM_PAINT                : Result := Format('WM_PAINT: %d/$%x', [AMessage, AMessage]);
+    WM_CLOSE                : Result := Format('WM_CLOSE: %d/$%x', [AMessage, AMessage]);
+    WM_QUERYENDSESSION      : Result := Format('WM_QUERYENDSESSION: %d/$%x', [AMessage, AMessage]);
+    WM_QUIT                 : Result := Format('WM_QUIT: %d/$%x', [AMessage, AMessage]);
+    WM_QUERYOPEN            : Result := Format('WM_QUERYOPEN: %d/$%x', [AMessage, AMessage]);
+    WM_ERASEBKGND           : Result := Format('WM_ERASEBKGND: %d/$%x', [AMessage, AMessage]);
+    WM_SYSCOLORCHANGE       : Result := Format('WM_SYSCOLORCHANGE: %d/$%x', [AMessage, AMessage]);
+    WM_ENDSESSION           : Result := Format('WM_ENDSESSION: %d/$%x', [AMessage, AMessage]);
+    WM_SYSTEMERROR          : Result := Format('WM_SYSTEMERROR: %d/$%x', [AMessage, AMessage]);
+    WM_SHOWWINDOW           : Result := Format('WM_SHOWWINDOW: %d/$%x', [AMessage, AMessage]);
+    WM_CTLCOLOR             : Result := Format('WM_CTLCOLOR: %d/$%x', [AMessage, AMessage]);
+    WM_WININICHANGE         : Result := Format('WM_WININICHANGE/WM_SETTINGCHANGE: %d/$%x', [AMessage, AMessage]);
+    WM_DEVMODECHANGE        : Result := Format('WM_DEVMODECHANGE: %d/$%x', [AMessage, AMessage]);
+    WM_ACTIVATEAPP          : Result := Format('WM_ACTIVATEAPP: %d/$%x', [AMessage, AMessage]);
+    WM_FONTCHANGE           : Result := Format('WM_FONTCHANGE: %d/$%x', [AMessage, AMessage]);
+    WM_TIMECHANGE           : Result := Format('WM_TIMECHANGE: %d/$%x', [AMessage, AMessage]);
+    WM_CANCELMODE           : Result := Format('WM_CANCELMODE: %d/$%x', [AMessage, AMessage]);
+    WM_SETCURSOR            : Result := Format('WM_SETCURSOR: %d/$%x', [AMessage, AMessage]);
+    WM_MOUSEACTIVATE        : Result := Format('WM_MOUSEACTIVATE: %d/$%x', [AMessage, AMessage]);
+    WM_CHILDACTIVATE        : Result := Format('WM_CHILDACTIVATE: %d/$%x', [AMessage, AMessage]);
+    WM_QUEUESYNC            : Result := Format('WM_QUEUESYNC: %d/$%x', [AMessage, AMessage]);
+    WM_GETMINMAXINFO        : Result := Format('WM_GETMINMAXINFO: %d/$%x', [AMessage, AMessage]);
+    WM_PAINTICON            : Result := Format('WM_PAINTICON: %d/$%x', [AMessage, AMessage]);
+    WM_ICONERASEBKGND       : Result := Format('WM_ICONERASEBKGND: %d/$%x', [AMessage, AMessage]);
+    WM_NEXTDLGCTL           : Result := Format('WM_NEXTDLGCTL: %d/$%x', [AMessage, AMessage]);
+    WM_SPOOLERSTATUS        : Result := Format('WM_SPOOLERSTATUS: %d/$%x', [AMessage, AMessage]);
+    WM_DRAWITEM             : Result := Format('WM_DRAWITEM: %d/$%x', [AMessage, AMessage]);
+    WM_MEASUREITEM          : Result := Format('WM_MEASUREITEM: %d/$%x', [AMessage, AMessage]);
+    WM_DELETEITEM           : Result := Format('WM_DELETEITEM: %d/$%x', [AMessage, AMessage]);
+    WM_VKEYTOITEM           : Result := Format('WM_VKEYTOITEM: %d/$%x', [AMessage, AMessage]);
+    WM_CHARTOITEM           : Result := Format('WM_CHARTOITEM: %d/$%x', [AMessage, AMessage]);
+    WM_SETFONT              : Result := Format('WM_SETFONT: %d/$%x', [AMessage, AMessage]);
+    WM_GETFONT              : Result := Format('WM_GETFONT: %d/$%x', [AMessage, AMessage]);
+    WM_SETHOTKEY            : Result := Format('WM_SETHOTKEY: %d/$%x', [AMessage, AMessage]);
+    WM_GETHOTKEY            : Result := Format('WM_GETHOTKEY: %d/$%x', [AMessage, AMessage]);
+    WM_QUERYDRAGICON        : Result := Format('WM_QUERYDRAGICON: %d/$%x', [AMessage, AMessage]);
+    WM_COMPAREITEM          : Result := Format('WM_COMPAREITEM: %d/$%x', [AMessage, AMessage]);
+    WM_GETOBJECT            : Result := Format('WM_GETOBJECT: %d/$%x', [AMessage, AMessage]);
+    WM_COMPACTING           : Result := Format('WM_COMPACTING: %d/$%x', [AMessage, AMessage]);
+    WM_COMMNOTIFY           : Result := Format('WM_COMMNOTIFY: %d/$%x', [AMessage, AMessage]);
+    WM_WINDOWPOSCHANGING    : Result := Format('WM_WINDOWPOSCHANGING: %d/$%x', [AMessage, AMessage]);
+    WM_WINDOWPOSCHANGED     : Result := Format('WM_WINDOWPOSCHANGED: %d/$%x', [AMessage, AMessage]);
+    WM_POWER                : Result := Format('WM_POWER: %d/$%x', [AMessage, AMessage]);
+    WM_COPYDATA             : Result := Format('WM_COPYDATA: %d/$%x', [AMessage, AMessage]);
+    WM_CANCELJOURNAL        : Result := Format('WM_CANCELJOURNAL: %d/$%x', [AMessage, AMessage]);
+    WM_NOTIFY               : Result := Format('WM_NOTIFY: %d/$%x', [AMessage, AMessage]);
+    WM_INPUTLANGCHANGEREQUEST: Result := Format('WM_INPUTLANGCHANGEREQUEST: %d/$%x', [AMessage, AMessage]);
+    WM_INPUTLANGCHANGE      : Result := Format('WM_INPUTLANGCHANGE: %d/$%x', [AMessage, AMessage]);
+    WM_TCARD                : Result := Format('WM_TCARD: %d/$%x', [AMessage, AMessage]);
+    WM_HELP                 : Result := Format('WM_HELP: %d/$%x', [AMessage, AMessage]);
+    WM_USERCHANGED          : Result := Format('WM_USERCHANGED: %d/$%x', [AMessage, AMessage]);
+    WM_NOTIFYFORMAT         : Result := Format('WM_NOTIFYFORMAT: %d/$%x', [AMessage, AMessage]);
+    WM_CONTEXTMENU          : Result := Format('WM_CONTEXTMENU: %d/$%x', [AMessage, AMessage]);
+    WM_STYLECHANGING        : Result := Format('WM_STYLECHANGING: %d/$%x', [AMessage, AMessage]);
+    WM_STYLECHANGED         : Result := Format('WM_STYLECHANGED: %d/$%x', [AMessage, AMessage]);
+    WM_DISPLAYCHANGE        : Result := Format('WM_DISPLAYCHANGE: %d/$%x', [AMessage, AMessage]);
+    WM_GETICON              : Result := Format('WM_GETICON: %d/$%x', [AMessage, AMessage]);
+    WM_SETICON              : Result := Format('WM_SETICON: %d/$%x', [AMessage, AMessage]);
+    WM_NCCREATE             : Result := Format('WM_NCCREATE: %d/$%x', [AMessage, AMessage]);
+    WM_NCDESTROY            : Result := Format('WM_NCDESTROY: %d/$%x', [AMessage, AMessage]);
+    WM_NCCALCSIZE           : Result := Format('WM_NCCALCSIZE: %d/$%x', [AMessage, AMessage]);
+    WM_NCHITTEST            : Result := Format('WM_NCHITTEST: %d/$%x', [AMessage, AMessage]);
+    WM_NCPAINT              : Result := Format('WM_NCPAINT: %d/$%x', [AMessage, AMessage]);
+    WM_NCACTIVATE           : Result := Format('WM_NCACTIVATE: %d/$%x', [AMessage, AMessage]);
+    WM_GETDLGCODE           : Result := Format('WM_GETDLGCODE: %d/$%x', [AMessage, AMessage]);
+    WM_NCMOUSEMOVE          : Result := Format('WM_NCMOUSEMOVE: %d/$%x', [AMessage, AMessage]);
+    WM_NCLBUTTONDOWN        : Result := Format('WM_NCLBUTTONDOWN: %d/$%x', [AMessage, AMessage]);
+    WM_NCLBUTTONUP          : Result := Format('WM_NCLBUTTONUP: %d/$%x', [AMessage, AMessage]);
+    WM_NCLBUTTONDBLCLK      : Result := Format('WM_NCLBUTTONDBLCLK: %d/$%x', [AMessage, AMessage]);
+    WM_NCRBUTTONDOWN        : Result := Format('WM_NCRBUTTONDOWN: %d/$%x', [AMessage, AMessage]);
+    WM_NCRBUTTONUP          : Result := Format('WM_NCRBUTTONUP: %d/$%x', [AMessage, AMessage]);
+    WM_NCRBUTTONDBLCLK      : Result := Format('WM_NCRBUTTONDBLCLK: %d/$%x', [AMessage, AMessage]);
+    WM_NCMBUTTONDOWN        : Result := Format('WM_NCMBUTTONDOWN: %d/$%x', [AMessage, AMessage]);
+    WM_NCMBUTTONUP          : Result := Format('WM_NCMBUTTONUP: %d/$%x', [AMessage, AMessage]);
+    WM_NCMBUTTONDBLCLK      : Result := Format('WM_NCMBUTTONDBLCLK: %d/$%x', [AMessage, AMessage]);
+    WM_KEYDOWN              : Result := Format('WM_KEYDOWN: %d/$%x', [AMessage, AMessage]);
+    WM_KEYUP                : Result := Format('WM_KEYUP: %d/$%x', [AMessage, AMessage]);
+    WM_CHAR                 : Result := Format('WM_CHAR: %d/$%x', [AMessage, AMessage]);
+    WM_DEADCHAR             : Result := Format('WM_DEADCHAR: %d/$%x', [AMessage, AMessage]);
+    WM_SYSKEYDOWN           : Result := Format('WM_SYSKEYDOWN: %d/$%x', [AMessage, AMessage]);
+    WM_SYSKEYUP             : Result := Format('WM_SYSKEYUP: %d/$%x', [AMessage, AMessage]);
+    WM_SYSCHAR              : Result := Format('WM_SYSCHAR: %d/$%x', [AMessage, AMessage]);
+    WM_SYSDEADCHAR          : Result := Format('WM_SYSDEADCHAR: %d/$%x', [AMessage, AMessage]);
+    WM_KEYLAST              : Result := Format('WM_KEYLAST: %d/$%x', [AMessage, AMessage]);
+    WM_INITDIALOG           : Result := Format('WM_INITDIALOG: %d/$%x', [AMessage, AMessage]);
+    WM_COMMAND              : Result := Format('WM_COMMAND: %d/$%x', [AMessage, AMessage]);
+    WM_SYSCOMMAND           : Result := Format('WM_SYSCOMMAND: %d/$%x', [AMessage, AMessage]);
+    WM_TIMER                : Result := Format('WM_TIMER: %d/$%x', [AMessage, AMessage]);
+    WM_HSCROLL              : Result := Format('WM_HSCROLL: %d/$%x', [AMessage, AMessage]);
+    WM_VSCROLL              : Result := Format('WM_VSCROLL: %d/$%x', [AMessage, AMessage]);
+    WM_INITMENU             : Result := Format('WM_INITMENU: %d/$%x', [AMessage, AMessage]);
+    WM_INITMENUPOPUP        : Result := Format('WM_INITMENUPOPUP: %d/$%x', [AMessage, AMessage]);
+    WM_MENUSELECT           : Result := Format('WM_MENUSELECT: %d/$%x', [AMessage, AMessage]);
+    WM_MENUCHAR             : Result := Format('WM_MENUCHAR: %d/$%x', [AMessage, AMessage]);
+    WM_ENTERIDLE            : Result := Format('WM_ENTERIDLE: %d/$%x', [AMessage, AMessage]);
+    WM_MENURBUTTONUP        : Result := Format('WM_MENURBUTTONUP: %d/$%x', [AMessage, AMessage]);
+    WM_MENUDRAG             : Result := Format('WM_MENUDRAG: %d/$%x', [AMessage, AMessage]);
+    WM_MENUGETOBJECT        : Result := Format('WM_MENUGETOBJECT: %d/$%x', [AMessage, AMessage]);
+    WM_UNINITMENUPOPUP      : Result := Format('WM_UNINITMENUPOPUP: %d/$%x', [AMessage, AMessage]);
+    WM_MENUCOMMAND          : Result := Format('WM_MENUCOMMAND: %d/$%x', [AMessage, AMessage]);
+    WM_CHANGEUISTATE        : Result := Format('WM_CHANGEUISTATE: %d/$%x', [AMessage, AMessage]);
+    WM_UPDATEUISTATE        : Result := Format('WM_UPDATEUISTATE: %d/$%x', [AMessage, AMessage]);
+    WM_QUERYUISTATE         : Result := Format('WM_QUERYUISTATE: %d/$%x', [AMessage, AMessage]);
+    WM_CTLCOLORMSGBOX       : Result := Format('WM_CTLCOLORMSGBOX: %d/$%x', [AMessage, AMessage]);
+    WM_CTLCOLOREDIT         : Result := Format('WM_CTLCOLOREDIT: %d/$%x', [AMessage, AMessage]);
+    WM_CTLCOLORLISTBOX      : Result := Format('WM_CTLCOLORLISTBOX: %d/$%x', [AMessage, AMessage]);
+    WM_CTLCOLORBTN          : Result := Format('WM_CTLCOLORBTN: %d/$%x', [AMessage, AMessage]);
+    WM_CTLCOLORDLG          : Result := Format('WM_CTLCOLORDLG: %d/$%x', [AMessage, AMessage]);
+    WM_CTLCOLORSCROLLBAR    : Result := Format('WM_CTLCOLORSCROLLBAR: %d/$%x', [AMessage, AMessage]);
+    WM_CTLCOLORSTATIC       : Result := Format('WM_CTLCOLORSTATIC: %d/$%x', [AMessage, AMessage]);
+    WM_MOUSEMOVE            : Result := Format('WM_MOUSEMOVE: %d/$%x', [AMessage, AMessage]);
+    WM_LBUTTONDOWN          : Result := Format('WM_LBUTTONDOWN: %d/$%x', [AMessage, AMessage]);
+    WM_LBUTTONUP            : Result := Format('WM_LBUTTONUP: %d/$%x', [AMessage, AMessage]);
+    WM_LBUTTONDBLCLK        : Result := Format('WM_LBUTTONDBLCLK: %d/$%x', [AMessage, AMessage]);
+    WM_RBUTTONDOWN          : Result := Format('WM_RBUTTONDOWN: %d/$%x', [AMessage, AMessage]);
+    WM_RBUTTONUP            : Result := Format('WM_RBUTTONUP: %d/$%x', [AMessage, AMessage]);
+    WM_RBUTTONDBLCLK        : Result := Format('WM_RBUTTONDBLCLK: %d/$%x', [AMessage, AMessage]);
+    WM_MBUTTONDOWN          : Result := Format('WM_MBUTTONDOWN: %d/$%x', [AMessage, AMessage]);
+    WM_MBUTTONUP            : Result := Format('WM_MBUTTONUP: %d/$%x', [AMessage, AMessage]);
+    WM_MBUTTONDBLCLK        : Result := Format('WM_MBUTTONDBLCLK: %d/$%x', [AMessage, AMessage]);
+    WM_MOUSEWHEEL           : Result := Format('WM_MOUSEWHEEL: %d/$%x', [AMessage, AMessage]);
+    WM_PARENTNOTIFY         : Result := Format('WM_PARENTNOTIFY: %d/$%x', [AMessage, AMessage]);
+    WM_ENTERMENULOOP        : Result := Format('WM_ENTERMENULOOP: %d/$%x', [AMessage, AMessage]);
+    WM_EXITMENULOOP         : Result := Format('WM_EXITMENULOOP: %d/$%x', [AMessage, AMessage]);
+    WM_NEXTMENU             : Result := Format('WM_NEXTMENU: %d/$%x', [AMessage, AMessage]);
+    WM_SIZING               : Result := Format('WM_SIZING: %d/$%x', [AMessage, AMessage]);
+    WM_CAPTURECHANGED       : Result := Format('WM_CAPTURECHANGED: %d/$%x', [AMessage, AMessage]);
+    WM_MOVING               : Result := Format('WM_MOVING: %d/$%x', [AMessage, AMessage]);
+    WM_POWERBROADCAST       : Result := Format('WM_POWERBROADCAST: %d/$%x', [AMessage, AMessage]);
+    WM_DEVICECHANGE         : Result := Format('WM_DEVICECHANGE: %d/$%x', [AMessage, AMessage]);
+    WM_IME_STARTCOMPOSITION : Result := Format('WM_IME_STARTCOMPOSITION: %d/$%x', [AMessage, AMessage]);
+    WM_IME_ENDCOMPOSITION   : Result := Format('WM_IME_ENDCOMPOSITION: %d/$%x', [AMessage, AMessage]);
+    WM_IME_COMPOSITION      : Result := Format('WM_IME_COMPOSITION: %d/$%x', [AMessage, AMessage]);
+    WM_IME_SETCONTEXT       : Result := Format('WM_IME_SETCONTEXT: %d/$%x', [AMessage, AMessage]);
+    WM_IME_NOTIFY           : Result := Format('WM_IME_NOTIFY: %d/$%x', [AMessage, AMessage]);
+    WM_IME_CONTROL          : Result := Format('WM_IME_CONTROL: %d/$%x', [AMessage, AMessage]);
+    WM_IME_COMPOSITIONFULL  : Result := Format('WM_IME_COMPOSITIONFULL: %d/$%x', [AMessage, AMessage]);
+    WM_IME_SELECT           : Result := Format('WM_IME_SELECT: %d/$%x', [AMessage, AMessage]);
+    WM_IME_CHAR             : Result := Format('WM_IME_CHAR: %d/$%x', [AMessage, AMessage]);
+    WM_IME_REQUEST          : Result := Format('WM_IME_REQUEST: %d/$%x', [AMessage, AMessage]);
+    WM_IME_KEYDOWN          : Result := Format('WM_IME_KEYDOWN: %d/$%x', [AMessage, AMessage]);
+    WM_IME_KEYUP            : Result := Format('WM_IME_KEYUP: %d/$%x', [AMessage, AMessage]);
+    WM_MDICREATE            : Result := Format('WM_MDICREATE: %d/$%x', [AMessage, AMessage]);
+    WM_MDIDESTROY           : Result := Format('WM_MDIDESTROY: %d/$%x', [AMessage, AMessage]);
+    WM_MDIACTIVATE          : Result := Format('WM_MDIACTIVATE: %d/$%x', [AMessage, AMessage]);
+    WM_MDIRESTORE           : Result := Format('WM_MDIRESTORE: %d/$%x', [AMessage, AMessage]);
+    WM_MDINEXT              : Result := Format('WM_MDINEXT: %d/$%x', [AMessage, AMessage]);
+    WM_MDIMAXIMIZE          : Result := Format('WM_MDIMAXIMIZE: %d/$%x', [AMessage, AMessage]);
+    WM_MDITILE              : Result := Format('WM_MDITILE: %d/$%x', [AMessage, AMessage]);
+    WM_MDICASCADE           : Result := Format('WM_MDICASCADE: %d/$%x', [AMessage, AMessage]);
+    WM_MDIICONARRANGE       : Result := Format('WM_MDIICONARRANGE: %d/$%x', [AMessage, AMessage]);
+    WM_MDIGETACTIVE         : Result := Format('WM_MDIGETACTIVE: %d/$%x', [AMessage, AMessage]);
+    WM_MDISETMENU           : Result := Format('WM_MDISETMENU: %d/$%x', [AMessage, AMessage]);
+    WM_ENTERSIZEMOVE        : Result := Format('WM_ENTERSIZEMOVE: %d/$%x', [AMessage, AMessage]);
+    WM_EXITSIZEMOVE         : Result := Format('WM_EXITSIZEMOVE: %d/$%x', [AMessage, AMessage]);
+    WM_DROPFILES            : Result := Format('WM_DROPFILES: %d/$%x', [AMessage, AMessage]);
+    WM_MDIREFRESHMENU       : Result := Format('WM_MDIREFRESHMENU: %d/$%x', [AMessage, AMessage]);
+    WM_MOUSEHOVER           : Result := Format('WM_MOUSEHOVER: %d/$%x', [AMessage, AMessage]);
+    WM_MOUSELEAVE           : Result := Format('WM_MOUSELEAVE: %d/$%x', [AMessage, AMessage]);
+    WM_CUT                  : Result := Format('WM_CUT: %d/$%x', [AMessage, AMessage]);
+    WM_COPY                 : Result := Format('WM_COPY: %d/$%x', [AMessage, AMessage]);
+    WM_PASTE                : Result := Format('WM_PASTE: %d/$%x', [AMessage, AMessage]);
+    WM_CLEAR                : Result := Format('WM_CLEAR: %d/$%x', [AMessage, AMessage]);
+    WM_UNDO                 : Result := Format('WM_UNDO: %d/$%x', [AMessage, AMessage]);
+    WM_RENDERFORMAT         : Result := Format('WM_RENDERFORMAT: %d/$%x', [AMessage, AMessage]);
+    WM_RENDERALLFORMATS     : Result := Format('WM_RENDERALLFORMATS: %d/$%x', [AMessage, AMessage]);
+    WM_DESTROYCLIPBOARD     : Result := Format('WM_DESTROYCLIPBOARD: %d/$%x', [AMessage, AMessage]);
+    WM_DRAWCLIPBOARD        : Result := Format('WM_DRAWCLIPBOARD: %d/$%x', [AMessage, AMessage]);
+    WM_PAINTCLIPBOARD       : Result := Format('WM_PAINTCLIPBOARD: %d/$%x', [AMessage, AMessage]);
+    WM_VSCROLLCLIPBOARD     : Result := Format('WM_VSCROLLCLIPBOARD: %d/$%x', [AMessage, AMessage]);
+    WM_SIZECLIPBOARD        : Result := Format('WM_SIZECLIPBOARD: %d/$%x', [AMessage, AMessage]);
+    WM_ASKCBFORMATNAME      : Result := Format('WM_ASKCBFORMATNAME: %d/$%x', [AMessage, AMessage]);
+    WM_CHANGECBCHAIN        : Result := Format('WM_CHANGECBCHAIN: %d/$%x', [AMessage, AMessage]);
+    WM_HSCROLLCLIPBOARD     : Result := Format('WM_HSCROLLCLIPBOARD: %d/$%x', [AMessage, AMessage]);
+    WM_QUERYNEWPALETTE      : Result := Format('WM_QUERYNEWPALETTE: %d/$%x', [AMessage, AMessage]);
+    WM_PALETTEISCHANGING    : Result := Format('WM_PALETTEISCHANGING: %d/$%x', [AMessage, AMessage]);
+    WM_PALETTECHANGED       : Result := Format('WM_PALETTECHANGED: %d/$%x', [AMessage, AMessage]);
+    WM_HOTKEY               : Result := Format('WM_HOTKEY: %d/$%x', [AMessage, AMessage]);
+    WM_PRINT                : Result := Format('WM_PRINT: %d/$%x', [AMessage, AMessage]);
+    WM_PRINTCLIENT          : Result := Format('WM_PRINTCLIENT: %d/$%x', [AMessage, AMessage]);
+    WM_HANDHELDFIRST        : Result := Format('WM_HANDHELDFIRST: %d/$%x', [AMessage, AMessage]);
+    WM_HANDHELDLAST         : Result := Format('WM_HANDHELDLAST: %d/$%x', [AMessage, AMessage]);
+    WM_PENWINFIRST          : Result := Format('WM_PENWINFIRST: %d/$%x', [AMessage, AMessage]);
+    WM_PENWINLAST           : Result := Format('WM_PENWINLAST: %d/$%x', [AMessage, AMessage]);
+    WM_COALESCE_FIRST       : Result := Format('WM_COALESCE_FIRST: %d/$%x', [AMessage, AMessage]);
+    WM_COALESCE_LAST        : Result := Format('WM_COALESCE_LAST: %d/$%x', [AMessage, AMessage]);
+    WM_DDE_INITIATE         : Result := Format('WM_DDE_INITIATE: %d/$%x', [AMessage, AMessage]);
+    WM_DDE_TERMINATE        : Result := Format('WM_DDE_TERMINATE: %d/$%x', [AMessage, AMessage]);
+    WM_DDE_ADVISE           : Result := Format('WM_DDE_ADVISE: %d/$%x', [AMessage, AMessage]);
+    WM_DDE_UNADVISE         : Result := Format('WM_DDE_UNADVISE: %d/$%x', [AMessage, AMessage]);
+    WM_DDE_ACK              : Result := Format('WM_DDE_ACK: %d/$%x', [AMessage, AMessage]);
+    WM_DDE_DATA             : Result := Format('WM_DDE_DATA: %d/$%x', [AMessage, AMessage]);
+    WM_DDE_REQUEST          : Result := Format('WM_DDE_REQUEST: %d/$%x', [AMessage, AMessage]);
+    WM_DDE_POKE             : Result := Format('WM_DDE_POKE: %d/$%x', [AMessage, AMessage]);
+    WM_DDE_EXECUTE          : Result := Format('WM_DDE_EXECUTE: %d/$%x', [AMessage, AMessage]);
+    WM_APP                  : Result := Format('WM_APP: %d/$%x', [AMessage, AMessage]);
+    WM_USER                 : Result := Format('WM_USER: %d/$%x', [AMessage, AMessage]);
+    // VCL Control Messages
+    // CM_BASE                 : Result := Format('CM_BASE: %d/$%x', [AMessage, AMessage]);
+    CM_ACTIVATE             : Result := Format('CM_ACTIVATE: %d/$%x', [AMessage, AMessage]);
+    CM_DEACTIVATE           : Result := Format('CM_DEACTIVATE: %d/$%x', [AMessage, AMessage]);
+    CM_GOTFOCUS             : Result := Format('CM_GOTFOCUS: %d/$%x', [AMessage, AMessage]);
+    CM_LOSTFOCUS            : Result := Format('CM_LOSTFOCUS: %d/$%x', [AMessage, AMessage]);
+    CM_CANCELMODE           : Result := Format('CM_CANCELMODE: %d/$%x', [AMessage, AMessage]);
+    CM_DIALOGKEY            : Result := Format('CM_DIALOGKEY: %d/$%x', [AMessage, AMessage]);
+    CM_DIALOGCHAR           : Result := Format('CM_DIALOGCHAR: %d/$%x', [AMessage, AMessage]);
+    CM_FOCUSCHANGED         : Result := Format('CM_FOCUSCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_PARENTFONTCHANGED    : Result := Format('CM_PARENTFONTCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_PARENTCOLORCHANGED   : Result := Format('CM_PARENTCOLORCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_HITTEST              : Result := Format('CM_HITTEST: %d/$%x', [AMessage, AMessage]);
+    CM_VISIBLECHANGED       : Result := Format('CM_VISIBLECHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_ENABLEDCHANGED       : Result := Format('CM_ENABLEDCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_COLORCHANGED         : Result := Format('CM_COLORCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_FONTCHANGED          : Result := Format('CM_FONTCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_CURSORCHANGED        : Result := Format('CM_CURSORCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_CTL3DCHANGED         : Result := Format('CM_CTL3DCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_PARENTCTL3DCHANGED   : Result := Format('CM_PARENTCTL3DCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_TEXTCHANGED          : Result := Format('CM_TEXTCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_MOUSEENTER           : Result := Format('CM_MOUSEENTER: %d/$%x', [AMessage, AMessage]);
+    CM_MOUSELEAVE           : Result := Format('CM_MOUSELEAVE: %d/$%x', [AMessage, AMessage]);
+    CM_MENUCHANGED          : Result := Format('CM_MENUCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_APPKEYDOWN           : Result := Format('CM_APPKEYDOWN: %d/$%x', [AMessage, AMessage]);
+    CM_APPSYSCOMMAND        : Result := Format('CM_APPSYSCOMMAND: %d/$%x', [AMessage, AMessage]);
+    CM_BUTTONPRESSED        : Result := Format('CM_BUTTONPRESSED: %d/$%x', [AMessage, AMessage]);
+    CM_SHOWINGCHANGED       : Result := Format('CM_SHOWINGCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_ENTER                : Result := Format('CM_ENTER: %d/$%x', [AMessage, AMessage]);
+    CM_EXIT                 : Result := Format('CM_EXIT: %d/$%x', [AMessage, AMessage]);
+    CM_DESIGNHITTEST        : Result := Format('CM_DESIGNHITTEST: %d/$%x', [AMessage, AMessage]);
+    CM_ICONCHANGED          : Result := Format('CM_ICONCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_WANTSPECIALKEY       : Result := Format('CM_WANTSPECIALKEY: %d/$%x', [AMessage, AMessage]);
+    CM_INVOKEHELP           : Result := Format('CM_INVOKEHELP: %d/$%x', [AMessage, AMessage]);
+    CM_WINDOWHOOK           : Result := Format('CM_WINDOWHOOK: %d/$%x', [AMessage, AMessage]);
+    CM_RELEASE              : Result := Format('CM_RELEASE: %d/$%x', [AMessage, AMessage]);
+    CM_SHOWHINTCHANGED      : Result := Format('CM_SHOWHINTCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_PARENTSHOWHINTCHANGED: Result := Format('CM_PARENTSHOWHINTCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_SYSCOLORCHANGE       : Result := Format('CM_SYSCOLORCHANGE: %d/$%x', [AMessage, AMessage]);
+    CM_WININICHANGE         : Result := Format('CM_WININICHANGE: %d/$%x', [AMessage, AMessage]);
+    CM_FONTCHANGE           : Result := Format('CM_FONTCHANGE: %d/$%x', [AMessage, AMessage]);
+    CM_TIMECHANGE           : Result := Format('CM_TIMECHANGE: %d/$%x', [AMessage, AMessage]);
+    CM_TABSTOPCHANGED       : Result := Format('CM_TABSTOPCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_UIACTIVATE           : Result := Format('CM_UIACTIVATE: %d/$%x', [AMessage, AMessage]);
+    CM_UIDEACTIVATE         : Result := Format('CM_UIDEACTIVATE: %d/$%x', [AMessage, AMessage]);
+    CM_DOCWINDOWACTIVATE    : Result := Format('CM_DOCWINDOWACTIVATE: %d/$%x', [AMessage, AMessage]);
+    CM_CONTROLLISTCHANGE    : Result := Format('CM_CONTROLLISTCHANGE: %d/$%x', [AMessage, AMessage]);
+    CM_GETDATALINK          : Result := Format('CM_GETDATALINK: %d/$%x', [AMessage, AMessage]);
+    CM_CHILDKEY             : Result := Format('CM_CHILDKEY: %d/$%x', [AMessage, AMessage]);
+    CM_DRAG                 : Result := Format('CM_DRAG: %d/$%x', [AMessage, AMessage]);
+    CM_HINTSHOW             : Result := Format('CM_HINTSHOW: %d/$%x', [AMessage, AMessage]);
+    CM_DIALOGHANDLE         : Result := Format('CM_DIALOGHANDLE: %d/$%x', [AMessage, AMessage]);
+    CM_ISTOOLCONTROL        : Result := Format('CM_ISTOOLCONTROL: %d/$%x', [AMessage, AMessage]);
+    CM_RECREATEWND          : Result := Format('CM_RECREATEWND: %d/$%x', [AMessage, AMessage]);
+    CM_INVALIDATE           : Result := Format('CM_INVALIDATE: %d/$%x', [AMessage, AMessage]);
+    CM_SYSFONTCHANGED       : Result := Format('CM_SYSFONTCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_CONTROLCHANGE        : Result := Format('CM_CONTROLCHANGE: %d/$%x', [AMessage, AMessage]);
+    CM_CHANGED              : Result := Format('CM_CHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_DOCKCLIENT           : Result := Format('CM_DOCKCLIENT: %d/$%x', [AMessage, AMessage]);
+    CM_UNDOCKCLIENT         : Result := Format('CM_UNDOCKCLIENT: %d/$%x', [AMessage, AMessage]);
+    CM_FLOAT                : Result := Format('CM_FLOAT: %d/$%x', [AMessage, AMessage]);
+    CM_BORDERCHANGED        : Result := Format('CM_BORDERCHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_BIDIMODECHANGED      : Result := Format('CM_BIDIMODECHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_PARENTBIDIMODECHANGED: Result := Format('CM_PARENTBIDIMODECHANGED: %d/$%x', [AMessage, AMessage]);
+    CM_ALLCHILDRENFLIPPED   : Result := Format('CM_ALLCHILDRENFLIPPED: %d/$%x', [AMessage, AMessage]);
+    CM_ACTIONUPDATE         : Result := Format('CM_ACTIONUPDATE: %d/$%x', [AMessage, AMessage]);
+    CM_ACTIONEXECUTE        : Result := Format('CM_ACTIONEXECUTE: %d/$%x', [AMessage, AMessage]);
+    CM_HINTSHOWPAUSE        : Result := Format('CM_HINTSHOWPAUSE: %d/$%x', [AMessage, AMessage]);
+    CM_DOCKNOTIFICATION     : Result := Format('CM_DOCKNOTIFICATION: %d/$%x', [AMessage, AMessage]);
+    CM_MOUSEWHEEL           : Result := Format('CM_MOUSEWHEEL: %d/$%x', [AMessage, AMessage]);
+    // VCL Control Notifications
+    CN_BASE                 : Result := Format('CN_BASE: %d/$%x', [AMessage, AMessage]);
+    CN_CHARTOITEM           : Result := Format('CN_CHARTOITEM: %d/$%x', [AMessage, AMessage]);
+    CN_COMMAND              : Result := Format('CN_COMMAND: %d/$%x', [AMessage, AMessage]);
+    CN_COMPAREITEM          : Result := Format('CN_COMPAREITEM: %d/$%x', [AMessage, AMessage]);
+    CN_CTLCOLORBTN          : Result := Format('CN_CTLCOLORBTN: %d/$%x', [AMessage, AMessage]);
+    CN_CTLCOLORDLG          : Result := Format('CN_CTLCOLORDLG: %d/$%x', [AMessage, AMessage]);
+    CN_CTLCOLOREDIT         : Result := Format('CN_CTLCOLOREDIT: %d/$%x', [AMessage, AMessage]);
+    CN_CTLCOLORLISTBOX      : Result := Format('CN_CTLCOLORLISTBOX: %d/$%x', [AMessage, AMessage]);
+    CN_CTLCOLORMSGBOX       : Result := Format('CN_CTLCOLORMSGBOX: %d/$%x', [AMessage, AMessage]);
+    CN_CTLCOLORSCROLLBAR    : Result := Format('CN_CTLCOLORSCROLLBAR: %d/$%x', [AMessage, AMessage]);
+    CN_CTLCOLORSTATIC       : Result := Format('CN_CTLCOLORSTATIC: %d/$%x', [AMessage, AMessage]);
+    CN_DELETEITEM           : Result := Format('CN_DELETEITEM: %d/$%x', [AMessage, AMessage]);
+    CN_DRAWITEM             : Result := Format('CN_DRAWITEM: %d/$%x', [AMessage, AMessage]);
+    CN_HSCROLL              : Result := Format('CN_HSCROLL: %d/$%x', [AMessage, AMessage]);
+    CN_MEASUREITEM          : Result := Format('CN_MEASUREITEM: %d/$%x', [AMessage, AMessage]);
+    CN_PARENTNOTIFY         : Result := Format('CN_PARENTNOTIFY: %d/$%x', [AMessage, AMessage]);
+    CN_VKEYTOITEM           : Result := Format('CN_VKEYTOITEM: %d/$%x', [AMessage, AMessage]);
+    CN_VSCROLL              : Result := Format('CN_VSCROLL: %d/$%x', [AMessage, AMessage]);
+    CN_KEYDOWN              : Result := Format('CN_KEYDOWN: %d/$%x', [AMessage, AMessage]);
+    CN_KEYUP                : Result := Format('CN_KEYUP: %d/$%x', [AMessage, AMessage]);
+    CN_CHAR                 : Result := Format('CN_CHAR: %d/$%x', [AMessage, AMessage]);
+    CN_SYSKEYDOWN           : Result := Format('CN_SYSKEYDOWN: %d/$%x', [AMessage, AMessage]);
+    CN_SYSCHAR              : Result := Format('CN_SYSCHAR: %d/$%x', [AMessage, AMessage]);
+    CN_NOTIFY               : Result := Format('CN_NOTIFY: %d/$%x', [AMessage, AMessage]);
+  else
+    Result := Format('Unknown Window Message: %d/$%x', [AMessage, AMessage]);
+  end
+end;
+
+{$ENDIF}
+
 procedure TCnDebugger.SetDumpFileName(const Value: string);
+{$IFNDEF NDEBUG}
 var
   Mode: Word;
+{$ENDIF}
 begin
+{$IFNDEF NDEBUG}
   if FDumpFileName <> Value then
   begin
     FDumpFileName := Value;
@@ -2206,12 +3637,16 @@ begin
         FDumpFile.Seek(0, soFromBeginning); // 移动到开头
     end;
   end;
+{$ENDIF}
 end;
 
 procedure TCnDebugger.SetDumpToFile(const Value: Boolean);
+{$IFNDEF NDEBUG}
 var
   Mode: Word;
+{$ENDIF}
 begin
+{$IFNDEF NDEBUG}
   if FDumptoFile <> Value then
   begin
     FDumpToFile := Value;
@@ -2246,7 +3681,691 @@ begin
       FreeAndNil(FDumpFile);
     end;
   end;
+{$ENDIF}
 end;
+
+function TCnDebugger.GetAutoStart: Boolean;
+begin
+{$IFNDEF NDEBUG}
+  Result := FAutoStart;
+{$ELSE}
+  Result := False;
+{$ENDIF}
+end;
+
+function TCnDebugger.GetChannel: TCnDebugChannel;
+begin
+{$IFNDEF NDEBUG}
+  Result := FChannel;
+{$ELSE}
+  Result := nil;
+{$ENDIF}
+end;
+
+function TCnDebugger.GetDumpFileName: string;
+begin
+{$IFNDEF NDEBUG}
+  Result := FDumpFileName;
+{$ELSE}
+  Result := '';
+{$ENDIF}
+end;
+
+function TCnDebugger.GetDumpToFile: Boolean;
+begin
+{$IFNDEF NDEBUG}
+  Result := FDumpToFile;
+{$ELSE}
+  Result := False;
+{$ENDIF}
+end;
+
+function TCnDebugger.GetFilter: TCnDebugFilter;
+begin
+{$IFNDEF NDEBUG}
+  Result := FFilter;
+{$ELSE}
+  Result := nil;
+{$ENDIF}
+end;
+
+function TCnDebugger.GetUseAppend: Boolean;
+begin
+{$IFNDEF NDEBUG}
+  Result := FUseAppend;
+{$ELSE}
+  Result := False;
+{$ENDIF}
+end;
+
+procedure TCnDebugger.SetAutoStart(const Value: Boolean);
+begin
+{$IFNDEF NDEBUG}
+  FAutoStart := Value;
+{$ENDIF}
+end;
+
+procedure TCnDebugger.SetUseAppend(const Value: Boolean);
+begin
+{$IFNDEF NDEBUG}
+  FUseAppend := Value;
+{$ENDIF}
+end;
+
+function TCnDebugger.GetMessageCount: Integer;
+begin
+{$IFNDEF NDEBUG}
+  Result := FMessageCount;
+{$ELSE}
+  Result := 0;
+{$ENDIF}
+end;
+
+function TCnDebugger.GetPostedMessageCount: Integer;
+begin
+{$IFNDEF NDEBUG}
+  Result := FPostedMessageCount;
+{$ELSE}
+  Result := 0;
+{$ENDIF}
+end;
+
+function TCnDebugger.FormatConstArray(Args: array of const): string;
+const
+  CRLF = #13#10;
+var
+  I: Integer;
+begin
+  Result := 'Count ' + IntToStr(High(Args) - Low(Args) + 1) + CRLF;
+  for I := Low(Args) to High(Args) do
+  begin
+    case Args[I].VType of
+      vtInteger:
+        Result := Result + 'Integer: ' + IntToStr(Args[I].VInteger) + CRLF;
+      vtBoolean:
+        begin
+          if Args[I].VBoolean then
+            Result := Result + 'Boolean: ' + 'True' + CRLF
+          else
+            Result := Result + 'Boolean: ' + 'False' + CRLF;
+        end;
+      vtChar:
+        Result := Result + 'Char: ' + string(Args[I].VChar) + CRLF;
+      vtExtended:
+        Result := Result + 'Extended: ' + FloatToStr(Args[I].VExtended^) + CRLF;
+      vtString:
+        Result := Result + 'String: ' + string(PShortString(Args[I].VString)^) + CRLF;
+      vtPointer:
+        Result := Result + 'Pointer: ' + IntToHex(Integer(Args[I].VPointer), CN_HEX_DIGITS) + CRLF;
+      vtPChar:
+        Result := Result + 'PChar: ' + string(Args[I].VPChar) + CRLF;
+      vtObject:
+        Result := Result + 'Object: ' + Args[I].VObject.ClassName + IntToHex(Integer
+          (Args[I].VObject), CN_HEX_DIGITS) + CRLF;
+      vtClass:
+        Result := Result + 'Class: ' + Args[I].VClass.ClassName + CRLF;
+      vtWideChar:
+        Result := Result + 'WideChar: ' + Args[I].VWideChar + CRLF;
+      vtPWideChar:
+        Result := Result + 'PWideChar: ' + Args[I].VPWideChar + CRLF;
+      vtAnsiString:
+        Result := Result + 'AnsiString: ' + string(AnsiString(PAnsiChar(Args[I].VAnsiString))) + CRLF;
+      vtCurrency:
+        Result := Result + 'Currency: ' + CurrToStr(Args[I].VCurrency^) + CRLF;
+      vtVariant:
+        Result := Result + 'Variant: ' + string(Args[I].VVariant^) + CRLF;
+      vtInterface:
+        Result := Result + 'Interface: ' + IntToHex(Integer(Args[I].VInterface), CN_HEX_DIGITS) + CRLF;
+      vtWideString:
+        Result := Result + 'WideString: ' + WideString(PWideChar(Args[I].VWideString)) + CRLF;
+      vtInt64:
+        Result := Result + 'Int64: ' + IntToStr(Args[I].VInt64^) + CRLF;
+{$IFDEF UNICODE}
+      vtUnicodeString:
+        Result := Result + 'UnicodeString: ' + string(PWideChar(Args[I].VUnicodeString)) + CRLF;
+{$ENDIF}
+    end;
+  end;
+end;
+
+{$IFDEF SUPPORT_ENHANCED_RTTI}
+
+function TCnDebugger.GetEnumTypeStr<T>: string;
+var
+  Rtx: TRttiContext;
+  Rt: TRttiType;
+  Rot: TRttiOrdinalType;
+  I: Integer;
+begin
+  Result := '';
+  Rt := Rtx.GetType(TypeInfo(T));
+  if Rt.IsOrdinal then
+  begin
+    Rot := Rt.AsOrdinal;
+    for I := Rot.MinValue to Rot.MaxValue do
+    begin
+      if Result = '' then
+        Result := GetEnumName(TypeInfo(T), I)
+      else
+        Result := Result + ', ' + GetEnumName(TypeInfo(T), I);
+    end;
+    Result := '(' + Result + ')';
+  end;
+end;
+
+{$ENDIF}
+
+procedure TCnDebugger.LogClass(const AClass: TClass; const AMsg: string);
+begin
+{$IFDEF DEBUG}
+  if AMsg = '' then
+    LogFmt(SCnClassFmt, [SCnClass, AClass.ClassName, AClass.InstanceSize,
+      #13#10, FormatClassString(AClass)])
+  else
+    LogFmt(SCnClassFmt, [AMsg, AClass.ClassName, AClass.InstanceSize,
+      #13#10, FormatClassString(AClass)]);
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogClassByName(const AClassName: string; const AMsg: string);
+{$IFDEF DEBUG}
+var
+  AClass: TPersistentClass;
+{$ENDIF}
+begin
+{$IFDEF DEBUG}
+  AClass := GetClass(AClassName);
+  if AClass <> nil then
+    LogClass(AClass, AMsg)
+  else
+    LogMsgError('No Persistent Class Found for ' + AClassName);
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogInterface(const AIntf: IUnknown; const AMsg: string);
+begin
+{$IFDEF DEBUG}
+  if AMsg = '' then
+    LogFmt(SCnInterfaceFmt, [SCnInterface, FormatInterfaceString(AIntf)])
+  else
+    LogFmt(SCnInterfaceFmt, [AMsg, FormatInterfaceString(AIntf)]);
+{$ENDIF}
+end;
+
+procedure TCnDebugger.TraceClass(const AClass: TClass; const AMsg: string);
+begin
+  if AMsg = '' then
+    TraceFmt(SCnClassFmt, [SCnClass, AClass.ClassName, AClass.InstanceSize,
+      #13#10, FormatClassString(AClass)])
+  else
+    TraceFmt(SCnClassFmt, [AMsg, AClass.ClassName, AClass.InstanceSize,
+      #13#10, FormatClassString(AClass)]);
+end;
+
+procedure TCnDebugger.TraceClassByName(const AClassName: string; const AMsg: string);
+var
+  AClass: TPersistentClass;
+begin
+  AClass := GetClass(AClassName);
+  if AClass <> nil then
+    TraceClass(AClass, AMsg)
+  else
+    TraceMsgError('No Persistent Class Found for ' + AClassName);
+end;
+
+procedure TCnDebugger.TraceInterface(const AIntf: IUnknown; const AMsg: string);
+begin
+  if AMsg = '' then
+    TraceFmt(SCnInterfaceFmt, [SCnInterface, FormatInterfaceString(AIntf)])
+  else
+    TraceFmt(SCnInterfaceFmt, [AMsg, FormatInterfaceString(AIntf)]);
+end;
+
+function TCnDebugger.FormatClassString(AClass: TClass): string;
+var
+  List: TStrings;
+begin
+  List := nil;
+  try
+    try
+      List := TStringList.Create;
+      AddClassToStringList(AClass, List, 0);
+    except
+      List.Add(SCnObjException);
+    end;
+    Result := List.Text;
+  finally
+    List.Free;
+  end;
+end;
+
+function TCnDebugger.FormatInterfaceString(AIntf: IUnknown): string;
+var
+  Obj: TObject;
+  Intfs: string;
+  List: TStrings;
+begin
+  Result := IntToHex(TCnNativeInt(AIntf), CN_HEX_DIGITS);
+  if AIntf <> nil then
+  begin
+    Obj := ObjectFromInterface(AIntf);
+    if Obj <> nil then
+    begin
+      Result := Result + ' ' + SCnCRLF + ' ' + Obj.ClassName + ': ' +
+        IntToHex(Integer(Obj), CN_HEX_DIGITS);
+
+      List := TStringList.Create;
+      try
+        AddObjectToStringList(Obj, List, 0);
+        Result := Result + SCnCRLF + List.Text;
+      finally
+        List.Free;
+      end;
+
+      Intfs := FormatObjectInterface(Obj);
+      if Intfs <> '' then
+        Result := Result + ' ' + SCnCRLF + 'Supports Interfaces:' + Intfs;
+    end;
+  end;
+end;
+
+function TCnDebugger.GUIDToString(const GUID: TGUID): string;
+begin
+  SetLength(Result, 38);
+  StrLFmt(PChar(Result), 38,'{%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x}',
+    [GUID.D1, GUID.D2, GUID.D3, GUID.D4[0], GUID.D4[1], GUID.D4[2], GUID.D4[3],
+    GUID.D4[4], GUID.D4[5], GUID.D4[6], GUID.D4[7]]);
+end;
+
+function TCnDebugger.FormatObjectInterface(AObj: TObject): string;
+var
+  ClassPtr: TClass;
+  IntfTable: PInterfaceTable;
+  IntfEntry: PInterfaceEntry;
+  I: Integer;
+begin
+  Result := '';
+  if AObj = nil then
+    Exit;
+
+  ClassPtr := AObj.ClassType;
+  while ClassPtr <> nil do
+  begin
+    IntfTable := ClassPtr.GetInterfaceTable;
+    if IntfTable <> nil then
+    begin
+      for I := 0 to IntfTable.EntryCount-1 do
+      begin
+        IntfEntry := @IntfTable.Entries[I];
+        Result := Result + ' ' + SCnCRLF + GUIDToString(IntfEntry^.IID);
+        // TODO: If Enhanced RTTI, using IID to Find Actual Interface Type and Parse Methods.
+      end;
+    end;
+    ClassPtr := ClassPtr.ClassParent;
+  end;
+end;
+
+procedure TCnDebugger.GetCurrentTrace(Strings: TStrings);
+{$IFDEF USE_JCL}
+var
+  I: Integer;
+  List: TCnStackInfoList;
+{$ENDIF}
+begin
+  if Strings = nil then
+    Exit;
+  Strings.Clear;
+
+{$IFDEF USE_JCL}
+  List := nil;
+  try
+    List := TCnCurrentStackInfoList.Create;
+    if List.Count > 2 then
+    begin
+      List.Delete(0);  // 删除这里多余的堆栈条目，但可能随编译选项里的 StackFrame 不同有 2 到 3 个
+      List.Delete(0);
+    end;
+
+    for I := 0 to List.Count - 1 do
+      Strings.Add(GetLocationInfoStr(List.Items[I].CallerAddr, True, True, True, False));
+  finally
+    List.Free;
+  end;
+{$ELSE}
+  Strings.Add(SCnStackTraceNotSupport);
+{$ENDIF}
+end;
+
+procedure TCnDebugger.GetTraceFromAddr(StackBaseAddr: Pointer; Strings: TStrings);
+{$IFDEF USE_JCL}
+var
+  I: Integer;
+  List: TCnStackInfoList;
+{$ENDIF}
+begin
+  if Strings = nil then
+    Exit;
+  Strings.Clear;
+
+  if StackBaseAddr = nil then
+  begin
+    Strings.Add(SCnStackTraceNil);
+    Exit;
+  end;
+
+{$IFDEF USE_JCL}
+  List := nil;
+  try
+    List := TCnManualStackInfoList.Create(StackBaseAddr, nil);
+    for I := 0 to List.Count - 1 do
+      Strings.Add(GetLocationInfoStr(List.Items[I].CallerAddr, True, True, True, False));
+  finally
+    List.Free;
+  end;
+{$ELSE}
+  Strings.Add(SCnStackTraceNotSupport);
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogStackFromAddress(Addr: Pointer;
+  const AMsg: string);
+{$IFDEF DEBUG}
+{$IFDEF USE_JCL}
+var
+  Strings: TStringList;
+{$ENDIF}
+{$ENDIF}
+begin
+{$IFDEF DEBUG}
+{$IFDEF USE_JCL}
+  Strings := nil;
+  try
+    Strings := TStringList.Create;
+    Strings.Add(GetLocationInfoStr(Addr, True, True, True, False));
+    GetTraceFromAddr(Addr, Strings);
+    LogMsgWithType(Format('Address $%p with Stack: %s', [Addr, AMsg + SCnCRLF + Strings.Text]), cmtInformation);
+  finally
+    Strings.Free;
+  end;
+{$ELSE}
+  LogPointer(Addr, AMsg);
+{$ENDIF}
+{$ENDIF}
+end;
+
+procedure TCnDebugger.TraceStackFromAddress(Addr: Pointer;
+  const AMsg: string);
+{$IFDEF USE_JCL}
+var
+  Strings: TStringList;
+{$ENDIF}
+begin
+{$IFDEF USE_JCL}
+  Strings := nil;
+  try
+    Strings := TStringList.Create;
+    Strings.Add(GetLocationInfoStr(Addr, True, True, True, False));
+    GetTraceFromAddr(Addr, Strings);
+    TraceMsgWithType(Format('Address $%p with Stack: %s', [Addr, AMsg + SCnCRLF + Strings.Text]), cmtInformation);
+  finally
+    Strings.Free;
+  end;
+{$ELSE}
+  TracePointer(Addr, AMsg);
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogAnsiCharSet(const ASet: TCnAnsiCharSet;
+  const AMsg: string);
+var
+  SetVal: TCnAnsiCharSet;
+begin
+{$IFDEF DEBUG}
+  SetVal := ASet;
+  if AMsg = '' then
+    LogMsg(GetAnsiCharSetStr(@SetVal, SizeOf(SetVal)))
+  else
+    LogFmt('%s %s', [AMsg, GetAnsiCharSetStr(@SetVal, SizeOf(SetVal))]);
+{$ENDIF}
+end;
+
+procedure TCnDebugger.LogCharSet(const ASet: TSysCharSet; const AMsg: string);
+begin
+{$IFDEF DEBUG}
+  {$IFDEF UNICODE}
+  LogWideCharSet(ASet, AMsg);
+  {$ELSE}
+  LogAnsiCharSet(ASet, AMsg);
+  {$ENDIF}
+{$ENDIF}
+end;
+
+{$IFDEF UNICODE}
+
+procedure TCnDebugger.LogWideCharSet(const ASet: TCnWideCharSet;
+  const AMsg: string);
+var
+  SetVal: TCnWideCharSet;
+begin
+{$IFDEF DEBUG}
+  SetVal := ASet;
+  // WideCharSet 被剪裁成 AnsiChar
+  if AMsg = '' then
+    LogMsg(GetAnsiCharSetStr(@SetVal, SizeOf(SetVal)))
+  else
+    LogFmt('%s %s', [AMsg, GetAnsiCharSetStr(@SetVal, SizeOf(SetVal))]);
+{$ENDIF}
+end;
+
+{$ENDIF}
+
+procedure TCnDebugger.TraceAnsiCharSet(const ASet: TCnAnsiCharSet;
+  const AMsg: string);
+var
+  SetVal: TCnAnsiCharSet;
+begin
+  SetVal := ASet;
+  if AMsg = '' then
+    TraceMsg(GetAnsiCharSetStr(@SetVal, SizeOf(SetVal)))
+  else
+    TraceFmt('%s %s', [AMsg, GetAnsiCharSetStr(@SetVal, SizeOf(SetVal))]);
+end;
+
+procedure TCnDebugger.TraceCharSet(const ASet: TSysCharSet;
+  const AMsg: string);
+begin
+{$IFDEF UNICODE}
+  TraceWideCharSet(ASet, AMsg);
+{$ELSE}
+  TraceAnsiCharSet(ASet, AMsg);
+{$ENDIF}
+end;
+
+{$IFDEF UNICODE}
+
+procedure TCnDebugger.TraceWideCharSet(const ASet: TCnWideCharSet;
+  const AMsg: string);
+var
+  SetVal: TCnWideCharSet;
+begin
+  SetVal := ASet;
+  // WideCharSet 被剪裁成 AnsiChar
+  if AMsg = '' then
+    LogMsg(GetAnsiCharSetStr(@SetVal, SizeOf(SetVal)))
+  else
+    LogFmt('%s %s', [AMsg, GetAnsiCharSetStr(@SetVal, SizeOf(SetVal))]);
+end;
+
+{$ENDIF}
+
+procedure TCnDebugger.EvaluateInterfaceInstance(const AIntf: IUnknown;
+  SyncMode: Boolean);
+var
+  Obj: TObject;
+begin
+  Obj := ObjectFromInterface(AIntf);
+  if Obj <> nil then
+    EvaluateObject(Obj, SyncMode);
+end;
+
+procedure TCnDebugger.WatchClear(const AVarName: string);
+begin
+  if AVarName <> '' then
+    TraceFull(AVarName, CurrentTag, CurrentLevel, cmtClearWatch);
+end;
+
+procedure TCnDebugger.WatchFmt(const AVarName, AFormat: string;
+  Args: array of const);
+begin
+  if AVarName <> '' then
+    TraceFull(AVarName + '|' + FormatMsg(AFormat, Args), CurrentTag, CurrentLevel, cmtWatch);
+end;
+
+procedure TCnDebugger.WatchMsg(const AVarName, AValue: string);
+begin
+  if AVarName <> '' then
+    TraceFull(AVarName + '|' + AValue, CurrentTag, CurrentLevel, cmtWatch);
+end;
+
+procedure TCnDebugger.Enable;
+begin
+  Active := True;
+end;
+
+procedure TCnDebugger.Disable;
+begin
+  Active := False;
+end;
+
+procedure TCnDebugger.FindComponent;
+var
+  I: Integer;
+begin
+  if FComponentFindList = nil then
+    FComponentFindList := TList.Create
+  else
+    FComponentFindList.Clear;
+
+  FFindAbort := False;
+  InternalFindComponent(Application);
+  if FFindAbort then
+    Exit;
+
+{$IFDEF MSWINDOWS}
+  for I := 0 to Screen.CustomFormCount - 1 do
+  begin
+    InternalFindComponent(Screen.CustomForms[I]);
+    if FFindAbort then
+      Exit;
+  end;
+{$ELSE}
+  for I := 0 to Screen.FormCount - 1 do
+  begin
+    InternalFindComponent(Screen.Forms[I]);
+    if FFindAbort then
+      Exit;
+  end;
+{$ENDIF}
+end;
+
+{$IFDEF MSWINDOWS}
+
+procedure TCnDebugger.FindControl;
+var
+  I: Integer;
+begin
+  if FControlFindList = nil then
+    FControlFindList := TList.Create
+  else
+    FControlFindList.Clear;
+
+  FFindAbort := False;
+  for I := 0 to Screen.CustomFormCount - 1 do
+  begin
+    InternalFindControl(Screen.CustomForms[I]);
+    if FFindAbort then
+      Exit;
+  end;
+end;
+
+{$ENDIF}
+
+procedure TCnDebugger.InternalFindComponent(AComponent: TComponent);
+var
+  I: Integer;
+begin
+  if FComponentFindList.IndexOf(AComponent) >= 0 then
+    Exit;
+
+  FComponentFindList.Add(AComponent);
+  if Assigned(FOnFindComponent) then
+  begin
+    FOnFindComponent(Self, AComponent, FFindAbort);
+    if FFindAbort then
+      Exit;
+  end;
+
+  for I := 0 to AComponent.ComponentCount - 1 do
+    InternalFindComponent(AComponent.Components[I]);
+end;
+
+{$IFDEF MSWINDOWS}
+
+procedure TCnDebugger.InternalFindControl(AControl: TControl);
+var
+  I: Integer;
+begin
+  if FControlFindList.IndexOf(AControl) >= 0 then
+    Exit;
+
+  FControlFindList.Add(AControl);
+  if Assigned(FOnFindControl) then
+  begin
+    FOnFindControl(Self, AControl, FFindAbort);
+    if FFindAbort then
+      Exit;
+  end;
+
+  if AControl is TWinControl then
+    for I := 0 to TWinControl(AControl).ControlCount - 1 do
+      InternalFindControl(TWinControl(AControl).Controls[I]);
+end;
+
+{$ENDIF}
+
+{$IFDEF USE_JCL}
+
+procedure TCnDebugger.ExceptionRecorder(ExceptObj: Exception; ExceptAddr: Pointer;
+  IsOSException: Boolean; StackList: TCnStackInfoList);
+var
+  I: Integer;
+  Strings: TStrings;
+begin
+  if not FCnDebugger.Active or not FCnDebugger.ExceptTracking then
+    Exit;
+
+  if FCnDebugger.FExceptFilter.IndexOf(ExceptObj.ClassName) >= 0 then
+    Exit;
+
+  if IsOSException then
+    FCnDebugger.TraceMsgWithType('OS Exception: ' + ExceptObj.ClassName + ': '
+      + ExceptObj.Message, cmtError)
+  else
+    FCnDebugger.TraceMsgWithType(ExceptObj.ClassName + ': ' + ExceptObj.Message,
+      cmtError);
+
+  Strings := TStringList.Create;
+  try
+    for I := 0 to StackList.Count - 1 do
+      Strings.Add(GetLocationInfoStr(StackList.Items[I].CallerAddr, True, True, True));
+    FCnDebugger.TraceMsgWithType('Exception call stack:' + SCnCRLF +
+      Strings.Text, cmtException);
+  finally
+    Strings.Free;
+  end;
+end;
+
+{$ENDIF}
 
 { TCnDebugChannel }
 
@@ -2300,6 +4419,8 @@ begin
 // Do nothing
 end;
 
+{$IFDEF MSWINDOWS}
+
 { TCnMapFileChannel }
 
 function TCnMapFileChannel.CheckFilterChanged: Boolean;
@@ -2330,9 +4451,15 @@ begin
         begin
           UpdateFlush;
           Result := IsInitedFromHeader;
-        end;
-      end;
-    end;
+        end
+        else
+          OutputDebugString(PChar('CnDebug: OpenEvent Fail: ' + IntToStr(GetLastError)));
+      end
+      else
+        OutputDebugString(PChar('CnDebug: MapViewOfFile Fail: ' + IntToStr(GetLastError)));
+    end
+    else
+      OutputDebugString(PChar('CnDebug: OpenFileMapping Fail: ' + IntToStr(GetLastError)));
   end
   else // 区域都有效
     Result := PCnMapHeader(FMapHeader)^.MapEnabled = CnDebugMapEnabled;
@@ -2408,7 +4535,7 @@ end;
 procedure TCnMapFileChannel.RefreshFilter(Filter: TCnDebugFilter);
 var
   Header: PCnMapHeader;
-  TagArray: array[0..CnMaxTagLength] of Char;
+  TagArray: array[0..CnMaxTagLength] of AnsiChar;
 begin
   if (Filter <> nil) and (FMap <> 0) and (FMapHeader <> nil) then
   begin
@@ -2440,7 +4567,7 @@ end;
 procedure TCnMapFileChannel.SendContent(var MsgDesc; Size: Integer);
 var
   Mutex: THandle;
-  Res: DWORD;
+  Res: LongWord;
   MsgLen, RestLen: Integer;
   IsFull: Boolean;
   MsgBuf : array[0..255] of Char;
@@ -2546,11 +4673,14 @@ end;
 
 procedure TCnMapFileChannel.StartDebugViewer;
 const
-  SCnDebugViewerExeName = 'CnDebugViewer.exe -a ';
+  SCnDebugViewerExeName = 'CnDebugViewer.exe';
+  SCnDotExe = '.exe';
+  SCn64DotExe = '64.exe';
 var
   hStarting: THandle;
   Reg: TRegistry;
-  S: string;
+  S, Subfix, Subfix64: string;
+  Len: Integer;
   ViewerExe: AnsiString;
 begin
   ViewerExe := '';
@@ -2563,13 +4693,50 @@ begin
     Reg.CloseKey;
     Reg.Free;
   end;
-  
-  // 加上调用参数
+
+  // 设置运行文件名
   if S <> '' then
-    ViewerExe := AnsiString(S + ' -a ')
+    ViewerExe := AnsiString(S)
   else
     ViewerExe := SCnDebugViewerExeName;
-  
+
+  // 判断是否支持 64 位
+  if IsWin64 then
+  begin
+    S := LowerCase(ViewerExe);
+    Len := Length(S);
+
+    if Len > Length(SCnDotExe) + 4 then
+    begin
+      if (S[1] = '"') and (S[Len] = '"') then
+      begin
+        Subfix := SCnDotExe + '"';
+        Subfix64 := SCn64DotExe + '"';
+      end
+      else
+      begin
+        Subfix := SCnDotExe;
+        Subfix64 := SCn64DotExe;
+      end;
+
+      if Copy(S, Len - Length(Subfix) + 1, MaxInt) = Subfix then // 末尾是 .exe
+      begin
+        if Copy(S, Len - Length(Subfix64) + 1, MaxInt) <> Subfix64 then // 但末尾不是 64.exe
+        begin
+          S := ViewerExe;
+          Insert('64', S, Len - Length(Subfix) + 1);
+          if FileExists(S) then
+            Insert('64', ViewerExe, Len - Length(Subfix) + 1); // 把 64 插点前面并且判断文件存在不
+        end;
+      end;
+    end;
+  end;
+
+  // 加上调用参数
+  ViewerExe := ViewerExe + ' -a ';
+  if FUseLocalSession then
+    ViewerExe := ViewerExe + ' -local ';
+
   hStarting := CreateEvent(nil, False, False, PChar(SCnDebugStartEventName));
   if 31 < WinExec(PAnsiChar(ViewerExe + AnsiString(IntToStr(GetCurrentProcessId))),
     SW_SHOW) then // 成功创建，等待
@@ -2595,54 +4762,40 @@ begin
   end;
 end;
 
-{$IFDEF USE_JCL}
-procedure ExceptNotifyProc(ExceptObj: TObject; ExceptAddr: Pointer; OSException: Boolean);
-var
-  Strings: TStrings;
-begin
-  if not FCnDebugger.Active or not FCnDebugger.ExceptTracking then Exit;
-
-  EnterCriticalSection(FCSExcept);
-  try
-    if FCnDebugger.FExceptFilter.IndexOf(ExceptObj.ClassName) >= 0 then Exit;
-  finally
-    LeaveCriticalSection(FCSExcept);
-  end;
-
-  if OSException then
-    FCnDebugger.TraceMsgWithType('OS Exceptions', cmtError)
-  else
-    with Exception(ExceptObj) do
-      FCnDebugger.TraceMsgWithType(ClassName + ': ' + Message, cmtError);
-
-  Strings := TStringList.Create;
-  try
-    JclLastExceptStackListToStrings(Strings, True, True, True);
-    FCnDebugger.TraceMsgWithType('Exception call stack:' + SCnCRLF +
-      Strings.Text, cmtException);
-  finally
-    Strings.Free;
-  end;
-end;
 {$ENDIF}
 
 initialization
 {$IFNDEF NDEBUG}
+  {$IFDEF MSWINDOWS}
+  CnDebugChannelClass := TCnMapFileChannel;
+
+  InitializeCriticalSection(FStartCriticalSection);
+  InitializeCriticalSection(FCnDebuggerCriticalSection);
+  {$ELSE}
+  FStartCriticalSection := TCnCriticalSection.Create;
+  FCnDebuggerCriticalSection := TCnCriticalSection.Create;
+  {$ENDIF}
   FCnDebugger := TCnDebugger.Create;
   FixCallingCPUPeriod;
+
   {$IFDEF USE_JCL}
-  InitializeCriticalSection(FCSExcept);
-  JclHookExceptions;
-  JclAddExceptNotifier(ExceptNotifyProc);
-  JclStartExceptionTracking;
+  CnSetAdditionalExceptionRecorder(FCnDebugger.ExceptionRecorder);
+  CnHookException;
   {$ENDIF}
 {$ELSE}
   CnDebugChannelClass := nil; // NDEBUG 环境下不创建 Channel
 {$ENDIF}
 
 finalization
+  {$IFDEF MSWINDOWS}
+  DeleteCriticalSection(FCnDebuggerCriticalSection);
+  DeleteCriticalSection(FStartCriticalSection);
+  {$ELSE}
+  FCnDebuggerCriticalSection.Free;
+  FStartCriticalSection.Free;
+  {$ENDIF}
 {$IFDEF USE_JCL}
-  DeleteCriticalSection(FCSExcept);
+  CnUnHookException;
 {$ENDIF}
   FreeAndNil(FCnDebugger);
 

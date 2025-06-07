@@ -57,7 +57,7 @@ unit CoolTrayIcon;
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ansiStrings,
   Menus, ShellApi, ExtCtrls, SimpleTimer {$IFDEF DELPHI_4_UP}, ImgList{$ENDIF};
 
 const
@@ -1174,7 +1174,7 @@ begin
     bhWin95:   IconData.TimeoutOrVersion.uVersion := 0;
     bhWin2000: IconData.TimeoutOrVersion.uVersion := NOTIFYICON_VERSION;
   end;
-  Shell_NotifyIcon(NIM_SETVERSION, @IconData);
+  Shell_NotifyIconA(NIM_SETVERSION, @IconData);
 end;
 
 
@@ -1201,7 +1201,7 @@ begin
     end;
     if (FHint <> '') and (FShowHint) then
     begin
-      StrLCopy(IconData.szTip, PChar(String(FHint)), SizeOf(IconData.szTip)-1);
+      AnsiStrings.StrLCopy(IconData.szTip, PansiChar(ansiString(FHint)), SizeOf(IconData.szTip)-1);
       { StrLCopy must be used since szTip is only 128 bytes. }
       { From IE ver. 5 szTip is 128 chars, before that only 64 chars. I suppose
         I could use GetComCtlVersion to check the version and then truncate
@@ -1226,11 +1226,11 @@ begin
     begin
       if SettingPreview then
         if InitIcon then
-          Result := Shell_NotifyIcon(NIM_ADD, @IconData);
+          Result := Shell_NotifyIconA(NIM_ADD, @IconData);
     end
     else
       if InitIcon then
-        Result := Shell_NotifyIcon(NIM_ADD, @IconData);
+        Result := Shell_NotifyIconA(NIM_ADD, @IconData);
   end;
 end;
 
@@ -1246,11 +1246,11 @@ begin
     begin
       if SettingPreview then
         if InitIcon then
-          Result := Shell_NotifyIcon(NIM_DELETE, @IconData);
+          Result := Shell_NotifyIconA(NIM_DELETE, @IconData);
     end
     else
     if InitIcon then
-      Result := Shell_NotifyIcon(NIM_DELETE, @IconData);
+      Result := Shell_NotifyIconA(NIM_DELETE, @IconData);
   end;
 end;
 
@@ -1260,7 +1260,7 @@ function TCoolTrayIcon.ModifyIcon: Boolean;
 begin
   Result := False;
   if InitIcon then
-    Result := Shell_NotifyIcon(NIM_MODIFY, @IconData);
+    Result := Shell_NotifyIconA(NIM_MODIFY, @IconData);
 end;
 
 
@@ -1277,8 +1277,8 @@ begin
   with IconData do
   begin
     uFlags := uFlags or NIF_INFO;
-    StrLCopy(szInfo, PChar(Text), SizeOf(szInfo)-1);
-    StrLCopy(szInfoTitle, PChar(Title), SizeOf(szInfoTitle)-1);
+    AnsiStrings.StrLCopy(szInfo, PansiChar(ansistring(Text)), SizeOf(szInfo)-1);
+    AnsiStrings.StrLCopy(szInfoTitle, PansiChar(ansistring(Title)), SizeOf(szInfoTitle)-1);
     TimeoutOrVersion.uTimeout := TimeoutSecs * 1000;
     dwInfoFlags := aBalloonIconTypes[IconType];
   end;
@@ -1305,11 +1305,11 @@ begin
     uFlags := uFlags or NIF_INFO;
     FillChar(szInfo, 0, SizeOf(szInfo));
     for I := 0 to SizeOf(szInfo)-1 do
-      szInfo[I] := Char(Text[I]);
+      szInfo[I] :=ansichar( Char(Text[I]));
     szInfo[0] := #1;
     FillChar(szInfoTitle, 0, SizeOf(szInfoTitle));
     for I := 0 to SizeOf(szInfoTitle)-1 do
-      szInfoTitle[I] := Char(Title[I]);
+      szInfoTitle[I] :=ansichar( Char(Title[I]));
     szInfoTitle[0] := #1;
     TimeoutOrVersion.uTimeout := TimeoutSecs * 1000;
     dwInfoFlags := aBalloonIconTypes[IconType];
@@ -1326,7 +1326,7 @@ begin
   with IconData do
   begin
     uFlags := uFlags or NIF_INFO;
-    StrPCopy(szInfo, '');
+    AnsiStrings.StrPCopy(szInfo, '');
   end;
   Result := ModifyIcon;
 end;
@@ -1340,9 +1340,9 @@ function TCoolTrayIcon.BitmapToIcon(const Bitmap: TBitmap;
 var
   BitmapImageList: TImageList;
 begin
+  Result := False;
   BitmapImageList := TImageList.CreateSize(16, 16);
   try
-    Result := False;
     BitmapImageList.AddMasked(Bitmap, MaskColor);
     BitmapImageList.GetIcon(0, Icon);
     Result := True;
@@ -1450,7 +1450,7 @@ end;
 
 function TCoolTrayIcon.SetFocus: Boolean;
 begin
-  Result := Shell_NotifyIcon(NIM_SETFOCUS, @IconData);
+  Result := Shell_NotifyIconA(NIM_SETFOCUS, @IconData);
 end;
 
 

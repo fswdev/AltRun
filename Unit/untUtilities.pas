@@ -1,49 +1,68 @@
 unit untUtilities;
 
 interface
-uses
-  Windows,
-  Forms,
-  SysUtils,
-  Registry,
-  Classes,
-  ShlObj,
-  ActiveX,
-  ShellAPI,
-  RegExpr,
-  Messages,
-  ComObj;
 
-function CutLeftString(str: string; Num: Integer):string;
-function RemoveQuotationMark(str: string; QuotationMark: string):string;
+uses
+  Windows, Forms, SysUtils, Registry, Classes, ShlObj, ActiveX, ShellAPI,
+  RegExpr, Messages, ComObj;
+
+function CutLeftString(str: string; Num: Integer): string;
+
+function RemoveQuotationMark(str: string; QuotationMark: string): string;
+
 procedure SplitString(str: string; Delimiter: string; var strList: TStringList);
+
 procedure PostKeyEx32(key: Word; const shift: TShiftState; specialkey: Boolean);
+
 function IsRunningInstance(const MutexName: string): Boolean;
+
 function SetAutoRun(ApplicationName: string; ExecutablePath: string; AutoRun: Boolean = True): Boolean;
+
 function SetAutoRunInStartUp(ApplicationName: string; ExecutablePath: string; AutoRun: Boolean = True): Boolean;
+
 function GetAutoRunItemPath(ApplicationName: string): string;
+
 function GetFileModifyTime(const FileName: string): string;
-function SetFileModifyTime(const FileName: string; FileTime: TDateTime): Boolean;overload;
-function SetFileModifyTime(const FileName: string; AgeOfFile: Integer): Boolean;overload;
-function GetFileSize(const FileName: string):Integer;
+
+function SetFileModifyTime(const FileName: string; FileTime: TDateTime): Boolean; overload;
+
+function SetFileModifyTime(const FileName: string; AgeOfFile: Integer): Boolean; overload;
+
+function GetFileSize(const FileName: string): Integer;
+
 function ReduceWorkingSize: Boolean;
+
 function WriteLineToFile(FileName, Line: string): Boolean;
+
 function AddMeToShortCutMenu(IsAdd: Boolean): Boolean;
+
 function AddMeToSendTo(Name: string; IsAdd: Boolean): Boolean;
+
 function SendKeys(SendKeysString: PChar; Translate, Wait: Boolean): Boolean;
+
 function GetSpecialFolderDir(SpecailFolderID: Integer): string;
+
 function GetSendToDir: string;
+
 function CreateLink(FileName, Arg, LinkPath, LinkName, Description: string): Boolean;
+
 function ResolveLink(ALinkFile: string): string;
+
 function IsNumericStr(const str: string): Boolean;
-function GetFileListInDir(var List: TStringList; const Dir: string;
-  Ext: string = '*'; IsPlusDir: Boolean = True): Boolean;
+
+function GetFileListInDir(var List: TStringList; const Dir: string; Ext: string = '*'; IsPlusDir: Boolean = True): Boolean;
+
 function ExtractRes(ResType, ResName, ResNewName: string): Boolean;
-function ReplaceEnvStr(str:string):string;
-function IsVista:Boolean;
+
+function ReplaceEnvStr(str: string): string;
+
+function IsVista: Boolean;
+
 function GetCurrentUserName: string;
+
 function GetLocaleInformation(LocaleFlag: Integer): string;
-function RefreshEnvironmentVars:Boolean;
+
+function RefreshEnvironmentVars: Boolean;
 
 //快速排序
 procedure QuickSort(var SortNum: array of integer; p, r: integer);
@@ -51,18 +70,21 @@ procedure QuickSort(var SortNum: array of integer; p, r: integer);
 //拖放支持
 const
   SC_DRAGMOVE: LongInt = $F012;
+
 function GetDragFileCount(hDrop: Cardinal): Integer;
+
 function GetDragFileName(hDrop: Cardinal; FileIndex: Integer = 1): string;
 
 //编码格式转换
 function Utf8Encode(const WS: WideString): UTF8String;
-function Big52Gb(Str: string): string;
-function Gb2Big5(Str: string): string;
-function UnicodeDecode(Str: WideString; CodePage: integer): string;
+
+function UnicodeDecode(Str: WideString; CodePage: integer): ansistring;
+
 function UnicodeEncode(Str: string; CodePage: integer): WideString;
 
 //搜索引擎搜索串
 function GetUTF8QueryString(Keyword: string): string;
+
 function GetURLQueryString(Keyword: string): string;
 
 //Trace
@@ -76,18 +98,18 @@ function GetURLQueryString(Keyword: string): string;
 procedure SetClipboardText(AStr: string);
 
 //查找窗口
-function FindWindowByCaption(Caption:string):HWND;
+function FindWindowByCaption(Caption: string): HWND;
 
 procedure KillMessage(Wnd: HWnd; Msg: Integer);
 
-function SetLayeredWindowAttributes(hwnd: HWND; crKey: Longint; bAlpha: byte; dwFlags: longint): longint;
-stdcall; external user32;
+function SetLayeredWindowAttributes(hwnd: HWND; crKey: Longint; bAlpha: byte; dwFlags: longint): longint; stdcall; external user32;
 
 var
   MutexHandle: THandle;
   LogFileName: string;
 
 implementation
+
 uses
   untALTRunOption;
 
@@ -146,11 +168,7 @@ begin
 end;
 
 function SetAutoRunInStartUp(ApplicationName: string; ExecutablePath: string; AutoRun: Boolean = True): Boolean;
-var
-  Reg: TRegistry;
 begin
-  Result := False;
-
   if AutoRun then
   begin
     Result := CreateLink(ExecutablePath, '', GetSpecialFolderDir(CSIDL_COMMON_STARTUP), ApplicationName, '');
@@ -190,8 +208,6 @@ begin
 end;
 
 function GetFileModifyTime(const FileName: string): string;
-var
-  f: file of Byte;
 begin
   //Win2003和XP的日期格式不同,如 2007-11-14 上午 09:40:02
   //Result := DateTimeToStr(FileDateToDateTime(FileAge(FileName)));
@@ -202,7 +218,8 @@ function SetFileModifyTime(const FileName: string; AgeOfFile: Integer): Boolean;
 begin
   Result := False;
 
-  if not FileExists(FileName) then Exit;
+  if not FileExists(FileName) then
+    Exit;
 
   FileSetDate(FileName, AgeOfFile);
 
@@ -214,12 +231,12 @@ begin
   Result := SetFileModifyTime(FileName, DateTimeToFileDate(FileTime));
 end;
 
-function CutLeftString(str: string; Num: Integer):string;
+function CutLeftString(str: string; Num: Integer): string;
 begin
   Result := Copy(str, Num + 1, Length(str) - Num);
 end;
 
-function RemoveQuotationMark(str: string; QuotationMark: string):string;
+function RemoveQuotationMark(str: string; QuotationMark: string): string;
 var
   QuotationLen: Integer;
   strTemp: string;
@@ -229,10 +246,10 @@ begin
   QuotationLen := Length(QuotationMark);
 
   //如果长度不对头……
-  if Length(str) < 2 * QuotationLen then Exit;
+  if Length(str) < 2 * QuotationLen then
+    Exit;
 
-  if (Copy(str, 1, QuotationLen) = QuotationMark) and
-    (Copy(str, Length(str) - QuotationLen + 1, QuotationLen) = QuotationMark) then
+  if (Copy(str, 1, QuotationLen) = QuotationMark) and (Copy(str, Length(str) - QuotationLen + 1, QuotationLen) = QuotationMark) then
     strTemp := Copy(str, QuotationLen + 1, Length(str) - 2 * QuotationLen);
 
   // 里面再没有QuotationMark，才认为OK
@@ -240,10 +257,10 @@ begin
     Result := strTemp;
 end;
 
-function GetFileSize(const FileName: string):Integer;
+function GetFileSize(const FileName: string): Integer;
 var
   fs: TFileStream;
-  FileHandle:Integer;
+  FileHandle: Integer;
 begin
   try
     try
@@ -265,7 +282,8 @@ begin
   //Count := ExtractStrings([Delimiter], [' '], PChar(str), strList);
 
   strList.Clear;
-  if str = '' then Exit;
+  if str = '' then
+    Exit;
 
   DelimiterPos := pos(Delimiter, str);
   while DelimiterPos > 0 do
@@ -334,8 +352,6 @@ end;
 
 function AddMeToSendTo(Name: string; IsAdd: Boolean): Boolean;
 begin
-  Result := False;
-
   if IsAdd then
     //Result := CreateLink(Application.ExeName, '', GetSendToDir, Name, '')
     Result := CreateLink(Application.ExeName, '', GetSpecialFolderDir(CSIDL_SENDTO), Name, '')
@@ -372,12 +388,19 @@ type
     shift: Byte;
     vkey: Byte;
   end;
+
   byteset = set of 0..7;
 const
-  shiftkeys: array[1..3] of TShiftKeyInfo =
-  ((shift: Ord(ssCtrl); vkey: VK_CONTROL),
-    (shift: Ord(ssShift); vkey: VK_SHIFT),
-    (shift: Ord(ssAlt); vkey: VK_MENU));
+  shiftkeys: array[1..3] of TShiftKeyInfo = ((
+    shift: Ord(ssCtrl);
+    vkey: VK_CONTROL
+  ), (
+    shift: Ord(ssShift);
+    vkey: VK_SHIFT
+  ), (
+    shift: Ord(ssAlt);
+    vkey: VK_MENU
+  ));
 var
   flag: DWORD;
   bShift: ByteSet absolute shift;
@@ -421,7 +444,6 @@ type
     Name: ShortString;
     VKey: Byte;
   end;
-
 const
   {Array   of   keys   that   SendKeys   recognizes.
 
@@ -429,50 +451,130 @@ const
   by   Name   because   a   binary   search   routine   is   used   to   scan   it.}
 
   MaxSendKeyRecs = 41;
-  SendKeyRecs: array[1..MaxSendKeyRecs] of TSendKey =
-  (
-    (Name: 'BKSP'; VKey: VK_BACK),
-    (Name: 'BS'; VKey: VK_BACK),
-    (Name: 'BACKSPACE'; VKey: VK_BACK),
-    (Name: 'BREAK'; VKey: VK_CANCEL),
-    (Name: 'CAPSLOCK'; VKey: VK_CAPITAL),
-    (Name: 'CLEAR'; VKey: VK_CLEAR),
-    (Name: 'DEL'; VKey: VK_DELETE),
-    (Name: 'DELETE'; VKey: VK_DELETE),
-    (Name: 'DOWN'; VKey: VK_DOWN),
-    (Name: 'END'; VKey: VK_END),
-    (Name: 'ENTER'; VKey: VK_RETURN),
-    (Name: 'ESC'; VKey: VK_ESCAPE),
-    (Name: 'ESCAPE'; VKey: VK_ESCAPE),
-    (Name: 'F1'; VKey: VK_F1),
-    (Name: 'F10'; VKey: VK_F10),
-    (Name: 'F11'; VKey: VK_F11),
-    (Name: 'F12'; VKey: VK_F12),
-    (Name: 'F13'; VKey: VK_F13),
-    (Name: 'F14'; VKey: VK_F14),
-    (Name: 'F15'; VKey: VK_F15),
-    (Name: 'F16'; VKey: VK_F16),
-    (Name: 'F2'; VKey: VK_F2),
-    (Name: 'F3'; VKey: VK_F3),
-    (Name: 'F4'; VKey: VK_F4),
-    (Name: 'F5'; VKey: VK_F5),
-    (Name: 'F6'; VKey: VK_F6),
-    (Name: 'F7'; VKey: VK_F7),
-    (Name: 'F8'; VKey: VK_F8),
-    (Name: 'F9'; VKey: VK_F9),
-    (Name: 'HELP'; VKey: VK_HELP),
-    (Name: 'HOME'; VKey: VK_HOME),
-    (Name: 'INS'; VKey: VK_INSERT),
-    (Name: 'LEFT'; VKey: VK_LEFT),
-    (Name: 'NUMLOCK'; VKey: VK_NUMLOCK),
-    (Name: 'PGDN'; VKey: VK_NEXT),
-    (Name: 'PGUP'; VKey: VK_PRIOR),
-    (Name: 'PRTSC'; VKey: VK_PRINT),
-    (Name: 'RIGHT'; VKey: VK_RIGHT),
-    (Name: 'SCROLLLOCK'; VKey: VK_SCROLL),
-    (Name: 'TAB'; VKey: VK_TAB),
-    (Name: 'UP'; VKey: VK_UP)
-    );
+  SendKeyRecs: array[1..MaxSendKeyRecs] of TSendKey = ((
+    Name: 'BKSP';
+    VKey: VK_BACK
+  ), (
+    Name: 'BS';
+    VKey: VK_BACK
+  ), (
+    Name: 'BACKSPACE';
+    VKey: VK_BACK
+  ), (
+    Name: 'BREAK';
+    VKey: VK_CANCEL
+  ), (
+    Name: 'CAPSLOCK';
+    VKey: VK_CAPITAL
+  ), (
+    Name: 'CLEAR';
+    VKey: VK_CLEAR
+  ), (
+    Name: 'DEL';
+    VKey: VK_DELETE
+  ), (
+    Name: 'DELETE';
+    VKey: VK_DELETE
+  ), (
+    Name: 'DOWN';
+    VKey: VK_DOWN
+  ), (
+    Name: 'END';
+    VKey: VK_END
+  ), (
+    Name: 'ENTER';
+    VKey: VK_RETURN
+  ), (
+    Name: 'ESC';
+    VKey: VK_ESCAPE
+  ), (
+    Name: 'ESCAPE';
+    VKey: VK_ESCAPE
+  ), (
+    Name: 'F1';
+    VKey: VK_F1
+  ), (
+    Name: 'F10';
+    VKey: VK_F10
+  ), (
+    Name: 'F11';
+    VKey: VK_F11
+  ), (
+    Name: 'F12';
+    VKey: VK_F12
+  ), (
+    Name: 'F13';
+    VKey: VK_F13
+  ), (
+    Name: 'F14';
+    VKey: VK_F14
+  ), (
+    Name: 'F15';
+    VKey: VK_F15
+  ), (
+    Name: 'F16';
+    VKey: VK_F16
+  ), (
+    Name: 'F2';
+    VKey: VK_F2
+  ), (
+    Name: 'F3';
+    VKey: VK_F3
+  ), (
+    Name: 'F4';
+    VKey: VK_F4
+  ), (
+    Name: 'F5';
+    VKey: VK_F5
+  ), (
+    Name: 'F6';
+    VKey: VK_F6
+  ), (
+    Name: 'F7';
+    VKey: VK_F7
+  ), (
+    Name: 'F8';
+    VKey: VK_F8
+  ), (
+    Name: 'F9';
+    VKey: VK_F9
+  ), (
+    Name: 'HELP';
+    VKey: VK_HELP
+  ), (
+    Name: 'HOME';
+    VKey: VK_HOME
+  ), (
+    Name: 'INS';
+    VKey: VK_INSERT
+  ), (
+    Name: 'LEFT';
+    VKey: VK_LEFT
+  ), (
+    Name: 'NUMLOCK';
+    VKey: VK_NUMLOCK
+  ), (
+    Name: 'PGDN';
+    VKey: VK_NEXT
+  ), (
+    Name: 'PGUP';
+    VKey: VK_PRIOR
+  ), (
+    Name: 'PRTSC';
+    VKey: VK_PRINT
+  ), (
+    Name: 'RIGHT';
+    VKey: VK_RIGHT
+  ), (
+    Name: 'SCROLLLOCK';
+    VKey: VK_SCROLL
+  ), (
+    Name: 'TAB';
+    VKey: VK_TAB
+  ), (
+    Name: 'UP';
+    VKey: VK_UP
+  ));
 
   {Extra   VK   constants   missing   from   Delphi's   Windows   API   interface}
   VK_NULL = 0;
@@ -488,19 +590,9 @@ const
   VK_RightBracket = 221;
   VK_Quote = 222;
   VK_Last = VK_Quote;
-
-  ExtendedVKeys: set of byte = [
-    VK_Up,
-    VK_Down,
-    VK_Left,
-    VK_Right,
-    VK_Home,
-    VK_End,
-    VK_Prior,                                          {PgUp}
+  ExtendedVKeys: set of byte = [VK_Up, VK_Down, VK_Left, VK_Right, VK_Home, VK_End, VK_Prior,                                          {PgUp}
     VK_Next,                                           {PgDn}
-    VK_Insert,
-    VK_Delete];
-
+    VK_Insert, VK_Delete];
 const
   INVALIDKEY = $FFFF {Unsigned   -1};
   VKKEYSCANSHIFTON = $01;
@@ -529,7 +621,7 @@ var
 
   procedure SetBit(var BitTable: Byte; BitMask: Byte);
   begin
-    BitTable := BitTable or Bitmask;
+    BitTable := BitTable or BitMask;
   end;
 
   procedure KeyboardEvent(VKey, ScanCode: Byte; Flags: Longint);
@@ -537,7 +629,8 @@ var
     KeyboardMsg: TMsg;
   begin
     keybd_event(VKey, ScanCode, Flags, 0);
-    if (Wait) then while (PeekMessage(KeyboardMsg, 0, WM_KEYFIRST, WM_KEYLAST, PM_REMOVE)) do
+    if (Wait) then
+      while (PeekMessage(KeyboardMsg, 0, WM_KEYFIRST, WM_KEYLAST, PM_REMOVE)) do
       begin
         TranslateMessage(KeyboardMsg);
         DispatchMessage(KeyboardMsg);
@@ -555,8 +648,10 @@ var
     begin
       NumState := ByteBool(GetKeyState(VK_NUMLOCK) and 1);
       GetKeyBoardState(KeyBoardState);
-      if NumState then KeyBoardState[VK_NUMLOCK] := (KeyBoardState[VK_NUMLOCK] and not 1)
-      else KeyBoardState[VK_NUMLOCK] := (KeyBoardState[VK_NUMLOCK] or 1);
+      if NumState then
+        KeyBoardState[VK_NUMLOCK] := (KeyBoardState[VK_NUMLOCK] and not 1)
+      else
+        KeyBoardState[VK_NUMLOCK] := (KeyBoardState[VK_NUMLOCK] or 1);
       SetKeyBoardState(KeyBoardState);
       exit;
     end;
@@ -568,10 +663,12 @@ var
         KeyboardEvent(VKey, ScanCode, KEYEVENTF_EXTENDEDKEY);
         if (GenUpMsg) then
           KeyboardEvent(VKey, ScanCode, KEYEVENTF_EXTENDEDKEY or KEYEVENTF_KEYUP)
-      end else
+      end
+      else
       begin
         KeyboardEvent(VKey, ScanCode, 0);
-        if (GenUpMsg) then KeyboardEvent(VKey, ScanCode, KEYEVENTF_KEYUP);
+        if (GenUpMsg) then
+          KeyboardEvent(VKey, ScanCode, KEYEVENTF_KEYUP);
       end;
   end;
 
@@ -582,18 +679,25 @@ var
     ScanCode := Lo(MapVirtualKey(VKey, 0));
     if (VKey in ExtendedVKeys) then
       KeyboardEvent(VKey, ScanCode, KEYEVENTF_EXTENDEDKEY and KEYEVENTF_KEYUP)
-    else KeyboardEvent(VKey, ScanCode, KEYEVENTF_KEYUP);
+    else
+      KeyboardEvent(VKey, ScanCode, KEYEVENTF_KEYUP);
   end;
 
   procedure SendKey(MKey: Word; NumTimes: Word; GenDownMsg: Boolean);
   begin
-    if (BitSet(Hi(MKey), VKKEYSCANSHIFTON)) then SendKeyDown(VK_SHIFT, 1, False);
-    if (BitSet(Hi(MKey), VKKEYSCANCTRLON)) then SendKeyDown(VK_CONTROL, 1, False);
-    if (BitSet(Hi(MKey), VKKEYSCANALTON)) then SendKeyDown(VK_MENU, 1, False);
+    if (BitSet(Hi(MKey), VKKEYSCANSHIFTON)) then
+      SendKeyDown(VK_SHIFT, 1, False);
+    if (BitSet(Hi(MKey), VKKEYSCANCTRLON)) then
+      SendKeyDown(VK_CONTROL, 1, False);
+    if (BitSet(Hi(MKey), VKKEYSCANALTON)) then
+      SendKeyDown(VK_MENU, 1, False);
     SendKeyDown(Lo(MKey), NumTimes, GenDownMsg);
-    if (BitSet(Hi(MKey), VKKEYSCANSHIFTON)) then SendKeyUp(VK_SHIFT);
-    if (BitSet(Hi(MKey), VKKEYSCANCTRLON)) then SendKeyUp(VK_CONTROL);
-    if (BitSet(Hi(MKey), VKKEYSCANALTON)) then SendKeyUp(VK_MENU);
+    if (BitSet(Hi(MKey), VKKEYSCANSHIFTON)) then
+      SendKeyUp(VK_SHIFT);
+    if (BitSet(Hi(MKey), VKKEYSCANCTRLON)) then
+      SendKeyUp(VK_CONTROL);
+    if (BitSet(Hi(MKey), VKKEYSCANALTON)) then
+      SendKeyUp(VK_MENU);
   end;
 
   {Implements   a   simple   binary   search   to   locate   special   key   name   strings}
@@ -614,22 +718,30 @@ var
       begin
         Found := True;
         Result := SendKeyRecs[Middle].VKey;
-      end else
+      end
+      else
       begin
-        if (KeyString > SendKeyRecs[Middle].Name) then Bottom := Middle
-        else Top := Middle;
+        if (KeyString > SendKeyRecs[Middle].Name) then
+          Bottom := Middle
+        else
+          Top := Middle;
         Middle := (Succ(Bottom + Top)) div 2;
       end;
     until (Found or Collided);
-    if (Result = INVALIDKEY) then DisplayMessage('Invalid   Key   Name');
+    if (Result = INVALIDKEY) then
+      DisplayMessage('Invalid   Key   Name');
   end;
+
   procedure PopUpShiftKeys;
   begin
     if (not UsingParens) then
     begin
-      if ShiftDown then SendKeyUp(VK_SHIFT);
-      if ControlDown then SendKeyUp(VK_CONTROL);
-      if AltDown then SendKeyUp(VK_MENU);
+      if ShiftDown then
+        SendKeyUp(VK_SHIFT);
+      if ControlDown then
+        SendKeyUp(VK_CONTROL);
+      if AltDown then
+        SendKeyUp(VK_MENU);
       ShiftDown := false;
       ControlDown := false;
       AltDown := false;
@@ -645,8 +757,10 @@ begin
   AltDown := false;
   I := 0;
   L := StrLen(SendKeysString);
-  if (L > AllocationSize) then L := AllocationSize;
-  if (L = 0) then Exit;
+  if (L > AllocationSize) then
+    L := AllocationSize;
+  if (L = 0) then
+    Exit;
 
   while (I < L) do
   begin
@@ -727,8 +841,10 @@ begin
               NumTimes := StrToInt(Copy(KeyString, Succ(PosSpace), Length(KeyString) - PosSpace));
               KeyString := Copy(KeyString, 1, Pred(PosSpace));
             end;
-            if (Length(KeyString) = 1) then MKey := vkKeyScan(KeyString[1])
-            else MKey := StringToVKey(KeyString);
+            if (Length(KeyString) = 1) then
+              MKey := vkKeyScanA(ansichar(KeyString[1]))
+            else
+              MKey := StringToVKey(KeyString);
             if (MKey <> INVALIDKEY) then
             begin
               SendKey(MKey, NumTimes, True);
@@ -749,7 +865,9 @@ begin
           begin
             SendKey(MKey, 1, True);
             PopUpShiftKeys;
-          end else DisplayMessage('Invalid   KeyName');
+          end
+          else
+            DisplayMessage('Invalid   KeyName');
           Inc(I);
         end;
       end;
@@ -761,7 +879,9 @@ begin
       begin
         SendKey(MKey, 1, True);
         PopUpShiftKeys;
-      end else DisplayMessage('Invalid   KeyName');
+      end
+      else
+        DisplayMessage('Invalid   KeyName');
       Inc(I);
     end;
 
@@ -847,7 +967,8 @@ begin
     LinkFileName := Format('%s\%s.lnk', [LinkPath, LinkName]);
 
     //保存快捷方式
-    if AFile.Save(PWChar(LinkFileName), False) <> S_OK then Exit;
+    if AFile.Save(PWChar(LinkFileName), False) <> S_OK then
+      Exit;
 
     Result := True;
   finally
@@ -871,7 +992,7 @@ begin
   OleCheck(CoCreateInstance(CLSID_ShellLink, nil, CLSCTX_INPROC_SERVER, IShellLink, link));
   OleCheck(link.QueryInterface(IPersistFile, storage));
 
-  if (ALinkFile[1] = '"') and (ALinkFile[Length(ALinkFile)] = '"')then
+  if (ALinkFile[1] = '"') and (ALinkFile[Length(ALinkFile)] = '"') then
     widepath := Copy(ALinkFile, 2, Length(ALinkFile) - 2) // 这么做不对！不能将引号丢掉
   else
     widepath := ALinkFile;
@@ -897,33 +1018,33 @@ var
 begin
   Result := False;
 
-  if str = '' then Exit;
+  if str = '' then
+    Exit;
 
   for i := 1 to Length(str) do
   begin
-    if not (str[i] in ['0'..'9']) then Exit;
+    if not (charinSet(str[i], ['0'..'9'])) then
+      Exit;
   end;
 
   Result := True;
 end;
 
-function GetFileListInDir(var List: TStringList; const Dir: string;
-  Ext: string = '*'; IsPlusDir: Boolean = True): Boolean;
+function GetFileListInDir(var List: TStringList; const Dir: string; Ext: string = '*'; IsPlusDir: Boolean = True): Boolean;
 var
   fd: TSearchRec;
-  i: Cardinal;
 begin
   Result := False;
 
   List.Clear;
 
-  if not DirectoryExists(Dir) then exit;
+  if not DirectoryExists(Dir) then
+    exit;
 
   if FindFirst(Dir + '\*.*', faAnyFile, fd) = 0 then
   begin
     while FindNext(fd) = 0 do
-      if (fd.Name <> '.') and (fd.Name <> '..')
-        and (Pos(LowerCase(Ext), LowerCase(fd.Name)) > 0) then
+      if (fd.Name <> '.') and (fd.Name <> '..') and (Pos(LowerCase(Ext), LowerCase(fd.Name)) > 0) then
         if IsPlusDir then
           List.Add(Dir + '\' + fd.Name)
         else
@@ -936,6 +1057,7 @@ begin
 end;
 
 procedure QuickSort(var SortNum: array of integer; p, r: integer);
+
   procedure swap(var a, b: integer);
   var
     tmp: integer;
@@ -944,6 +1066,7 @@ procedure QuickSort(var SortNum: array of integer; p, r: integer);
     a := b;
     b := tmp;
   end;
+
   function partition(var SortNum: array of integer; p, r: integer): integer; //划分
   var
     i, j, x: integer;
@@ -953,17 +1076,21 @@ procedure QuickSort(var SortNum: array of integer; p, r: integer);
     x := SortNum[p];
     while true do
     begin
-      repeat inc(i)
+      repeat
+        inc(i)
       until SortNum[i] < x;
-      repeat inc(j, -1)
+      repeat
+        inc(j, -1)
       until SortNum[j] > x;
-      if i >= j then break;
+      if i >= j then
+        break;
       swap(SortNum[i], SortNum[j]);
     end;
     SortNum[p] := SortNum[j];
     SortNum[j] := x;
     result := j;
   end;
+
 var
   q: integer;
 begin
@@ -980,7 +1107,7 @@ var
   Res: TResourceStream;
 begin
   try
-    Res := TResourceStream.Create(Hinstance, Resname, Pchar(ResType));
+    Res := TResourceStream.Create(Hinstance, ResName, Pchar(ResType));
     try
       Res.SavetoFile(ResNewName);
       Result := true;
@@ -992,9 +1119,9 @@ begin
   end;
 end;
 
-function ReplaceEnvStr(str:string):string;
+function ReplaceEnvStr(str: string): string;
 var
-  Regex:TRegExpr;
+  Regex: TRegExpr;
 begin
   //如果是环境变量，则替换之
   //环境变量如%windir%这种形式
@@ -1009,16 +1136,15 @@ begin
     begin
       repeat
         if GetEnvironmentVariable(Regex.Match[1]) <> '' then
-          Result := StringReplace(str, '%'+Regex.Match[1]+'%',
-            GetEnvironmentVariable(Regex.Match[1]), [rfReplaceAll]);
+          Result := StringReplace(str, '%' + Regex.Match[1] + '%', GetEnvironmentVariable(Regex.Match[1]), [rfReplaceAll]);
       until not Regex.ExecNext;
     end;
   finally
-    Regex.Free;
+    FreeAndNil(Regex);
   end;
 end;
 
-function IsVista:Boolean;
+function IsVista: Boolean;
 begin
   Result := (Win32MajorVersion >= 6);
 end;
@@ -1063,92 +1189,56 @@ var
 begin
   Len := Length(Str) + 1;
   SetLength(Result, Len);
-  Len := MultiByteToWideChar(CodePage, 0, PChar(Str), -1, PWideChar(Result), Len);
+  Len := MultiByteToWideChar(CodePage, 0, PansiChar(ansistring(Str)), -1, PWideChar(Result), Len);
   SetLength(Result, Len - 1);                          //end is #0
 end;
 
-function UnicodeDecode(Str: WideString; CodePage: integer): string;
+function UnicodeDecode(Str: WideString; CodePage: integer): ansistring;
 var
   Len: integer;
 begin
   Len := Length(Str) * 2 + 1;                          //one for #0
   SetLength(Result, Len);
-  Len := WideCharToMultiByte(CodePage, 0, PWideChar(Str), -1, PChar(Result), Len, nil, nil);
+  Len := WideCharToMultiByte(CodePage, 0, PWideChar(Str), -1, PansiChar(Result), Len, nil, nil);
   SetLength(Result, Len - 1);
 end;
 
-function Gb2Big5(Str: string): string;
-begin
-  SetLength(Result, Length(Str));
-  LCMapString(GetUserDefaultLCID, LCMAP_TRADITIONAL_CHINESE,
-    PChar(Str), Length(Str),
-    PChar(Result), Length(Result));
-  Result := UnicodeDecode(UnicodeEncode(Result, 936), 950);
-end;
-
-function Big52Gb(Str: string): string;
-begin
-  Str := UnicodeDecode(UnicodeEncode(Str, 950), 936);
-  SetLength(Result, Length(Str));
-  LCMapString(GetUserDefaultLCID, LCMAP_SIMPLIFIED_CHINESE,
-    PChar(Str), Length(Str),
-    PChar(Result), Length(Result));
-end;
-
 function Utf8Encode(const WS: WideString): UTF8String;
-var
-  L: Integer;
-  Temp: UTF8String;
 begin
-  Result := '';
-  if WS = '' then Exit;
-  SetLength(Temp, Length(WS) * 3);
-
-  // SetLength includes space for null terminator
-  L := UnicodeToUtf8(PChar(Temp), Length(Temp) + 1, PWideChar(WS), Length(WS));
-  if L > 0 then
-    SetLength(Temp, L - 1)
-  else
-    Temp := '';
-
-  Result := Temp;
+  Result := utf8Encode(WS);
 end;
 
 function GetUTF8QueryString(Keyword: string): string;
 const
-  NoConversion = ['A'..'Z', 'a'..'z', '*', '@', '.', '_', '-'];
+  NoConversion =[ 'A'.. 'Z',  'a'.. 'z',  '*',  '@',  '.',  '_',  '-'];
 var
-  str, QueryStr: string;
   i: Cardinal;
 begin
   Result := '';
-  Keyword := Utf8Encode(Keyword);
+  Keyword := string(Utf8Encode(Keyword));
   for i := 1 to Length(Keyword) do
-    if Keyword[i] in NoConversion then
+    if CharInset(Keyword[i], NoConversion) then
       Result := Result + Keyword[i]
+    else if Keyword[i] = ' ' then
+      Result := Result + '+'
     else
-      if Keyword[i] = ' ' then
-        Result := Result + '+'
-      else
-        Result := Result + '%' + IntToHex(Ord(Keyword[i]), 2);
+      Result := Result + '%' + IntToHex(Ord(Keyword[i]), 2);
 end;
 
 function GetURLQueryString(Keyword: string): string;
 const
-  NoConversion = ['A'..'Z', 'a'..'z', '*', '@', '.', '_', '-'];
+  NoConversion =[ 'A'.. 'Z',  'a'.. 'z',  '*',  '@',  '.',  '_',  '-'];
 var
-  str, QueryStr: string;
   i: Cardinal;
 begin
   Result := '';
   for i := 1 to Length(Keyword) do
-    if Keyword[i] in NoConversion then
+    if CharInSet(Keyword[i], NoConversion) then
       Result := Result + Keyword[i]
+    else if Keyword[i] = ' ' then
+      Result := Result + '+'
     else
-      if Keyword[i] = ' ' then
-        Result := Result + '+'
-      else
-        Result := Result + '%' + IntToHex(Ord(Keyword[i]), 2);
+      Result := Result + '%' + IntToHex(Ord(Keyword[i]), 2);
 end;
 
 //procedure InitLogger(IsAppendMode:Boolean = False);
@@ -1211,7 +1301,7 @@ end;
 //    AddLog(Format('[%s] ', [DateTimeToStr(Now)]) + Format(AFormat, Args));
 //end;
 
-function FindWindowByCaption(Caption:string):HWND;
+function FindWindowByCaption(Caption: string): HWND;
 var
   h: HWnd;
   p: array[0..254] of char;
@@ -1220,7 +1310,8 @@ var
 begin
   Result := 0;
 
-  if DEBUG_MODE then WindowList := TStringList.Create;
+  if DEBUG_MODE then
+    WindowList := TStringList.Create;
   try
     h := GetWindow(Application.Handle, GW_HWNDFIRST);
     while h <> 0 do
@@ -1229,13 +1320,15 @@ begin
       begin
         s := p;
 
-        if DEBUG_MODE then WindowList.Add(Format('%s : %d', [s, h]));
+        if DEBUG_MODE then
+          WindowList.Add(Format('%s : %d', [s, h]));
 
         if s = Caption then
         begin
           Result := h;
 
-          if not DEBUG_MODE then Exit;
+          if not DEBUG_MODE then
+            Exit;
         end;
 
       end;
@@ -1267,7 +1360,7 @@ begin
     StringToWideChar(AStr, WStr, Size);
     OpenClipboard(0);
     EmptyClipboard;
-    Data := GlobalAlloc(GMEM_MOVEABLE+GMEM_DDESHARE, Size);
+    Data := GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, Size);
     try
       DataPtr := GlobalLock(Data);
       try
@@ -1291,16 +1384,16 @@ var
   m: TMsg;
 begin
   m.Message := 0;
-  if PeekMessage(m, Wnd, Msg, Msg, pm_Remove) and (m.Message = WM_QUIT)   then
+  if PeekMessage(m, Wnd, Msg, Msg, pm_Remove) and (m.Message = WM_QUIT) then
     PostQuitMessage(m.wparam);
 end;
 
 function GetLocaleInformation(LocaleFlag: Integer): string;
 var
-  pcLCA: Array[0..20] of Char;
+  pcLCA: array[0..20] of Char;
 begin
   // 参考 http://hi.baidu.com/superkinger/blog/item/0ea29c894eab5fbb0e244417.html
-  if( GetLocaleInfo(LOCALE_SYSTEM_DEFAULT, LocaleFlag, pcLCA, 19) <= 0 ) then
+  if (GetLocaleInfo(LOCALE_SYSTEM_DEFAULT, LocaleFlag, pcLCA, 19) <= 0) then
   begin
     pcLCA[0] := #0;
   end;
@@ -1308,10 +1401,9 @@ begin
   Result := pcLCA;
 end;
 
-function RefreshEnvironmentVars:Boolean;
+function RefreshEnvironmentVars: Boolean;
 var
   Reg: TRegistry;
-  RegStr: string;
   strList: TStringList;
   i: Cardinal;
   Value: string;
@@ -1325,23 +1417,25 @@ begin
     Reg.OpenKeyReadOnly('SYSTEM\CurrentControlSet\Control\Session Manager\Environment');
     Reg.GetValueNames(strList);
 
-    if strList.Count = 0 then Exit;
+    if strList.Count = 0 then
+      Exit;
 
     for i := 0 to strList.Count - 1 do
     begin
       Value := Reg.ReadString(strList.Strings[i]);
 
       // 因为一设置含 %SystemRoot% 的变量，就会造成临时目录无法获得，故跳过带%的
-      if Pos('%', Value) = 0 then      
+      if Pos('%', Value) = 0 then
         SetEnvironmentVariable(PChar(strList.Strings[i]), PChar(Value));
     end;
 
     Reg.CloseKey;
     Result := True;
   finally
-    Reg.Free;
-    strList.Free;
+    freeAndNil(Reg);
+    freeAndNil(strList);
   end;
-end;  
+end;
+
 end.
 

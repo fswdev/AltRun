@@ -3,32 +3,15 @@ unit frmALTRun;
 interface
 
 uses
-  Windows,
-  Messages,
-  SysUtils,
-  Variants,
-  Classes,
-  Graphics,
-  Controls,
-  Forms,
-  Dialogs,
-  StdCtrls,
-  AppEvnts,
-  CoolTrayIcon,
-  ActnList,
-  Menus,
-  HotKeyManager,
-  ExtCtrls,
-  Buttons,
-  ImgList,
-  ShellAPI,
-  MMSystem,
-  frmParam,
-  frmAutoHide,
-  untShortCutMan,
-  untClipboard,
-  untALTRunOption,
-  untUtilities, jpeg;
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, AppEvnts, CoolTrayIcon, ActnList, Menus, HotKeyManager,
+  ExtCtrls, Buttons, ImgList, ShellAPI, MMSystem, frmParam, frmAutoHide,
+  untShortCutMan, untClipboard, untALTRunOption, untUtilities, jpeg,
+  System.ImageList, System.Actions;
+
+const
+  WM_ALTRUN_ADD_SHORTCUT = WM_USER + 2000;
+  WM_ALTRUN_SHOW_WINDOW = WM_USER + 2001;
 
 type
   TALTRunForm = class(TForm)
@@ -36,14 +19,12 @@ type
     edtShortCut: TEdit;
     lstShortCut: TListBox;
     evtMain: TApplicationEvents;
-    ntfMain: TCoolTrayIcon;
     pmMain: TPopupMenu;
     actlstMain: TActionList;
     actShow: TAction;
     actShortCut: TAction;
     actConfig: TAction;
     actClose: TAction;
-    hkmHotkey1: THotKeyManager;
     actAbout: TAction;
     Show1: TMenuItem;
     ShortCut1: TMenuItem;
@@ -77,10 +58,8 @@ type
     tmrFocus: TTimer;
     actUp: TAction;
     actDown: TAction;
-    hkmHotkey2: THotKeyManager;
     pmCommandLine: TPopupMenu;
     actCopyCommandLine: TAction;
-    hkmHotkey3: THotKeyManager;
 
     procedure WndProc(var Msg: TMessage); override;
     procedure edtShortCutChange(Sender: TObject);
@@ -106,28 +85,18 @@ type
     procedure actAddItemExecute(Sender: TObject);
     procedure actEditItemExecute(Sender: TObject);
     procedure actDeleteItemExecute(Sender: TObject);
-    procedure lblShortCutMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
-    procedure imgBackgroundMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
+    procedure lblShortCutMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure imgBackgroundMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure tmrHideTimer(Sender: TObject);
     procedure evtMainDeactivate(Sender: TObject);
     procedure FormActivate(Sender: TObject);
     procedure ntfMainDblClick(Sender: TObject);
-    procedure lstShortCutMouseActivate(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y, HitTest: Integer;
-      var MouseActivate: TMouseActivate);
-    procedure edtShortCutMouseActivate(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y, HitTest: Integer;
-      var MouseActivate: TMouseActivate);
-    procedure lblShortCutMouseActivate(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y, HitTest: Integer;
-      var MouseActivate: TMouseActivate);
-    procedure edtCommandLineKeyDown(Sender: TObject; var Key: Word;
-      Shift: TShiftState);
+    procedure lstShortCutMouseActivate(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y, HitTest: Integer; var MouseActivate: TMouseActivate);
+    procedure edtShortCutMouseActivate(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y, HitTest: Integer; var MouseActivate: TMouseActivate);
+    procedure lblShortCutMouseActivate(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y, HitTest: Integer; var MouseActivate: TMouseActivate);
+    procedure edtCommandLineKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure actOpenDirExecute(Sender: TObject);
-    procedure lstShortCutMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
+    procedure lstShortCutMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure pmListPopup(Sender: TObject);
     procedure tmrExitTimer(Sender: TObject);
     procedure tmrCopyTimer(Sender: TObject);
@@ -137,10 +106,15 @@ type
     procedure evtMainShortCut(var Msg: TWMKey; var Handled: Boolean);
     procedure actUpExecute(Sender: TObject);
     procedure actDownExecute(Sender: TObject);
-    procedure MiddleMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
+    procedure MiddleMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure actCopyCommandLineExecute(Sender: TObject);
     procedure hkmHotkey3HotKeyPressed(HotKey: Cardinal; Index: Word);
+  private
+    ntfMain: TCoolTrayIcon;
+    hkmHotkey1: THotKeyManager;
+    hkmHotkey2: THotKeyManager;
+    hkmHotkey3: THotKeyManager;
+    procedure Receive_SendTo_Filename(var Msg: TWMCopyData); message WM_COPYDATA;
   private
     m_IsShow: Boolean;
     m_IsFirstShow: Boolean;
@@ -154,8 +128,7 @@ type
     m_AgeOfFile: Integer;
     m_NeedRefresh: Boolean;
     m_IsTop: Boolean;
-    m_LastShortCutText: string;
-    
+
     function ApplyHotKey1: Boolean;
     function ApplyHotKey2: Boolean;
     function GetHotKeyString: string;
@@ -175,32 +148,21 @@ type
 var
   ALTRunForm: TALTRunForm;
 
-const
-  WM_ALTRUN_ADD_SHORTCUT = WM_USER + 2000;
-  WM_ALTRUN_SHOW_WINDOW = WM_USER + 2001;
-
 implementation
 {$R *.dfm}
 
 uses
-  untLogger,
-  frmConfig,
-  frmAbout,
-  frmShortCut,
-  frmShortCutMan,
-  frmLang;
+  untLogger, frmConfig, frmAbout, frmShortCut, frmShortCutMan, frmLang;
 
 procedure TALTRunForm.actAboutExecute(Sender: TObject);
 var
   AboutForm: TAboutForm;
-  hALTRun:HWND;
+  hALTRun: HWND;
 begin
   TraceMsg('actAboutExecute()');
 
   if DEBUG_MODE then
   begin
-    hALTRun := Self.Handle;
-    hALTRun := FindWindow(nil, TITLE);
     hALTRun := FindWindow('TALTRunForm', nil);
 //    hALTRun := FindWindowByCaption(TITLE);
     SendMessage(hALTRun, WM_ALTRUN_ADD_SHORTCUT, 0, 0);
@@ -224,7 +186,8 @@ begin
   m_IsTop := False;
   ShortCutMan.AddFileShortCut(edtShortCut.Text);
   m_IsTop := True;
-  if m_IsShow then edtShortCutChange(Self);
+  if m_IsShow then
+    edtShortCutChange(Self);
 end;
 
 procedure TALTRunForm.actCloseExecute(Sender: TObject);
@@ -332,16 +295,19 @@ begin
 
       lstAlphaColor.Selected := AlphaColor;
       seAlpha.Value := Alpha;
+      ShowModal;
       seRoundBorderRadius.Value := RoundBorderRadius;
       seFormWidth.Value := FormWidth;
 
       //语言
+
+      LangList := TStringList.Create;
       try
         cbbLang.Items.Add(DEFAULT_LANG);
         cbbLang.ItemIndex := 0;
 
-        LangList := TStringList.Create;
-        if not GetLangList(LangList) then Exit;
+        if not GetLangList(LangList) then
+          Exit;
 
         if LangList.Count > 0 then
         begin
@@ -398,19 +364,24 @@ begin
 
             ListFormat := cbbListFormat.Text;
 
-            if not IsNeedRestart then IsNeedRestart := (AlphaColor <> lstAlphaColor.Selected);
+            if not IsNeedRestart then
+              IsNeedRestart := (AlphaColor <> lstAlphaColor.Selected);
             AlphaColor := lstAlphaColor.Selected;
 
-            if not IsNeedRestart then IsNeedRestart := (Alpha <> seAlpha.Value);
+            if not IsNeedRestart then
+              IsNeedRestart := (Alpha <> seAlpha.Value);
             Alpha := Round(seAlpha.Value);
 
-            if not IsNeedRestart then IsNeedRestart := (RoundBorderRadius <> seRoundBorderRadius.Value);
+            if not IsNeedRestart then
+              IsNeedRestart := (RoundBorderRadius <> seRoundBorderRadius.Value);
             RoundBorderRadius := Round(seRoundBorderRadius.Value);
 
-            if not IsNeedRestart then IsNeedRestart := (FormWidth <> seFormWidth.Value);
+            if not IsNeedRestart then
+              IsNeedRestart := (FormWidth <> seFormWidth.Value);
             FormWidth := Round(seFormWidth.Value);
 
-            if not IsNeedRestart then IsNeedRestart := (Lang <> cbbLang.Text);
+            if not IsNeedRestart then
+              IsNeedRestart := (Lang <> cbbLang.Text);
             Lang := cbbLang.Text;
 
             //不让修改背景图片的文件名
@@ -461,7 +432,7 @@ begin
         //应用快捷键
         ApplyHotKey1;
         ApplyHotKey2;
-        ntfMain.Hint := Format(resMainHint, [TITLE, ALTRUN_VERSION, #13#10, GetHotKeyString]);
+        ntfMain.Hint := ansistring(Format(resMainHint, [TITLE, ALTRUN_VERSION, #13#10, GetHotKeyString]));
 
         if ShowSkin then
           imgBackground.Picture.LoadFromFile(ExtractFilePath(Application.ExeName) + BGFileName)
@@ -534,20 +505,19 @@ begin
 
         if IsNeedRestart then
         begin
-          Application.MessageBox(PChar(resRestartMeInfo),
-            PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+          Application.MessageBox(PChar(resRestartMeInfo), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
           RestartMe;
         end;
       end;
     end;
   finally
-    ConfigForm.Free;
+    freeandnil(ConfigForm);
   end;
 end;
 
 procedure TALTRunForm.actCopyCommandLineExecute(Sender: TObject);
 begin
-  if lstShortCut.ItemIndex>=0 then
+  if lstShortCut.ItemIndex >= 0 then
   begin
     //SetClipboardText(TShortCutItem(lstShortCut.Items.Objects[lstShortCut.ItemIndex]).CommandLine);
     Clipboard.AsUnicodeText := TShortCutItem(lstShortCut.Items.Objects[lstShortCut.ItemIndex]).CommandLine;
@@ -563,12 +533,12 @@ var
 begin
   TraceMsg('actDeleteItemExecute(%d)', [lstShortCut.ItemIndex]);
 
-  if lstShortCut.ItemIndex < 0 then Exit;
+  if lstShortCut.ItemIndex < 0 then
+    Exit;
 
   itm := TShortCutItem(lstShortCut.Items.Objects[lstShortCut.ItemIndex]);
 
-  if Application.MessageBox(PChar(Format('%s %s(%s)?', [resDelete, itm.ShortCut, itm.Name])),
-    PChar(resInfo), MB_OKCANCEL + MB_ICONQUESTION + MB_TOPMOST) = IDOK then
+  if Application.MessageBox(PChar(Format('%s %s(%s)?', [resDelete, itm.ShortCut, itm.Name])), PChar(resInfo), MB_OKCANCEL + MB_ICONQUESTION + MB_TOPMOST) = IDOK then
   begin
     Index := ShortCutMan.GetShortCutItemIndex(itm);
     ShortCutMan.DeleteShortCutItem(Index);
@@ -588,27 +558,22 @@ begin
   with lstShortCut do
     if Visible then
     begin
-      if Count = 0 then Exit;
+      if Count = 0 then
+        Exit;
 
       //列表上下走
       if ItemIndex = -1 then
         ItemIndex := 0
+      else if ItemIndex = Count - 1 then
+        ItemIndex := 0
       else
-        if ItemIndex = Count - 1 then
-          ItemIndex := 0
-        else
-          ItemIndex := ItemIndex + 1;
+        ItemIndex := ItemIndex + 1;
 
       DisplayShortCutItem(TShortCutItem(Items.Objects[ItemIndex]));
       m_LastShortCutCmdIndex := ItemIndex;
 
-      if ShowOperationHint
-        and (lstShortCut.ItemIndex >= 0)
-        and (Length(edtShortCut.Text) < 10)
-        and (lstShortCut.Items[lstShortCut.ItemIndex][2] in ['0'..'9']) then
-        edtHint.Text := Format(resRunNum,
-          [lstShortCut.Items[lstShortCut.ItemIndex][2],
-          lstShortCut.Items[lstShortCut.ItemIndex][2]]);
+      if ShowOperationHint and (lstShortCut.ItemIndex >= 0) and (Length(edtShortCut.Text) < 10) and CharInSet(lstShortCut.Items[lstShortCut.ItemIndex][2], ['0'..'9']) then
+        edtHint.Text := Format(resRunNum, [lstShortCut.Items[lstShortCut.ItemIndex][2], lstShortCut.Items[lstShortCut.ItemIndex][2]]);
     end;
 end;
 
@@ -616,15 +581,15 @@ procedure TALTRunForm.actEditItemExecute(Sender: TObject);
 var
   ShortCutForm: TShortCutForm;
   itm: TShortCutItem;
-  Index: Integer;
 begin
   TraceMsg('actEditItemExecute(%d)', [lstShortCut.ItemIndex]);
 
-  if lstShortCut.ItemIndex < 0 then Exit;
+  if lstShortCut.ItemIndex < 0 then
+    Exit;
 
   itm := TShortCutItem(lstShortCut.Items.Objects[lstShortCut.ItemIndex]);
-  Index := ShortCutMan.GetShortCutItemIndex(itm);
 
+  ShortCutForm := nil;
   try
     ShortCutForm := TShortCutForm.Create(Self);
     with ShortCutForm do
@@ -638,7 +603,8 @@ begin
       ShowModal;
       m_IsTop := True;
 
-      if ModalResult = mrCancel then Exit;
+      if ModalResult = mrCancel then
+        Exit;
 
       //取得新的项目
       itm.ShortCutType := scItem;
@@ -655,19 +621,11 @@ begin
       edtShortCutChange(Sender);
     end;
   finally
-    ShortCutForm.Free;
+    freeandnil(ShortCutForm);
   end;
 end;
 
 procedure TALTRunForm.actExecuteExecute(Sender: TObject);
-var
-  cmd: string;
-  ret: Integer;
-  ShortCutForm: TShortCutForm;
-  Item: TShortCutItem;
-  ShellApplication: Variant;
-  i: Cardinal;
-  ch: Char;
 begin
   TraceMsg('actExecuteExecute(%d)', [lstShortCut.ItemIndex]);
 
@@ -742,14 +700,13 @@ begin
     //SendKeys('~', True, True);                         //回车
 
     //如果需要执行完就退出
-    if ExitWhenExecute then tmrExit.Enabled := True;
+    if ExitWhenExecute then
+      tmrExit.Enabled := True;
   end
   else
     //如果没有合适项目，则提示是否添加之
-    if Application.MessageBox(
-      PChar(Format(resNoItemAndAdd, [edtShortCut.Text])),
-      PChar(resInfo), MB_OKCANCEL + MB_ICONQUESTION) = IDOK then
-      actAddItemExecute(Sender);
+    if Application.MessageBox(PChar(Format(resNoItemAndAdd, [edtShortCut.Text])), PChar(resInfo), MB_OKCANCEL + MB_ICONQUESTION) = IDOK then
+    actAddItemExecute(Sender);
 end;
 
 procedure TALTRunForm.actHideExecute(Sender: TObject);
@@ -764,7 +721,6 @@ end;
 procedure TALTRunForm.actOpenDirExecute(Sender: TObject);
 var
   itm: TShortCutItem;
-  Index: Integer;
   cmdobj: TCmdObject;
   CommandLine: string;
   SlashPos: Integer;
@@ -772,10 +728,10 @@ var
 begin
   TraceMsg('actOpenDirExecute(%d)', [lstShortCut.ItemIndex]);
 
-  if lstShortCut.ItemIndex < 0 then Exit;
+  if lstShortCut.ItemIndex < 0 then
+    Exit;
 
   itm := TShortCutItem(lstShortCut.Items.Objects[lstShortCut.ItemIndex]);
-  Index := ShortCutMan.GetShortCutItemIndex(itm);
 
   //if not (FileExists(itm.CommandLine) or DirectoryExists(itm.CommandLine)) then Exit;
 
@@ -844,93 +800,29 @@ procedure TALTRunForm.actSelectChangeExecute(Sender: TObject);
 begin
   TraceMsg('actSelectChangeExecute(%d)', [lstShortCut.ItemIndex]);
 
-  if lstShortCut.ItemIndex = -1 then Exit;
+  if lstShortCut.ItemIndex = -1 then
+    Exit;
 
   lblShortCut.Caption := TShortCutItem(lstShortCut.Items.Objects[lstShortCut.ItemIndex]).Name;
   lblShortCut.Hint := TShortCutItem(lstShortCut.Items.Objects[lstShortCut.ItemIndex]).CommandLine;
   //edtCommandLine.Hint := lblShortCut.Hint;
   edtCommandLine.Text := resCMDLine + lblShortCut.Hint;
 
-  if DirAvailable then lblShortCut.Caption := '[' + lblShortCut.Caption + ']';
+  if DirAvailable then
+    lblShortCut.Caption := '[' + lblShortCut.Caption + ']';
 end;
 
 procedure TALTRunForm.actShortCutExecute(Sender: TObject);
 const
   TEST_ITEM_COUNT = 10;
   Test_Array: array[0..TEST_ITEM_COUNT - 1] of Integer = (3, 0, 8, 2, 8, 6, 1, 3, 0, 8);
-
 var
   ShortCutManForm: TShortCutManForm;
-  StringList: TStringList;
-  i: Cardinal;
-  str: string;
-  Item: TShortCutItem;
-  ret:Integer;
-  FileDate: Integer;
-  hALTRun:HWND;
 begin
   TraceMsg('actShortCutExecute()');
 
   if DEBUG_MODE then
   begin
-    //Randomize;
-    //StringList := TStringList.Create;
-    //try
-    //  TraceMsg('- Before QuickSort');
-    //
-    //  for i := 0 to TEST_ITEM_COUNT - 1 do
-    //  begin
-    //    Item := TShortCutItem.Create;
-    //    with Item do
-    //    begin
-    //      ShortCutType := scItem;
-    //      Freq := Test_Array[i];                       //Random(TEST_ITEM_COUNT);
-    //      Rank := Freq;
-    //      Name := IntToStr(Rank);
-    //      ParamType := ptNone;
-    //
-    //      TraceMsg('  - [%d] = %d', [i, Freq]);
-    //    end;
-    //
-    //    StringList.AddObject(Item.Name, Item);
-    //  end;
-    //
-    //  ShortCutMan.QuickSort(StringList, 0, TEST_ITEM_COUNT - 1);
-    //
-    //  TraceMsg('- After QuickSort');
-    //
-    //  for i := 0 to TEST_ITEM_COUNT - 1 do
-    //  begin
-    //    Item := TShortCutItem(StringList.Objects[i]);
-    //    with Item do
-    //    begin
-    //      TraceMsg('  - [%d] = %d', [i, Freq]);
-    //    end;
-    //
-    //    Item.Free;
-    //  end;
-    //
-    //  TraceMsg('- End QuickSort');
-    //finally
-    //  StringList.Free;
-    //end;
-
-    //ret := ShellExecute(0, nil, PChar(GetEnvironmentVariable('windir')), nil, nil, SW_SHOWNORMAL);
-    //ret := WinExec('%windir%', 1);
-
-    //FileDate := FileAge('123.txt');
-    //FileDate := 975878736;
-    //SetFileModifyTime('123.txt', FileDateToDateTime(FileDate));
-
-    //hALTRun := FindWindowByCaption('ALTRun');
-    //ShowMessage(IntToStr(hALTRun));
-    //PostMessage(FindWindowByCaption('ALTRun'), WM_ALTRUN_ADD_SHORTCUT, 0, 0);
-    //m_IsFirstDblClickIcon := True;
-    //ntfMainDblClick(nil);
-
-    //edtShortCut.ImeMode := imOpen;
-    //TraceMsg('ImeMode = %d, ImeName = %s', [Ord(edtShortCut.ImeMode), edtShortCut.ImeName]);
-
     SetEnvironmentVariable(PChar('MyTool'), PChar('C:\'));
     Exit;
   end;
@@ -973,16 +865,14 @@ end;
 procedure TALTRunForm.actShowExecute(Sender: TObject);
 var
   lg: longint;
-  WinMediaFileName, PopupFileName: string;
-  IsForeWindow: Boolean;
-  TryTimes: Integer;
-  OldTickCount: Cardinal;
+  PopupFileName: string;
 begin
   TraceMsg('actShowExecute()');
 
   Self.Caption := TITLE;
 
-  if ParamForm <> nil then ParamForm.ModalResult := mrCancel;
+  if ParamForm <> nil then
+    ParamForm.ModalResult := mrCancel;
 
   ShortCutMan.LoadShortCutList;
 
@@ -1007,7 +897,8 @@ begin
       begin
         lstShortCut.ItemIndex := 0;
         lblShortCut.Caption := TShortCutItem(lstShortCut.Items.Objects[0]).Name;
-        if DirAvailable then lblShortCut.Caption := '[' + lblShortCut.Caption + ']';
+        if DirAvailable then
+          lblShortCut.Caption := '[' + lblShortCut.Caption + ']';
       end;
     end;
 
@@ -1159,27 +1050,22 @@ begin
   with lstShortCut do
     if Visible then
     begin
-      if Count = 0 then Exit;
+      if Count = 0 then
+        Exit;
 
       //列表上下走
       if ItemIndex = -1 then
         ItemIndex := Count - 1
+      else if ItemIndex = 0 then
+        ItemIndex := Count - 1
       else
-        if ItemIndex = 0 then
-          ItemIndex := Count - 1
-        else
-          ItemIndex := ItemIndex - 1;
+        ItemIndex := ItemIndex - 1;
 
       DisplayShortCutItem(TShortCutItem(Items.Objects[ItemIndex]));
       m_LastShortCutCmdIndex := ItemIndex;
 
-      if ShowOperationHint
-        and (lstShortCut.ItemIndex >= 0)
-        and (Length(edtShortCut.Text) < 10)
-        and (lstShortCut.Items[lstShortCut.ItemIndex][2] in ['0'..'9']) then
-        edtHint.Text := Format(resRunNum,
-          [lstShortCut.Items[lstShortCut.ItemIndex][2],
-          lstShortCut.Items[lstShortCut.ItemIndex][2]]);
+      if ShowOperationHint and (lstShortCut.ItemIndex >= 0) and (Length(edtShortCut.Text) < 10) and CharInSet(lstShortCut.Items[lstShortCut.ItemIndex][2], ['0'..'9']) then
+        edtHint.Text := Format(resRunNum, [lstShortCut.Items[lstShortCut.ItemIndex][2], lstShortCut.Items[lstShortCut.ItemIndex][2]]);
     end;
 end;
 
@@ -1188,16 +1074,11 @@ var
   HotKeyVar: Cardinal;
 begin
   Result := False;
-
   TraceMsg('ApplyHotKey1(%s)', [HotKeyStr1]);
-
   HotKeyVar := TextToHotKey(HotKeyStr1, LOCALIZED_KEYNAMES);
-
   if (HotKeyVar = 0) or (hkmHotkey1.AddHotKey(HotKeyVar) = 0) then
   begin
-    Application.MessageBox(PChar(Format(resHotKeyError, [HotKeyStr1])),
-      PChar(resWarning), MB_OK + MB_ICONWARNING);
-
+    Application.MessageBox(PChar(Format(resHotKeyError, [HotKeyStr1])), PChar(resWarning), MB_OK + MB_ICONWARNING);
     Exit;
   end;
 
@@ -1209,24 +1090,17 @@ var
   HotKeyVar: Cardinal;
 begin
   Result := False;
-
   TraceMsg('ApplyHotKey2(%s)', [HotKeyStr2]);
-
   HotKeyVar := TextToHotKey(HotKeyStr2, LOCALIZED_KEYNAMES);
-
   if (HotKeyVar = 0) or (hkmHotkey2.AddHotKey(HotKeyVar) = 0) then
   begin
     if (HotKeyStr2 <> '') and (HotKeyStr2 <> resVoidHotKey) then
     begin
-      Application.MessageBox(PChar(Format(resHotKeyError, [HotKeyStr2])),
-        PChar(resWarning), MB_OK + MB_ICONWARNING);
-
+      Application.MessageBox(PChar(Format(resHotKeyError, [HotKeyStr2])), PChar(resWarning), MB_OK + MB_ICONWARNING);
       HotKeyStr2 := '';
     end;
-      
     Exit;
   end;
-
   Result := True;
 end;
 
@@ -1245,28 +1119,27 @@ begin
   begin
     actShortCutExecute(Sender);
     if m_IsShow then
-      try
-        edtShortCut.SetFocus;
-      except
-        TraceMsg('edtShortCut.SetFocus failed');
-      end;
+    try
+      edtShortCut.SetFocus;
+    except
+      TraceMsg('edtShortCut.SetFocus failed');
+    end;
   end;
 end;
 
 function TALTRunForm.DirAvailable: Boolean;
 var
   itm: TShortCutItem;
-  Index: Integer;
   CommandLine: string;
   SlashPos: Integer;
   i: Cardinal;
 begin
   Result := False;
 
-  if lstShortCut.ItemIndex < 0 then Exit;
+  if lstShortCut.ItemIndex < 0 then
+    Exit;
 
   itm := TShortCutItem(lstShortCut.Items.Objects[lstShortCut.ItemIndex]);
-  Index := ShortCutMan.GetShortCutItemIndex(itm);
 
   //去除前导的@/@+/@-
   CommandLine := itm.CommandLine;
@@ -1279,7 +1152,8 @@ begin
 
   CommandLine := RemoveQuotationMark(CommandLine, '"');
 
-  if Pos('\\', CommandLine) > 0 then Exit;
+  if Pos('\\', CommandLine) > 0 then
+    Exit;
 
   if (FileExists(CommandLine) {or DirectoryExists(CommandLine)}) then
     Result := True
@@ -1325,7 +1199,8 @@ begin
   lblShortCut.Caption := Item.Name;
   lblShortCut.Hint := Item.CommandLine;
   edtCommandLine.Text := resCMDLine + Item.CommandLine;
-  if DirAvailable then lblShortCut.Caption := '[' + Item.Name + ']';
+  if DirAvailable then
+    lblShortCut.Caption := '[' + Item.Name + ']';
 end;
 
 procedure TALTRunForm.edtCommandLineKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -1335,9 +1210,11 @@ begin
   if not ((ssShift in Shift) or (ssAlt in Shift) or (ssCtrl in Shift)) then
     case Key of
       //回车
-      13: ;
+      13:
+        ;
 
-      VK_PRIOR, VK_NEXT: ;
+      VK_PRIOR, VK_NEXT:
+        ;
     else
       if m_IsShow then
       begin
@@ -1353,8 +1230,7 @@ begin
     end;
 end;
 
-procedure TALTRunForm.MiddleMouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
+procedure TALTRunForm.MiddleMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   if Button = mbMiddle then
   begin
@@ -1364,11 +1240,8 @@ end;
 
 procedure TALTRunForm.edtShortCutChange(Sender: TObject);
 var
-  i, j, k: Cardinal;
-  Rank, ExistRank: Integer;
-  IsInserted: Boolean;
+  i, k: integer;
   StringList: TStringList;
-  HintIndex: Integer;
 begin
   // 有时候内容没有变化，却触发这个消息，那是因为有人主动调用它了
   //if edtShortCut.Text = m_LastShortCutText then Exit;
@@ -1417,7 +1290,7 @@ begin
 
     //看最后一个字符是否是数字0-9
     if EnableNumberKey and m_LastKeyIsNumKey then
-      if (edtShortCut.Text[Length(edtShortCut.Text)] in ['0'..'9']) then
+      if CharInSet(edtShortCut.Text[Length(edtShortCut.Text)], ['0'..'9']) then
       begin
         k := StrToInt(edtShortCut.Text[Length(edtShortCut.Text)]);
 
@@ -1427,22 +1300,21 @@ begin
           begin
             evtMainMinimize(Self);
 
-            ShortCutMan.Execute(TShortCutItem(m_LastShortCutPointerList[k]),
-              Copy(edtShortCut.Text, 1, Length(edtShortCut.Text) - 1));
+            ShortCutMan.Execute(TShortCutItem(m_LastShortCutPointerList[k]), Copy(edtShortCut.Text, 1, Length(edtShortCut.Text) - 1));
 
             edtShortCut.Text := '';
           end;
         end
         else
         begin
-          if k = 0 then k := 10;
+          if k = 0 then
+            k := 10;
 
           if k <= m_LastShortCutListCount then
           begin
             evtMainMinimize(Self);
 
-            ShortCutMan.Execute(TShortCutItem(m_LastShortCutPointerList[k - 1]),
-              Copy(edtShortCut.Text, 1, Length(edtShortCut.Text) - 1));
+            ShortCutMan.Execute(TShortCutItem(m_LastShortCutPointerList[k - 1]), Copy(edtShortCut.Text, 1, Length(edtShortCut.Text) - 1));
 
             edtShortCut.Text := '';
           end;
@@ -1450,21 +1322,19 @@ begin
       end;
 
     //最后一个如果是空格
-    if (edtShortCut.Text <> '') and (edtShortCut.Text[Length(edtShortCut.Text)] in [' ']) then
+    if (edtShortCut.Text <> '') and CharInSet(edtShortCut.Text[Length(edtShortCut.Text)], [' ']) then
     begin
-      if (m_LastShortCutListCount > 0)
-        and (m_LastShortCutCmdIndex >= 0)
-        and (m_LastShortCutCmdIndex < m_LastShortCutListCount) then
+      if (m_LastShortCutListCount > 0) and (m_LastShortCutCmdIndex >= 0) and (m_LastShortCutCmdIndex < m_LastShortCutListCount) then
       begin
         evtMainMinimize(Self);
 
-        ShortCutMan.Execute(TShortCutItem(m_LastShortCutPointerList[m_LastShortCutCmdIndex]),
-          Copy(edtShortCut.Text, 1, Length(edtShortCut.Text) - 1));
+        ShortCutMan.Execute(TShortCutItem(m_LastShortCutPointerList[m_LastShortCutCmdIndex]), Copy(edtShortCut.Text, 1, Length(edtShortCut.Text) - 1));
 
         edtShortCut.Text := '';
 
         //如果需要执行完就退出
-        if ExitWhenExecute then tmrExit.Enabled := True;
+        if ExitWhenExecute then
+          tmrExit.Enabled := True;
 
       end;
     end;
@@ -1485,7 +1355,8 @@ begin
   end;
 
   //如果可以打开文件夹，标记下
-  if DirAvailable then lblShortCut.Caption := '[' + lblShortCut.Caption + ']';
+  if DirAvailable then
+    lblShortCut.Caption := '[' + lblShortCut.Caption + ']';
 
   //刷新上一次的列表
   GetLastCmdList;
@@ -1559,7 +1430,7 @@ begin
       end;
 
     //数字键0-9，和小键盘数字键. ALT+Num 或 CTRL+Num 都可以执行
-    48..57, 96..105:
+      48..57, 96..105:
       begin
         m_LastKeyIsNumKey := True;
 
@@ -1571,8 +1442,10 @@ begin
             Index := Key - 48;
 
           //看看数字是否超出已有总数
-          if IndexFrom0to9 and (Index > lstShortCut.Count - 1) then Exit;
-          if (not IndexFrom0to9) and (Index > lstShortCut.Count) then Exit;
+          if IndexFrom0to9 and (Index > lstShortCut.Count - 1) then
+            Exit;
+          if (not IndexFrom0to9) and (Index > lstShortCut.Count) then
+            Exit;
 
           evtMainMinimize(Self);
 
@@ -1586,7 +1459,7 @@ begin
       end;
 
     //分号键 = No.2 , '号键 = No.3
-    186, 222:
+      186, 222:
       begin
         if Key = 186 then
           Index := 2
@@ -1594,8 +1467,10 @@ begin
           Index := 3;
 
         //看看数字是否超出已有总数
-        if IndexFrom0to9 and (Index > lstShortCut.Count - 1) then Exit;
-        if (not IndexFrom0to9) and (Index > lstShortCut.Count) then Exit;
+        if IndexFrom0to9 and (Index > lstShortCut.Count - 1) then
+          Exit;
+        if (not IndexFrom0to9) and (Index > lstShortCut.Count) then
+          Exit;
 
         evtMainMinimize(Self);
 
@@ -1608,13 +1483,14 @@ begin
       end;
 
     //CTRL+D，打开文件夹
-    68:
+      68:
       begin
         if (ssCtrl in Shift) then
         begin
           KillMessage(Self.Handle, WM_CHAR);
 
-          if not DirAvailable then Exit;
+          if not DirAvailable then
+            Exit;
 
           evtMainMinimize(Self);
           actOpenDirExecute(Sender);
@@ -1624,7 +1500,7 @@ begin
       end;
 
     //CTRL+C，复制CommandLine
-    67:
+      67:
       begin
         if (ssCtrl in Shift) then
         begin
@@ -1636,12 +1512,12 @@ begin
       end;
 
     //CTRL+L，列出最近使用的列表(最多只取10个)
-    76:
+      76:
       begin
         if (ssCtrl in Shift) then
         begin
-         ShowLatestShortCutList;
-         KillMessage(Self.Handle, WM_CHAR);
+          ShowLatestShortCutList;
+          KillMessage(Self.Handle, WM_CHAR);
         end;
       end;
 
@@ -1655,13 +1531,8 @@ begin
       end;
   end;
 
-  if ShowOperationHint
-    and (lstShortCut.ItemIndex >= 0)
-    and (Length(edtShortCut.Text) < 10)
-    and (lstShortCut.Items[lstShortCut.ItemIndex][2] in ['0'..'9']) then
-    edtHint.Text := Format(resRunNum,
-      [lstShortCut.Items[lstShortCut.ItemIndex][2],
-      lstShortCut.Items[lstShortCut.ItemIndex][2]]);
+  if ShowOperationHint and (lstShortCut.ItemIndex >= 0) and (Length(edtShortCut.Text) < 10) and CharInSet(lstShortCut.Items[lstShortCut.ItemIndex][2], ['0'..'9']) then
+    edtHint.Text := Format(resRunNum, [lstShortCut.Items[lstShortCut.ItemIndex][2], lstShortCut.Items[lstShortCut.ItemIndex][2]]);
 end;
 
 procedure TALTRunForm.edtShortCutKeyPress(Sender: TObject; var Key: Char);
@@ -1679,9 +1550,7 @@ begin
   end;
 end;
 
-procedure TALTRunForm.edtShortCutMouseActivate(Sender: TObject;
-  Button: TMouseButton; Shift: TShiftState; X, Y, HitTest: Integer;
-  var MouseActivate: TMouseActivate);
+procedure TALTRunForm.edtShortCutMouseActivate(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y, HitTest: Integer; var MouseActivate: TMouseActivate);
 begin
   TraceMsg('edtShortCutMouseActivate()');
 
@@ -1696,8 +1565,6 @@ begin
 end;
 
 procedure TALTRunForm.evtMainDeactivate(Sender: TObject);
-var
-  IsActivated: Boolean;
 begin
   TraceMsg('evtMainDeactivate(%d)', [GetTickCount - m_LastActiveTime]);
 
@@ -1759,8 +1626,6 @@ begin
 end;
 
 procedure TALTRunForm.evtMainMessage(var Msg: tagMSG; var Handled: Boolean);
-var
-  FileName: string;
 begin
 {
   // 本来想防止用户乱用输入法的，现在看来没必要
@@ -1814,17 +1679,17 @@ begin
       end;
 
     WM_MOUSEWHEEL:
-    begin
-      if m_IsTop then
       begin
-        if Msg.wParam > 0 then
-          PostMessage(lstShortCut.Handle, WM_KEYDOWN, VK_UP, 0)
-        else
-          PostMessage(lstShortCut.Handle, WM_KEYDOWN, VK_DOWN, 0);
-      end;
+        if m_IsTop then
+        begin
+          if Msg.wParam > 0 then
+            PostMessage(lstShortCut.Handle, WM_KEYDOWN, VK_UP, 0)
+          else
+            PostMessage(lstShortCut.Handle, WM_KEYDOWN, VK_DOWN, 0);
+        end;
 
-      Handled := False;    
-    end;
+        Handled := False;
+      end;
   end;
 end;
 
@@ -1852,15 +1717,56 @@ begin
   RestartHideTimer(HideDelay);
 end;
 
+function SendFileNameToExistingInstance(const FileList: string): Boolean;
+var
+  hWnd: Cardinal;
+  CopyData: TCopyDataStruct;
+begin
+  Result := False;
+  // 查找已运行实例的主窗体
+  hWnd := FindWindow('TALTRunForm', nil);
+  if hWnd <> 0 then
+  begin
+    // 准备 WM_COPYDATA 数据
+    CopyData.dwData := 0;
+    CopyData.cbData := Length(FileList) * SizeOf(Char) + SizeOf(Char); // 包括结束符
+    CopyData.lpData := PChar(FileList);
+    // 发送消息
+    SendMessage(hWnd, WM_COPYDATA, 0, LPARAM(@CopyData));
+    Result := True;
+  end;
+end;
+
 procedure TALTRunForm.FormCreate(Sender: TObject);
 var
-  lg: longint;
   LangForm: TLangForm;
   LangList: TStringList;
   i: Cardinal;
-  hALTRun: HWND;
-  FileName: string;
 begin
+  ntfMain := TCoolTrayIcon.Create(self);
+  ntfmain.CycleInterval := 0;
+  ntfmain.Icon := self.Icon;
+  ntfmain.PopupMenu := pmMain;
+  ntfmain.MinimizeToTray := true;
+  ntfmain.OnClick := self.ntfMainDblClick;
+  ntfmain.OnDblClick := self.ntfMainDblClick;
+  //
+  hkmHotkey1 := THotKeyManager.Create(self);
+  hkmHotkey1.Tag := 1;
+  hkmHotKey1.OnHotKeyPressed := hkmHotkeyHotKeyPressed;
+
+  hkmHotkey2 := THotKeyManager.Create(self);
+  hkmHotkey2.Tag := 2;
+  hkmHotkey2.OnHotKeyPressed := hkmHotkeyHotKeyPressed;
+
+  hkmHotkey3 := THotKeyManager.Create(self);
+  hkmHotkey3.Tag := 3;
+  hkmHotkey3.OnHotKeyPressed := hkmHotkeyHotKeyPressed;
+  // ==================================================
+  //
+  //
+
+
   Self.Caption := TITLE;
 
   //初始化不显示图标
@@ -1882,6 +1788,8 @@ begin
   //如果是第一次使用，提示选择语言
   if IsRunFirstTime then
   begin
+    LangList := nil;
+    LangForm := nil;
     try
       LangForm := TLangForm.Create(Self);
 
@@ -1927,8 +1835,8 @@ begin
       end;
 
     finally
-      LangList.Free;
-      LangForm.Free;
+      FreeAndNil(LangList);
+      FreeAndNil(LangForm);
     end;
   end
   else
@@ -1945,100 +1853,12 @@ begin
   m_LastShortCutCmdIndex := -1;
   m_LastKeyIsNumKey := False;
 
-  //若有参数，则判断之
-  if ParamStr(1) <> '' then
-  begin
 
-    //自动重启软件
-    if ParamStr(1) = RESTART_FLAG then
-    begin
-      Sleep(2000);
-    end
-    //删除软件时清理环境
-    else if ParamStr(1) = CLEAN_FLAG then
-    begin
-      if Application.MessageBox(PChar(resCleanConfirm), PChar(resInfo),
-        MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES then
-      begin
-        SetAutoRun(TITLE, '', False);
-        SetAutoRunInStartUp(TITLE, '', False);
-        AddMeToSendTo(TITLE, False);
-      end;
 
-      Application.Terminate;
-      Exit;
-    end
-    else
-    //添加快捷方式
-    begin
-      Self.Caption := TITLE + ' - Add ShortCut';
-      
-      {
-      hALTRun := FindWindow('TALTRunForm', TITLE);
-      if hALTRun <> 0 then
-      begin
-        SendMessage(hALTRun, WM_ALTRUN_ADD_SHORTCUT, 0, 0);
-
-        //等待文件被写入，从而时间更改，以此为判断依据
-        while FileAge(ShortCutMan.ShortCutFileName) = m_AgeOfFile  do
-        begin
-          Application.HandleMessage;
-        end;
-
-        //此时可以重载文件
-        ShortCutMan.LoadShortCutList;
-      end;
-      }
-
-      //读取当前的快捷项列表文件，如果ALTRun已经运行，
-      //则通过 WM_ALTRUN_ADD_SHORTCUT 将快捷项字符串发送过去
-      //如果ALTRun并未启动，则直接保存到快捷项列表文件中
-
-      //处理长文件名, 对于路径中有空格的，前后带上""
-      FileName := ParamStr(1);
-      if Pos(' ', FileName) > 0 then FileName := '"' + FileName + '"';
-
-      if DEBUG_MODE then
-        ShowMessageFmt('Add %s', [FileName]);
-
-      //查找ALTRun, 窗口不好查找，直接读取INI文件
-      //hend;ALTRun := FindWindow('TALTRunForm', TITLE);
-      hALTRun := HandleID;
-      if (hALTRun <> 0) and IsWindow(hALTRun) then
-      begin
-        //Application.MessageBox(PChar(Format('ALTRun is running = %d', [hALTRun])),
-        //  'Debug', MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
-
-        SendMessage(hALTRun, WM_SETTEXT, 1, Integer(PChar(FileName)));
-      end
-      else
-      begin
-        //Application.MessageBox(PChar('ALTRun is NOT running'),
-        //  'Debug', MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
-
-        ShortCutMan.LoadShortCutList;
-        ShortCutMan.AddFileShortCut(FileName);
-      end;
-
-      m_IsExited := True;
-      Application.Terminate;
-      Exit;
-    end;
-  end;
-
-  if IsRunningInstance('ALTRUN_MUTEX') then
-  begin
-    // 发送消息，让ALTRun显示出来
-    SendMessage(HandleID, WM_ALTRUN_SHOW_WINDOW, 0, 0);
-
-    Halt(1);
-    //Application.Terminate;
-    //Exit;
-  end;
 
   //LOG
-  //InitLogger(DEBUG_MODE,DEBUG_MODE, False);
-  InitLogger(DEBUG_MODE,False, False);
+  InitLogger(DEBUG_MODE, DEBUG_MODE, False);
+//  InitLogger(DEBUG_MODE, False, False);
 
   //Trace
   TraceMsg('FormCreate()');
@@ -2047,27 +1867,22 @@ begin
   TraceMsg('OS is Vista = %s', [BoolToStr(IsVista)]);
 
   //干掉老的HotRun的启动项和SendTo
-  if LowerCase(ExtractFilePath(GetAutoRunItemPath('HotRun')))
-    = LowerCase(ExtractFilePath(Application.ExeName)) then
+  if LowerCase(ExtractFilePath(GetAutoRunItemPath('HotRun'))) = LowerCase(ExtractFilePath(Application.ExeName)) then
     SetAutoRun('HotRun', '', False);
 
-  if LowerCase(ExtractFilePath(GetAutoRunItemPath('HotRun.exe')))
-    = LowerCase(ExtractFilePath(Application.ExeName)) then
+  if LowerCase(ExtractFilePath(GetAutoRunItemPath('HotRun.exe'))) = LowerCase(ExtractFilePath(Application.ExeName)) then
   begin
     SetAutoRun('HotRun.exe', '', False);
     SetAutoRunInStartUp('HotRun.exe', '', False);
   end;
 
-  if LowerCase(ExtractFilePath(ResolveLink(GetSendToDir + '\HotRun.lnk')))
-    = LowerCase(ExtractFilePath(Application.ExeName)) then
+  if LowerCase(ExtractFilePath(ResolveLink(GetSendToDir + '\HotRun.lnk'))) = LowerCase(ExtractFilePath(Application.ExeName)) then
     AddMeToSendTo('HotRun', False);
 
   if FileExists(ExtractFilePath(Application.ExeName) + 'HotRun.ini') then
-    RenameFile(ExtractFilePath(Application.ExeName) + 'HotRun.ini',
-      ExtractFilePath(Application.ExeName) + TITLE + '.ini');
+    RenameFile(ExtractFilePath(Application.ExeName) + 'HotRun.ini', ExtractFilePath(Application.ExeName) + TITLE + '.ini');
 
-  if LowerCase(ExtractFilePath(GetAutoRunItemPath('ALTRun.exe')))
-    = LowerCase(ExtractFilePath(Application.ExeName)) then
+  if LowerCase(ExtractFilePath(GetAutoRunItemPath('ALTRun.exe'))) = LowerCase(ExtractFilePath(Application.ExeName)) then
   begin
     SetAutoRun('ALTRun.exe', '', False);
     SetAutoRunInStartUp('ALTRun.exe', '', False);
@@ -2099,8 +1914,7 @@ begin
 
   //如果是第一次使用，提示是否添加到自动启动
   if IsRunFirstTime then
-    AutoRun := (Application.MessageBox(PChar(resAutoRunWhenStart),
-      PChar(resInfo), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES);
+    AutoRun := (Application.MessageBox(PChar(resAutoRunWhenStart), PChar(resInfo), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES);
 
   //SetAutoRun(TITLE, Application.ExeName, AutoRun);
   SetAutoRunInStartUp(TITLE, Application.ExeName, AutoRun);
@@ -2109,8 +1923,7 @@ begin
 
   //如果是第一次使用，提示是否添加到发送到
   if IsRunFirstTime then
-    AddToSendTo := (Application.MessageBox(PChar(resAddToSendToMenu),
-      PChar(resInfo), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES);
+    AddToSendTo := (Application.MessageBox(PChar(resAddToSendToMenu), PChar(resInfo), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDYES);
 
   //添加到发送到
   AddMeToSendTo(TITLE, AddToSendTo);
@@ -2142,27 +1955,24 @@ begin
 
   //提示
   if ShowStartNotification then
-    ntfMain.ShowBalloonHint(resInfo,
-      Format(resStarted + #13#10 + resPressKeyToShowMe,
-      [TITLE, ALTRUN_VERSION, GetHotKeyString]), bitInfo, 5);
+    ntfMain.ShowBalloonHint(resInfo, Format(resStarted + #13#10 + resPressKeyToShowMe, [TITLE, ALTRUN_VERSION, GetHotKeyString]), bitInfo, 5);
 
   //浮动提示
-  ntfMain.Hint := Format(resMainHint, [TITLE, ALTRUN_VERSION, #13#10, GetHotKeyString]);
+  ntfMain.Hint := ansistring(Format(resMainHint, [TITLE, ALTRUN_VERSION, #13#10, GetHotKeyString]));
 
   //需要刷新
   m_NeedRefresh := True;
 
-  if ShowMeWhenStart then actShowExecute(Sender);
+  if ShowMeWhenStart then
+    actShowExecute(Sender);
 end;
 
 procedure TALTRunForm.FormDestroy(Sender: TObject);
 begin
-  //ShortCutMan.SaveShortCutList;
-
   //如果是右键添加启动的程序，保存文件时，不改变修改时间
   //这样正常运行的主程序不需要
   //if m_IsExited then FileSetDate(ShortCutMan.ShortCutFileName, m_AgeOfFile);
-  
+
   ShortCutMan.Free;
 end;
 
@@ -2180,7 +1990,8 @@ begin
   RestartHideTimer(HideDelay);
 
   //如果命令行获得焦点，就什么也不管
-  if edtCommandLine.Focused then Exit;
+  if edtCommandLine.Focused then
+    Exit;
 
   case Key of
     VK_UP:
@@ -2189,16 +2000,16 @@ begin
         //为了防止向上键导致光标位置移动，故吞掉之
         Key := VK_NONAME;
 
-        if Count = 0 then Exit;
+        if Count = 0 then
+          Exit;
 
         //列表上下走
         if ItemIndex = -1 then
           ItemIndex := Count - 1
+        else if ItemIndex = 0 then
+          ItemIndex := Count - 1
         else
-          if ItemIndex = 0 then
-            ItemIndex := Count - 1
-          else
-            ItemIndex := ItemIndex - 1;
+          ItemIndex := ItemIndex - 1;
 
         DisplayShortCutItem(TShortCutItem(Items.Objects[ItemIndex]));
         m_LastShortCutCmdIndex := ItemIndex;
@@ -2210,16 +2021,16 @@ begin
         //为了防止向下键导致光标位置移动，故吞掉之
         Key := VK_NONAME;
 
-        if Count = 0 then Exit;
+        if Count = 0 then
+          Exit;
 
         //列表上下走
         if ItemIndex = -1 then
           ItemIndex := 0
+        else if ItemIndex = Count - 1 then
+          ItemIndex := 0
         else
-          if ItemIndex = Count - 1 then
-            ItemIndex := 0
-          else
-            ItemIndex := ItemIndex + 1;
+          ItemIndex := ItemIndex + 1;
 
         DisplayShortCutItem(TShortCutItem(Items.Objects[ItemIndex]));
         m_LastShortCutCmdIndex := ItemIndex;
@@ -2279,11 +2090,11 @@ begin
   else
     begin
       if m_IsShow then
-        try
-          edtShortCut.SetFocus;
-        except
-          TraceMsg('edtShortCut.SetFocus failed');
-        end;
+      try
+        edtShortCut.SetFocus;
+      except
+        TraceMsg('edtShortCut.SetFocus failed');
+      end;
     end;
   end;
 end;
@@ -2294,17 +2105,18 @@ begin
 
   //关闭tmrFocus
   tmrFocus.Enabled := False;
-  
+
   case Key of
     //如果回车，就执行程序
     #13:
       begin
         Key := #0;
-        if Self.Visible then actExecuteExecute(Sender);
+        if Self.Visible then
+          actExecuteExecute(Sender);
       end;
 
     //如果ESC，就吞掉
-    #27:
+        #27:
       begin
         Key := #0;
       end;
@@ -2325,8 +2137,6 @@ var
   FileList: TStringList;
 begin
   TraceMsg('GetLangList()');
-
-  Result := False;
 
   try
     FileList := TStringList.Create;
@@ -2350,7 +2160,6 @@ end;
 procedure TALTRunForm.GetLastCmdList;
 var
   i, n: Cardinal;
-  ShortCutItem: TShortCutItem;
 begin
   TraceMsg('GetLastCmdList()');
 
@@ -2390,12 +2199,13 @@ begin
   // 取得当前前台窗体ID及标题
   ShortCutMan.Param[1] := IntToStr(GetForegroundWindow);
   GetWindowText(GetForegroundWindow, Buf, 255);
-  if Buf <> '' then ShortCutMan.Param[2] := Buf;
+  if Buf <> '' then
+    ShortCutMan.Param[2] := Buf;
   GetClassName(GetForegroundWindow, Buf, 255);
-  if Buf <> '' then ShortCutMan.Param[3] := Buf;
+  if Buf <> '' then
+    ShortCutMan.Param[3] := Buf;
 
-  TraceMsg('WinID = %s, WinCaption = %s, Class = %s',
-    [ShortCutMan.Param[1], ShortCutMan.Param[2], ShortCutMan.Param[3]]);
+  TraceMsg('WinID = %s, WinCaption = %s, Class = %s', [ShortCutMan.Param[1], ShortCutMan.Param[2], ShortCutMan.Param[3]]);
 
   // 取得最近一次的项目
   try
@@ -2426,12 +2236,13 @@ begin
   // 取得当前前台窗体ID, 标题, Class
   ShortCutMan.Param[1] := IntToStr(GetForegroundWindow);
   GetWindowText(GetForegroundWindow, Buf, 255);
-  if Buf <> '' then ShortCutMan.Param[2] := Buf;
+  if Buf <> '' then
+    ShortCutMan.Param[2] := Buf;
   GetClassName(GetForegroundWindow, Buf, 255);
-  if Buf <> '' then ShortCutMan.Param[3] := Buf;
+  if Buf <> '' then
+    ShortCutMan.Param[3] := Buf;
 
-  TraceMsg('WinID = %s, WinCaption = %s, Class = %s',
-    [ShortCutMan.Param[1], ShortCutMan.Param[2], ShortCutMan.Param[3]]);
+  TraceMsg('WinID = %s, WinCaption = %s, Class = %s', [ShortCutMan.Param[1], ShortCutMan.Param[2], ShortCutMan.Param[3]]);
 
   if m_IsShow then
     actHideExecute(Self)
@@ -2439,8 +2250,7 @@ begin
     actShowExecute(Self);
 end;
 
-procedure TALTRunForm.imgBackgroundMouseDown(Sender: TObject;
-  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TALTRunForm.imgBackgroundMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   if Button = mbLeft then
   begin
@@ -2453,17 +2263,14 @@ begin
   end;
 end;
 
-procedure TALTRunForm.lblShortCutMouseActivate(Sender: TObject;
-  Button: TMouseButton; Shift: TShiftState; X, Y, HitTest: Integer;
-  var MouseActivate: TMouseActivate);
+procedure TALTRunForm.lblShortCutMouseActivate(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y, HitTest: Integer; var MouseActivate: TMouseActivate);
 begin
   TraceMsg('lblShortCutMouseActivate()');
 
   RestartHideTimer(HideDelay);
 end;
 
-procedure TALTRunForm.lblShortCutMouseDown(Sender: TObject;
-  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TALTRunForm.lblShortCutMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   if Button = mbLeft then
   begin
@@ -2476,14 +2283,13 @@ begin
   end;
 end;
 
-procedure TALTRunForm.lstShortCutKeyDown(Sender: TObject; var Key: Word;
-  Shift: TShiftState);
+procedure TALTRunForm.lstShortCutKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   TraceMsg('lstShortCutKeyDown( #%d = %s )', [Key, Chr(Key)]);
 
   //关闭tmrFocus
   tmrFocus.Enabled := False;
-  
+
   case Key of
     //    VK_F2:
     //      actEditItemExecute(Sender);
@@ -2495,9 +2301,11 @@ begin
     //      actDeleteItemExecute(Sender);
 
     //回车
-    13: ;
+    13:
+      ;
 
-    VK_PRIOR, VK_NEXT: ;
+    VK_PRIOR, VK_NEXT:
+      ;
   else
     if m_IsShow then
     begin
@@ -2513,24 +2321,21 @@ begin
   end;
 end;
 
-procedure TALTRunForm.lstShortCutMouseActivate(Sender: TObject;
-  Button: TMouseButton; Shift: TShiftState; X, Y, HitTest: Integer;
-  var MouseActivate: TMouseActivate);
+procedure TALTRunForm.lstShortCutMouseActivate(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y, HitTest: Integer; var MouseActivate: TMouseActivate);
 begin
   TraceMsg('lstShortCutMouseActivate()');
 
   RestartHideTimer(HideDelay);
 end;
 
-procedure TALTRunForm.lstShortCutMouseDown(Sender: TObject;
-  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TALTRunForm.lstShortCutMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   TraceMsg('lstShortCutMouseDown()');
 
   //右键点击，就选中该项
   if Button = mbRight then
   begin
-    lstShortCut.Perform(WM_LBUTTONDOWN, MK_LBUTTON, (y shl 16) + x);
+    lstShortCut.Perform(WM_LBUTTONDOWN, MK_LBUTTON, (Y shl 16) + X);
     actSelectChangeExecute(Sender);
   end
   else if Button = mbMiddle then
@@ -2555,6 +2360,8 @@ begin
     //  PChar(Format(resShowMeByHotKey, [HotKeyStr])),
     //  PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
 
+
+    AutoHideForm := nil;
     try
       AutoHideForm := TAutoHideForm.Create(Self);
       AutoHideForm.Caption := resInfo;
@@ -2562,7 +2369,7 @@ begin
       AutoHideForm.Info := Format(resShowMeByHotKey, [GetHotKeyString]);
       AutoHideForm.ShowModal;
     finally
-      AutoHideForm.Free;
+      freeandnil(AutoHideForm);
     end;
   end;
 
@@ -2675,11 +2482,12 @@ begin
   end;
 
   //如果可以打开文件夹，标记下
-  if DirAvailable then lblShortCut.Caption := '[' + lblShortCut.Caption + ']';
+  if DirAvailable then
+    lblShortCut.Caption := '[' + lblShortCut.Caption + ']';
 
   //更新最近的命令列表
   GetLastCmdList;
-  
+
   //刷新提示
   RefreshOperationHint;
 end;
@@ -2707,8 +2515,6 @@ begin
 end;
 
 procedure TALTRunForm.tmrFocusTimer(Sender: TObject);
-var
-  IsActivated: Boolean;
 begin
   TraceMsg('tmrFocusTimer()');
 
@@ -2746,15 +2552,15 @@ procedure TALTRunForm.WndProc(var Msg: TMessage);
 var
   FileName: string;
 begin
-  case msg.Msg of
-    WM_ALTRUN_ADD_SHORTCUT:
-      begin
-        TraceMsg('WM_ALTRUN_ADD_SHORTCUT');
-
-        //ShortCutMan.AddFileShortCut(PChar(msg.WParam)));
-        //ShortCutMan.SaveShortCutList;
-        //ShowMessage('WM_ALTRUN_ADD_SHORTCUT');
-      end;
+  case Msg.Msg of
+//    WM_ALTRUN_ADD_SHORTCUT:
+//      begin
+//        TraceMsg('WM_ALTRUN_ADD_SHORTCUT');
+//
+//        ShortCutMan.AddFileShortCut(PChar(msg.WParam)));
+//        ShortCutMan.SaveShortCutList;
+//        ShowMessage('WM_ALTRUN_ADD_SHORTCUT');
+//      end;
 
     WM_ALTRUN_SHOW_WINDOW:
       begin
@@ -2769,7 +2575,7 @@ begin
         //Msg.WParam = 1 表示是自己程序发过来的
         if Msg.WParam = 1 then
         begin
-          FileName := StrPas(PChar(msg.LParam));
+          FileName := StrPas(PChar(Msg.LParam));
           TraceMsg('Received FileName = %s', [FileName]);
 
           ShortCutMan.AddFileShortCut(FileName);
@@ -2777,25 +2583,46 @@ begin
       end;
 
     WM_SETTINGCHANGE:
-    begin
+      begin
       // 用户环境变量发生变化，故强行再次读取，然后设置以生效
 
       // When the system sends this message as a result of a change in locale settings, this parameter is zero.
       // To effect a change in the environment variables for the system or the user,
       // broadcast this message with lParam set to the string "Environment".
-      if (Msg.WParam = 0) and ((PChar(Msg.LParam)) = 'Environment') then
-      begin
+        if (Msg.WParam = 0) and ((PChar(Msg.LParam)) = 'Environment') then
+        begin
         // 根据注册表内容，强行刷新自身的环境变量
-        RefreshEnvironmentVars;
-      end;
+          RefreshEnvironmentVars;
+        end;
 
-      inherited;
-    end;  
+        inherited;
+      end;
 
   else
     //TraceMsg('msg.Msg = %d, msg.LParam = %d, ms.WParam = %d', [msg.Msg, msg.LParam, msg.WParam]);
     inherited;
   end;
+end;
+
+procedure TALTRunForm.Receive_SendTo_Filename(var Msg: TWMCopyData);
+var
+  FileList: string;
+begin
+  TraceMsg('WM_ALTRUN_ADD_SHORTCUT');
+  // 接收 WM_COPYDATA 消息中的文件列表
+  FileList := PChar(Msg.CopyDataStruct.lpData);
+
+  m_IsTop := False;
+  ShortCutMan.AddFileShortCut(FileList);
+  m_IsTop := True;
+  if m_IsShow then
+    edtShortCutChange(Self);
+
+  ShortCutMan.SaveShortCutList;
+
+  // Msg.Result := 1; 表示消息被成功处理（成功接收并处理数据）。
+  // Msg.Result := 0; 表示消息未被处理或处理失败。
+  Msg.Result := 1;
 end;
 
 end.

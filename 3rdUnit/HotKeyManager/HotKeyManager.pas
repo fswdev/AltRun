@@ -19,9 +19,7 @@ unit HotKeyManager;
 interface
 
 uses
-  Classes,
-  Windows,
-  Messages;
+  Classes, Windows, Messages;
 
 const
   // Windows 2000/XP multimedia keys (adapted from winuser.h and renamed to avoid potential conflicts)
@@ -68,6 +66,7 @@ type
   TOnHotKeyPressed = procedure(HotKey: Cardinal; Index: Word) of object;
 
   PHotKeyRegistration = ^THotKeyRegistration;
+
   THotKeyRegistration = record
     HotKey: Cardinal;
     KeyIndex: Word;
@@ -95,10 +94,15 @@ type
   end;
 
 function HotKeyAvailable(HotKey: Cardinal): Boolean;
+
 function GetHotKey(Modifiers, Key: Word): Cardinal;
+
 procedure SeparateHotKey(HotKey: Cardinal; var Modifiers, Key: Word);
+
 function HotKeyToText(HotKey: Cardinal; Localized: Boolean): string;
+
 function TextToHotKey(Text: string; Localized: Boolean): Cardinal;
+
 function IsExtendedKey(Key: Word): Boolean;
 
 procedure Register;
@@ -106,8 +110,7 @@ procedure Register;
 implementation
 
 uses
-  Forms,
-  SysUtils;
+  Forms, SysUtils, System.Types;
 
 const
   HotKeyAtomPrefix = 'HotKeyManagerHotKey';
@@ -205,24 +208,42 @@ function HotKeyToText(HotKey: Cardinal; Localized: Boolean): string;
   function GetExtendedVKName(Key: Word): string;
   begin
     case Key of
-      _VK_BROWSER_BACK: Result := NAME_VK_BROWSER_BACK;
-      _VK_BROWSER_FORWARD: Result := NAME_VK_BROWSER_FORWARD;
-      _VK_BROWSER_REFRESH: Result := NAME_VK_BROWSER_REFRESH;
-      _VK_BROWSER_STOP: Result := NAME_VK_BROWSER_STOP;
-      _VK_BROWSER_SEARCH: Result := NAME_VK_BROWSER_SEARCH;
-      _VK_BROWSER_FAVORITES: Result := NAME_VK_BROWSER_FAVORITES;
-      _VK_BROWSER_HOME: Result := NAME_VK_BROWSER_HOME;
-      _VK_VOLUME_MUTE: Result := NAME_VK_VOLUME_MUTE;
-      _VK_VOLUME_DOWN: Result := NAME_VK_VOLUME_DOWN;
-      _VK_VOLUME_UP: Result := NAME_VK_VOLUME_UP;
-      _VK_MEDIA_NEXT_TRACK: Result := NAME_VK_MEDIA_NEXT_TRACK;
-      _VK_MEDIA_PREV_TRACK: Result := NAME_VK_MEDIA_PREV_TRACK;
-      _VK_MEDIA_STOP: Result := NAME_VK_MEDIA_STOP;
-      _VK_MEDIA_PLAY_PAUSE: Result := NAME_VK_MEDIA_PLAY_PAUSE;
-      _VK_LAUNCH_MAIL: Result := NAME_VK_LAUNCH_MAIL;
-      _VK_LAUNCH_MEDIA_SELECT: Result := NAME_VK_LAUNCH_MEDIA_SELECT;
-      _VK_LAUNCH_APP1: Result := NAME_VK_LAUNCH_APP1;
-      _VK_LAUNCH_APP2: Result := NAME_VK_LAUNCH_APP2;
+      _VK_BROWSER_BACK:
+        Result := NAME_VK_BROWSER_BACK;
+      _VK_BROWSER_FORWARD:
+        Result := NAME_VK_BROWSER_FORWARD;
+      _VK_BROWSER_REFRESH:
+        Result := NAME_VK_BROWSER_REFRESH;
+      _VK_BROWSER_STOP:
+        Result := NAME_VK_BROWSER_STOP;
+      _VK_BROWSER_SEARCH:
+        Result := NAME_VK_BROWSER_SEARCH;
+      _VK_BROWSER_FAVORITES:
+        Result := NAME_VK_BROWSER_FAVORITES;
+      _VK_BROWSER_HOME:
+        Result := NAME_VK_BROWSER_HOME;
+      _VK_VOLUME_MUTE:
+        Result := NAME_VK_VOLUME_MUTE;
+      _VK_VOLUME_DOWN:
+        Result := NAME_VK_VOLUME_DOWN;
+      _VK_VOLUME_UP:
+        Result := NAME_VK_VOLUME_UP;
+      _VK_MEDIA_NEXT_TRACK:
+        Result := NAME_VK_MEDIA_NEXT_TRACK;
+      _VK_MEDIA_PREV_TRACK:
+        Result := NAME_VK_MEDIA_PREV_TRACK;
+      _VK_MEDIA_STOP:
+        Result := NAME_VK_MEDIA_STOP;
+      _VK_MEDIA_PLAY_PAUSE:
+        Result := NAME_VK_MEDIA_PLAY_PAUSE;
+      _VK_LAUNCH_MAIL:
+        Result := NAME_VK_LAUNCH_MAIL;
+      _VK_LAUNCH_MEDIA_SELECT:
+        Result := NAME_VK_LAUNCH_MEDIA_SELECT;
+      _VK_LAUNCH_APP1:
+        Result := NAME_VK_LAUNCH_APP1;
+      _VK_LAUNCH_APP2:
+        Result := NAME_VK_LAUNCH_APP2;
     else
       Result := '';
     end;
@@ -314,13 +335,16 @@ var
 begin
   case Byte(HotKey) of
     // PgUp, PgDn, End, Home, Left, Up, Right, Down, Ins, Del
-    $21..$28, $2D, $2E: KeyName := GetVKName(True);
+    $21..$28, $2D, $2E:
+      KeyName := GetVKName(True);
 
     //Pause/Break, Added by ET Worker, 2008-05-25
-    $13: KeyName := 'Pause';
+      $13:
+      KeyName := 'Pause';
 
     //NumLock, Added by ET Worker, 2008-05-25
-    $90: KeyName := 'NumLock';
+      $90:
+      KeyName := 'NumLock';
 
   else
     KeyName := GetVKName(False);
@@ -343,17 +367,13 @@ var
     for I := 0 to Tokens.Count - 2 do
     begin
       ModName := Trim(Tokens[I]);
-      if (AnsiCompareText(ModName, ModName_Shift) = 0) or
-        (AnsiCompareText(ModName, LocalModName_Shift) = 0) then
+      if (AnsiCompareText(ModName, ModName_Shift) = 0) or (AnsiCompareText(ModName, LocalModName_Shift) = 0) then
         M := M or MOD_SHIFT
-      else if (AnsiCompareText(ModName, ModName_Ctrl) = 0) or
-        (AnsiCompareText(ModName, LocalModName_Ctrl) = 0) then
+      else if (AnsiCompareText(ModName, ModName_Ctrl) = 0) or (AnsiCompareText(ModName, LocalModName_Ctrl) = 0) then
         M := M or MOD_CONTROL
-      else if (AnsiCompareText(ModName, ModName_Alt) = 0) or
-        (AnsiCompareText(ModName, LocalModName_Alt) = 0) then
+      else if (AnsiCompareText(ModName, ModName_Alt) = 0) or (AnsiCompareText(ModName, LocalModName_Alt) = 0) then
         M := M or MOD_ALT
-      else if (AnsiCompareText(ModName, ModName_Win) = 0) or
-        (AnsiCompareText(ModName, LocalModName_Win) = 0) then
+      else if (AnsiCompareText(ModName, ModName_Win) = 0) or (AnsiCompareText(ModName, LocalModName_Win) = 0) then
         M := M or MOD_WIN
       else
       begin
@@ -404,10 +424,7 @@ var
       begin
         if KeyName = 'Num' then                        // Special handling for 'Num +'
           KeyName := KeyName + ' +';
-        if (KeyName <> ModName_Ctrl) and (KeyName <> LocalModName_Ctrl) and
-          (KeyName <> ModName_Alt) and (KeyName <> LocalModName_Alt) and
-          (KeyName <> ModName_Shift) and (KeyName <> LocalModName_Shift) and
-          (KeyName <> ModName_Win) and (KeyName <> LocalModName_Win) then
+        if (KeyName <> ModName_Ctrl) and (KeyName <> LocalModName_Ctrl) and (KeyName <> ModName_Alt) and (KeyName <> LocalModName_Alt) and (KeyName <> ModName_Shift) and (KeyName <> LocalModName_Shift) and (KeyName <> ModName_Win) and (KeyName <> LocalModName_Win) then
           K := IterateVKNames(KeyName);
       end;
     end;
@@ -715,6 +732,7 @@ initialization
       Exit;
     end;
   end;
+
 
 finalization
   if ShouldUnloadEnglishKeyboardLayout then

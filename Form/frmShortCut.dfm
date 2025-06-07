@@ -12,14 +12,12 @@ object ShortCutForm: TShortCutForm
   Font.Name = #23435#20307
   Font.Style = []
   FormStyle = fsStayOnTop
-  OldCreateOrder = False
   Position = poScreenCenter
   OnCreate = FormCreate
   OnShow = FormShow
   DesignSize = (
     494
     257)
-  PixelsPerInch = 96
   TextHeight = 13
   object btnOK: TBitBtn
     Left = 330
@@ -29,8 +27,6 @@ object ShortCutForm: TShortCutForm
     Anchors = [akRight, akBottom]
     Caption = 'OK'
     Default = True
-    TabOrder = 2
-    OnClick = btnOKClick
     Glyph.Data = {
       DE010000424DDE01000000000000760000002800000024000000120000000100
       0400000000006801000000000000000000001000000000000000000000000000
@@ -49,6 +45,8 @@ object ShortCutForm: TShortCutForm
       333A333333333333333338330000333333333333333333333333333333333333
       0000}
     NumGlyphs = 2
+    TabOrder = 2
+    OnClick = btnOKClick
   end
   object btnCancel: TBitBtn
     Left = 411
@@ -56,8 +54,9 @@ object ShortCutForm: TShortCutForm
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
-    TabOrder = 3
     Kind = bkCancel
+    NumGlyphs = 2
+    TabOrder = 3
   end
   object grpShortCut: TGroupBox
     Left = 8
@@ -94,7 +93,7 @@ object ShortCutForm: TShortCutForm
       Anchors = [akLeft, akRight]
       Ctl3D = False
       EditLabel.Width = 84
-      EditLabel.Height = 13
+      EditLabel.Height = 19
       EditLabel.Caption = 'Command Line'
       ImeMode = imClose
       LabelPosition = lpLeft
@@ -102,6 +101,7 @@ object ShortCutForm: TShortCutForm
       ParentShowHint = False
       ShowHint = True
       TabOrder = 2
+      Text = ''
     end
     object lbledtName: TLabeledEdit
       Left = 96
@@ -111,11 +111,12 @@ object ShortCutForm: TShortCutForm
       Anchors = [akLeft, akRight]
       Ctl3D = False
       EditLabel.Width = 28
-      EditLabel.Height = 13
+      EditLabel.Height = 19
       EditLabel.Caption = 'Name'
       LabelPosition = lpLeft
       ParentCtl3D = False
       TabOrder = 1
+      Text = ''
     end
     object lbledtShortCut: TLabeledEdit
       Left = 96
@@ -125,12 +126,13 @@ object ShortCutForm: TShortCutForm
       Anchors = [akLeft, akRight]
       Ctl3D = False
       EditLabel.Width = 56
-      EditLabel.Height = 13
+      EditLabel.Height = 19
       EditLabel.Caption = 'ShortCut'
       ImeMode = imClose
       LabelPosition = lpLeft
       ParentCtl3D = False
       TabOrder = 0
+      Text = ''
     end
     object btnDir: TButton
       Left = 416
@@ -169,10 +171,11 @@ object ShortCutForm: TShortCutForm
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
+    Kind = bkHelp
+    NumGlyphs = 2
     TabOrder = 4
     Visible = False
     OnClick = btnHelpClick
-    Kind = bkHelp
   end
   object btnTest: TBitBtn
     Left = 8
@@ -181,8 +184,6 @@ object ShortCutForm: TShortCutForm
     Height = 25
     Anchors = [akLeft, akBottom]
     Caption = '&Test'
-    TabOrder = 5
-    OnClick = btnTestClick
     Glyph.Data = {
       DE010000424DDE01000000000000760000002800000024000000120000000100
       0400000000006801000000000000000000001000000000000000000000000000
@@ -201,6 +202,8 @@ object ShortCutForm: TShortCutForm
       33333333333333833F3333330000333333336663333333333333333888333333
       0000}
     NumGlyphs = 2
+    TabOrder = 5
+    OnClick = btnTestClick
   end
   object dlgOpenFile: TOpenDialog
     Left = 280

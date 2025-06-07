@@ -129,7 +129,7 @@
 		</Linker>
 		<Directories>
 			<Directories Name="OutputDir">Bin</Directories>
-			<Directories Name="UnitOutputDir">Dcu</Directories>
+			<Directories Name="UnitOutputDir">Bin\Dcu</Directories>
 			<Directories Name="PackageDLLOutputDir"></Directories>
 			<Directories Name="PackageDCPOutputDir"></Directories>
 			<Directories Name="SearchPath">Form;Unit;3rdUnit\pngimage;3rdUnit\CnPack;3rdUnit\regexpr;3rdUnit\CoolTrayIcon</Directories>

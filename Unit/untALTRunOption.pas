@@ -1,49 +1,39 @@
 unit untALTRunOption;
 
 interface
+
 uses
-  Windows,
-  IniFiles,
-  Classes,
-  SysUtils,
-  Graphics,
-  Forms,
-  HotKeyManager,
-  untUtilities,
-  untLogger;
+  Windows, IniFiles, Classes, SysUtils, Graphics, Forms, HotKeyManager,
+  untUtilities, untLogger;
 
 const
-  DEBUG_MODE = False;
-  DEBUG_SORT = False;
+  DEBUG_MODE = true;
+  DEBUG_SORT = false;
 
   //TITLE = 'HotRun';
   //VERSION = 'V0.96';
   TITLE = 'ALTRun';
-  ALTRUN_VERSION = 'V1.46.7';
+  ALTRUN_VERSION = 'V2.00.7';
   //第1贴 http://journeyboy.blog.sohu.com/79386735.html 已经超过40K字数;
   //第2贴 http://journeyboy.blog.sohu.com/93455878.html 已经超过40K字数;
   UPGRADE_URL = 'http://journeyboy.blog.sohu.com/112820379.html';
-
   PARAM_FLAG = '%p';
   NEW_PARAM_FLAG = '{%p}';
   CLIPBOARD_FLAG = '{%c}';
   FOREGROUND_WINDOW_ID_FLAG = '{%wd}';
   FOREGROUND_WINDOW_TEXT_FLAG = '{%wt}';
   FOREGROUND_WINDOW_CLASS_FLAG = '{%wc}';
-  SHOW_MAX_FLAG='@+';
-  SHOW_MIN_FLAG='@-';
-  SHOW_HIDE_FLAG='@';
-
+  SHOW_MAX_FLAG = '@+';
+  SHOW_MIN_FLAG = '@-';
+  SHOW_HIDE_FLAG = '@';
   RESTART_FLAG = 'Restart';
   CLEAN_FLAG = 'Clean';
   CMD_DIR = 'MyCmd';
   LOCALIZED_KEYNAMES = True;
-
   SECTION_CONFIG = 'Config';
   SECTION_WINDOW = 'Window';
   SECTION_GUI = 'GUI';
   SECTION_DEBUG = 'DEBUG';
-
   KEY_HOTKEY1 = 'HotKey1';
   KEY_HOTKEY2 = 'HotKey2';
   KEY_LASTITEMHOTKEY = 'LastItemHotKey';
@@ -69,7 +59,6 @@ const
   KEY_SHOWCONFIGBUTTON = 'ShowConfigButton';
   KEY_SHOWCLOSEBUTTON = 'ShowCloseButton';
   KEY_EXECUTEIFONLYONE = 'ExecuteIfOnlyOne';
-
   KEY_WINTOP = 'WinTop';
   KEY_WINLEFT = 'WinLeft';
   KEY_MANWINTOP = 'ManWinTop';
@@ -77,7 +66,6 @@ const
   KEY_MANWINWIDTH = 'ManWinWidth';
   KEY_MANWINHEIGHT = 'ManWinHeight';
   KEY_MANCOLWIDTH = 'ManColWidth';
-
   KEY_BGFILENAME = 'BGFileName';
   KEY_TITLECOLOR = 'TitleColor';
   KEY_KEYWORDCOLOR = 'KeywordColor';
@@ -86,13 +74,11 @@ const
   KEY_KEYWORDFONT = 'KeywordFont';
   KEY_LISTFONT = 'ListFont';
   KEY_LISTFORMAT = 'ListFormat';
-
   KEY_ALPHACOLOR = 'AlphaColor';
   KEY_ALPHA = 'Alpha';
   KEY_ROUNDBORDERRADIUS = 'RoundBorderRadius';
   KEY_FORMWIDTH = 'FormWidth';
   KEY_LANG = 'Lang';
-
   DEFAULT_TITLE_FONT_STR = '宋体|[]|12|65535|0';
   DEFAULT_KEYWORD_FONT_STR = '宋体|[]|12|255|0';
   DEFAULT_LIST_FONT_STR = '宋体|[]|12|8388608|0';
@@ -103,7 +89,6 @@ const
   DEFAULT_FORMWIDTH = 420;
   DEFAULT_BGFILENAME = 'BG.jpg';
   DEFAULT_LANG = 'EN';
-
   KEY_TRACEENABLE = 'TraceEnable';
   KEY_SHORTCUTRUNCOUNT = 'ShortCutRunCount';
   KEY_HANDLEID = 'HandleID';
@@ -129,13 +114,11 @@ const
   KEY_WARNING = 'Warning';
   KEY_WORDOR = 'WordOr';
   KEY_WORDAND = 'WordAnd';
-
   KEY_MENUSHOW = 'MenuShow';
   KEY_MENUSHORTCUT = 'MenuShortCut';
   KEY_MENUCONFIG = 'MenuConfig';
   KEY_MENUABOUT = 'MenuAbout';
   KEY_MENUCLOSE = 'MenuClose';
-
   KEY_BTNOK = 'BtnOK';
   KEY_BTNCANCEL = 'BtnCancel';
   KEY_BTNRESET = 'BtnReset';
@@ -147,7 +130,6 @@ const
   KEY_BTNPATHCONVERT = 'BtnPathConvert';
   KEY_BTNVALIDATE = 'BtnValidate';
   KEY_BTNCLOSE = 'BtnClose';
-
   KEY_SHORTCUT = 'ShortCut';
   KEY_NAME = 'Name';
   KEY_PARAMTYPE = 'ParamType';
@@ -175,12 +157,10 @@ const
   KEY_SHORTCUTEXISTED = 'ShortCutExisted';
   KEY_CONGRATULATIONS = 'Congratulations';
   KEY_BLANKLINEADDED = 'BlankLineAdded';
-
   KEY_BTNSHORTCUTHINT = 'BtnShortCutHint';
   KEY_BTNCONFIGHINT = 'BtnConfigHint';
   KEY_BTNFAKECLOSEHINT = 'BtnFAKECloseHint';
   KEY_EDTSHORTCUTHINT = 'EdtShortCutHint';
-
   KEY_HINTLIST_0 = 'HintList_0';
   KEY_HINTLIST_1 = 'HintList_1';
   KEY_HINTLIST_2 = 'HintList_2';
@@ -213,12 +193,10 @@ const
   KEY_PAGEFONT = 'PageFont';
   KEY_PAGEFORM = 'PageForm';
   KEY_PAGELANG = 'PageLang';
-
   KEY_CONFIGFORMCAPTION = 'ConfigFormCaption';
   KEY_RESETALLCONFIG = 'ResetAllConfig';
   KEY_RESETALLFONTS = 'ResetAllFonts';
   KEY_VOIDHOTKEY = 'VoidHotKey';
-
   KEY_LBLHOTKEY1 = 'LblHotKey1';
   KEY_LBLHOTKEY2 = 'LblHotKey2';
   KEY_LBLTITLEFONT = 'LblTitleFont';
@@ -242,12 +220,10 @@ const
   KEY_LBLHOTKEYHINT = 'LblHotKeyHint';
   KEY_LBLHOTKEYHINT1 = 'LblHotKeyHint1';
   KEY_LBLHOTKEYHINT2 = 'LblHotKeyHint2';
-
   KEY_BTNMODIFYTITLEFONT = 'BtnModifyTitleFont';
   KEY_BTNMODIFYKEYWORDFONT = 'BtnModifyKeywordFont';
   KEY_BTNMODIFYLISTFONT = 'BtnModifyListFont';
   KEY_BTNRESETALLFONTS = 'BtnResetAllFonts';
-
   KEY_CONFIGLIST_0 = 'ConfigList_0';
   KEY_CONFIGLIST_1 = 'ConfigList_1';
   KEY_CONFIGLIST_2 = 'ConfigList_2';
@@ -268,7 +244,6 @@ const
   KEY_CONFIGLIST_17 = 'ConfigList_17';
   KEY_CONFIGLIST_18 = 'ConfigList_18';
   KEY_CONFIGLIST_19 = 'ConfigList_19';
-
   KEY_CONFIGDESCLIST_0 = 'ConfigDescList_0';
   KEY_CONFIGDESCLIST_1 = 'ConfigDescList_1';
   KEY_CONFIGDESCLIST_2 = 'ConfigDescList_2';
@@ -302,7 +277,6 @@ const
   KEY_VALIDATECONFIRM = 'ValidateConfirm';
   KEY_PATHCONVERTCONFIRM = 'PathConvertConfirm';
   KEY_CONVERTFINISHED = 'ConvertFinished';
-
   KEY_BTNADDHINT = 'BtnAddHint';
   KEY_BTNEDITHINT = 'BtnEditHint';
   KEY_BTNDELETEHINT = 'BtnDeleteHint';
@@ -323,7 +297,6 @@ const
   KEY_PARAMTYPE_1 = 'ParamType_1';
   KEY_PARAMTYPE_2 = 'ParamType_2';
   KEY_PARAMTYPE_3 = 'ParamType_3';
-
   KEY_SELECTDIR = 'SelectDir';
   KEY_PARAMCONFIRM = 'ParamConfirm';
   KEY_REPLACECONFIRM = 'ReplaceConfirm';
@@ -373,14 +346,13 @@ const
   KEY_DEFAULTSHORTCUTLIST_35 = 'Default_ShortCut_Name_35';
   KEY_DEFAULTSHORTCUTLIST_36 = 'Default_ShortCut_Name_36';
   KEY_DEFAULTSHORTCUTLIST_37 = 'Default_ShortCut_Name_37';
-  
+
 var
   HotKeyStr1: string;
   HotKeyStr2: string;
   LastItemHotKeyStr: string;
   TraceEnable: Boolean;
   IsRunFirstTime: Boolean;
-
   AutoRun: Boolean;
   AddToSendTo: Boolean;
   EnableRegex: Boolean;
@@ -403,7 +375,6 @@ var
   ShowConfigButton: Boolean;
   ShowCloseButton: Boolean;
   ExecuteIfOnlyOne: Boolean;
-
   BGFileName: string;
   TitleColor: TColor;
   KeywordColor: TColor;
@@ -417,11 +388,9 @@ var
   RoundBorderRadius: Integer;
   FormWidth: Integer;
   Lang: string;
-
   WinTop, WinLeft: Integer;
   ManWinTop, ManWinLeft, ManWinWidth, ManWinHeight: Integer;
   ManColWidth: array[0..3] of Integer;
-
   ShortCutRunCount: Integer;
   HandleID: Cardinal;
   ModifyTime: string;
@@ -438,13 +407,11 @@ var
   resWarning: string;
   resWordOr: string;
   resWordAnd: string;
-
   resMenuShow: string;
   resMenuShortCut: string;
   resMenuConfig: string;
   resMenuAbout: string;
   resMenuClose: string;
-
   resBtnOK: string;
   resBtnCancel: string;
   resBtnReset: string;
@@ -456,7 +423,6 @@ var
   resBtnPathConvert: string;
   resBtnValidate: string;
   resBtnClose: string;
-
   resShortCut: string;
   resName: string;
   resParamType: string;
@@ -484,7 +450,6 @@ var
   resShortCutExisted: string;
   resCongratulations: string;
   resBlankLineAdded: string;
-
   resBtnShortCutHint: string;
   resBtnConfigHint: string;
   resBtnFakeCloseHint: string;
@@ -496,12 +461,10 @@ var
   resPageFont: string;
   resPageForm: string;
   resPageLang: string;
-
   resConfigFormCaption: string;
   resResetAllConfig: string;
   resResetAllFonts: string;
   resVoidHotKey: string;
-
   resLblHotKey1: string;
   resLblHotKey2: string;
   resLblTitleFont: string;
@@ -525,12 +488,10 @@ var
   resLblHotKeyHint: string;
   resLblHotKeyHint1: string;
   resLblHotKeyHint2: string;
-
   resBtnModifyTitleFont: string;
   resBtnModifyKeywordFont: string;
   resBtnModifyListFont: string;
   resBtnResetAllFonts: string;
-
   resConfigList_0: string;
   resConfigList_1: string;
   resConfigList_2: string;
@@ -564,7 +525,6 @@ var
   resValidateConfirm: string;
   resPathConvertConfirm: string;
   resConvertFinished: string;
-
   resBtnAddHint: string;
   resBtnEditHint: string;
   resBtnDeleteHint: string;
@@ -585,7 +545,6 @@ var
   resParamType_1: string;
   resParamType_2: string;
   resParamType_3: string;
-
   resSelectDir: string;
   resParamConfirm: string;
   resReplaceConfirm: string;
@@ -635,9 +594,7 @@ var
   resDefault_ShortCut_Name_35: string;
   resDefault_ShortCut_Name_36: string;
   resDefault_ShortCut_Name_37: string;
-
   ShortCutListFileName: string;
-
   HintList: array[0..24] of string { = (
   ('Press INSERT to add new ShortCut'),
   ('Press F2 to rename this ShortCut'),
@@ -653,22 +610,21 @@ var
   ('You can disable this hint in config'),
   ('You can disable the CMD line in config')
   )};
-
   ConfigDescList: array[0..19] of string;
-
-  ListFormatList: array[0..2] of string = (
-    ('%-25s| %s'),
-    ('%s (%s)'),
-    ('%s [%s]')
-    );
+  ListFormatList: array[0..2] of string = (('%-25s| %s'), ('%s (%s)'), ('%s [%s]'));
 
 procedure LoadSettings;
+
 procedure SaveSettings;
+
 procedure SetActiveLanguage;
 
 function FontStylesToStr(FontStyles: TFontStyles): string;
+
 function StrToFontStyles(strStyles: string): TFontStyles;
+
 function FontToStr(Font: TFont): string;
+
 function StrToFont(strFont: string; Font: TFont): Boolean;
 
 implementation
@@ -677,10 +633,14 @@ function FontStylesToStr(FontStyles: TFontStyles): string;
 begin
   Result := '';
 
-  if fsBold in FontStyles then Result := Result + ',fsBold';
-  if fsItalic in FontStyles then Result := Result + ',fsItalic';
-  if fsUnderline in FontStyles then Result := Result + ',fsUnderline';
-  if fsStrikeOut in FontStyles then Result := Result + ',fsStrikeOut';
+  if fsBold in FontStyles then
+    Result := Result + ',fsBold';
+  if fsItalic in FontStyles then
+    Result := Result + ',fsItalic';
+  if fsUnderline in FontStyles then
+    Result := Result + ',fsUnderline';
+  if fsStrikeOut in FontStyles then
+    Result := Result + ',fsStrikeOut';
 
   if Result = '' then
     Result := '['
@@ -694,17 +654,20 @@ function StrToFontStyles(strStyles: string): TFontStyles;
 begin
   Result := [];
 
-  if Pos('fsBold', strStyles) > 0 then Result := Result + [fsBold];
-  if Pos('fsItalic', strStyles) > 0 then Result := Result + [fsItalic];
-  if Pos('fsUnderline', strStyles) > 0 then Result := Result + [fsUnderline];
-  if Pos('fsStrikeOut', strStyles) > 0 then Result := Result + [fsStrikeOut];
+  if Pos('fsBold', strStyles) > 0 then
+    Result := Result + [fsBold];
+  if Pos('fsItalic', strStyles) > 0 then
+    Result := Result + [fsItalic];
+  if Pos('fsUnderline', strStyles) > 0 then
+    Result := Result + [fsUnderline];
+  if Pos('fsStrikeOut', strStyles) > 0 then
+    Result := Result + [fsStrikeOut];
 end;
 
 function FontToStr(Font: TFont): string;
 begin
   with Font do
-    Result := Format('%s|%s|%d|%d|%d',
-      [Name, FontStylesToStr(Style), Size, Color, Charset]);
+    Result := Format('%s|%s|%d|%d|%d', [Name, FontStylesToStr(Style), Size, Color, Charset]);
 end;
 
 function StrToFont(strFont: string; Font: TFont): Boolean;
@@ -718,7 +681,8 @@ begin
 
     SplitString(strFont, '|', List);
 
-    if List.Count < 5 then Exit;
+    if List.Count < 5 then
+      Exit;
 
     Font.Name := List[0];
     Font.Style := StrToFontStyles(List[1]);
@@ -778,7 +742,7 @@ begin
   ManWinHeight := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANWINHEIGHT, 240);
 
   for i := 0 to 3 do
-    ManColWidth[i] := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANCOLWIDTH+IntToStr(i), 100);
+    ManColWidth[i] := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANCOLWIDTH + IntToStr(i), 100);
 
   //删除老的配置字段
   IniFile.DeleteKey(SECTION_GUI, KEY_TITLECOLOR);
@@ -786,14 +750,18 @@ begin
   IniFile.DeleteKey(SECTION_GUI, KEY_LISTCOLOR);
 
   BGFileName := IniFile.ReadString(SECTION_GUI, KEY_BGFILENAME, DEFAULT_BGFILENAME);
-  if Trim(BGFileName) = '' then BGFileName := DEFAULT_BGFILENAME;
+  if Trim(BGFileName) = '' then
+    BGFileName := DEFAULT_BGFILENAME;
 
   TitleFontStr := IniFile.ReadString(SECTION_GUI, KEY_TITLEFONT, DEFAULT_TITLE_FONT_STR);
-  if Trim(TitleFontStr) = '' then TitleFontStr := DEFAULT_TITLE_FONT_STR;
+  if Trim(TitleFontStr) = '' then
+    TitleFontStr := DEFAULT_TITLE_FONT_STR;
   KeywordFontStr := IniFile.ReadString(SECTION_GUI, KEY_KEYWORDFONT, DEFAULT_KEYWORD_FONT_STR);
-  if Trim(KeywordFontStr) = '' then KeywordFontStr := DEFAULT_KEYWORD_FONT_STR;
+  if Trim(KeywordFontStr) = '' then
+    KeywordFontStr := DEFAULT_KEYWORD_FONT_STR;
   ListFontStr := IniFile.ReadString(SECTION_GUI, KEY_LISTFONT, DEFAULT_LIST_FONT_STR);
-  if Trim(ListFontStr) = '' then ListFontStr := DEFAULT_LIST_FONT_STR;
+  if Trim(ListFontStr) = '' then
+    ListFontStr := DEFAULT_LIST_FONT_STR;
 
   ListFormat := IniFile.ReadString(SECTION_GUI, KEY_LISTFORMAT, DEFAULT_LIST_FORMAT);
 
@@ -865,7 +833,7 @@ begin
   IniFile.WriteInteger(SECTION_WINDOW, KEY_MANWINHEIGHT, ManWinHeight);
 
   for i := 0 to 3 do
-    IniFile.WriteInteger(SECTION_WINDOW, KEY_MANCOLWIDTH+IntToStr(i), ManColWidth[i]);
+    IniFile.WriteInteger(SECTION_WINDOW, KEY_MANCOLWIDTH + IntToStr(i), ManColWidth[i]);
 
   IniFile.WriteString(SECTION_GUI, KEY_BGFILENAME, BGFileName);
   IniFile.WriteString(SECTION_GUI, KEY_TITLEFONT, TitleFontStr);
@@ -1155,5 +1123,6 @@ begin
 
   IniFile.Destroy;
 end;
+
 end.
 

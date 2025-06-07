@@ -5,21 +5,8 @@ unit frmParam;
 interface
 
 uses
-  Windows,
-  Messages,
-  SysUtils,
-  Variants,
-  Classes,
-  Graphics,
-  Controls,
-  Forms,
-  Dialogs,
-  StdCtrls,
-  Buttons,
-  untALTRunOption,
-  untUtilities,
-  untLogger,
-  ExtCtrls,
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, untALTRunOption, untUtilities, untLogger, ExtCtrls,
   ComCtrls, RzButton;
 
 const
@@ -37,22 +24,23 @@ type
     procedure tmrHideTimer(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormActivate(Sender: TObject);
-    procedure FormMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
+    procedure FormMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure cbbParamKeyPress(Sender: TObject; var Key: Char);
     procedure FormHide(Sender: TObject);
     procedure cbbParamChange(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure cbbParamKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormKeyPress(Sender: TObject; var Key: Char);
+
+    procedure StopTimer;
+  protected
+    procedure RestartTimer;
   private
     m_ParamHistoryFileName: string;
     m_FileModifyTime: string;
 
-    procedure Createparams(var params: TCreateParams); override;
+    procedure CreateParams(var params: TCreateParams); override;
 
-    procedure RestartTimer;
-    procedure StopTimer;
   public
     function LoadParamHistory: Boolean;
     function SaveParamHistory: Boolean;
@@ -122,16 +110,15 @@ begin
     //FilterKeyWord(cbbParam.Text, ParamList);
     //cbbParam.Items.Assign(ParamList);
   finally
-    ParamList.Free;
+    FreeAndNil(ParamList);
   end;
 end;
 
 procedure TParamForm.cbbParamKeyPress(Sender: TObject; var Key: Char);
-var
-  strLeft, strRight, str: WideString;                  //不设成WideString就有Bug
 begin
   //如果回车，就等于按下确定
-  if Key = #13 then btnOKClick(Sender);
+  if Key = #13 then
+    btnOKClick(Sender);
 
   //  if Key = #8 then
   //  begin
@@ -159,8 +146,7 @@ begin
   //  end;
 end;
 
-procedure TParamForm.cbbParamKeyUp(Sender: TObject; var Key: Word;
-  Shift: TShiftState);
+procedure TParamForm.cbbParamKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   //如果回车，就等于按下确定
   //if Key = 13 then btnOKClick(Sender);
@@ -226,7 +212,7 @@ end;
 procedure TParamForm.FormKeyPress(Sender: TObject; var Key: Char);
 begin
   TraceMsg('FormKeyPress(%s)', [Key]);
-  
+
   case Key of
     //如果回车，就执行程序
     #13:
@@ -237,8 +223,7 @@ begin
   end;
 end;
 
-procedure TParamForm.FormMouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
+procedure TParamForm.FormMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   RestartTimer;
 end;
@@ -302,7 +287,8 @@ begin
         SplitString(Trim(strLine), '|', ParamItem);
 
         //若已经满了，就不读了
-        if cbbParam.Items.Count >= ParamHistoryLimit then Exit;
+        if cbbParam.Items.Count >= ParamHistoryLimit then
+          Exit;
 
         //取得Rank
         cnt := StrToInt(Trim(ParamItem[0]));
@@ -327,7 +313,8 @@ end;
 
 procedure TParamForm.RestartTimer;
 begin
-  if DEBUG_MODE then Exit;
+  if DEBUG_MODE then
+    Exit;
 
   if Visible then
   begin
@@ -341,10 +328,7 @@ function TParamForm.SaveParamHistory: Boolean;
 var
   i: Cardinal;
   MyFile: TextFile;
-  strLine: string;
-  ParamItem: TStringList;
   MaxCnt: Integer;
-  Param: string;
 begin
   Result := False;
 
@@ -363,8 +347,7 @@ begin
 
         for i := 0 to MaxCnt - 1 do
         begin
-          WriteLn(MyFile, Format('%-10d|%-30s%',
-            [Integer(Pointer(cbbParam.Items.Objects[i])), cbbParam.Items.Strings[i]]));
+          WriteLn(MyFile, Format('%-10d|%-30s%', [Integer(Pointer(cbbParam.Items.Objects[i])), cbbParam.Items.Strings[i]]));
         end;
       end;
 

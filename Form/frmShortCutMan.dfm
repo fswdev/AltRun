@@ -10,7 +10,6 @@ object ShortCutManForm: TShortCutManForm
   Font.Height = -13
   Font.Name = #23435#20307
   Font.Style = []
-  OldCreateOrder = False
   Position = poDesigned
   OnCreate = FormCreate
   OnDestroy = FormDestroy
@@ -18,7 +17,6 @@ object ShortCutManForm: TShortCutManForm
   DesignSize = (
     632
     446)
-  PixelsPerInch = 96
   TextHeight = 13
   object btnCancel0: TBitBtn
     Left = 549
@@ -28,11 +26,12 @@ object ShortCutManForm: TShortCutManForm
     Hint = 'Cancel all modification'
     Anchors = [akRight, akBottom]
     Caption = '&Cancel'
+    Kind = bkCancel
+    NumGlyphs = 2
     ParentShowHint = False
     ShowHint = True
     TabOrder = 4
     TabStop = False
-    Kind = bkCancel
   end
   object btnOK: TBitBtn
     Left = 468
@@ -43,11 +42,6 @@ object ShortCutManForm: TShortCutManForm
     Anchors = [akRight, akBottom]
     Caption = '&OK'
     Default = True
-    ModalResult = 1
-    ParentShowHint = False
-    ShowHint = True
-    TabOrder = 1
-    TabStop = False
     Glyph.Data = {
       DE010000424DDE01000000000000760000002800000024000000120000000100
       0400000000006801000000000000000000001000000000000000000000000000
@@ -65,7 +59,12 @@ object ShortCutManForm: TShortCutManForm
       3338F38F000033333333333333A223333333333333338F830000333333333333
       333A333333333333333338330000333333333333333333333333333333333333
       0000}
+    ModalResult = 1
     NumGlyphs = 2
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 1
+    TabStop = False
   end
   object lvShortCut: TListView
     Left = 0
@@ -211,7 +210,7 @@ object ShortCutManForm: TShortCutManForm
   end
   object actlstShortCut: TActionList
     Images = ilShortCutMan
-    Left = 152
+    Left = 216
     Top = 104
     object actAdd: TAction
       Caption = '&Add'
@@ -255,10 +254,10 @@ object ShortCutManForm: TShortCutManForm
     end
   end
   object ilShortCutMan: TImageList
-    Left = 184
+    Left = 328
     Top = 104
     Bitmap = {
-      494C01010B000E00040010001000FFFFFFFFFF00FFFFFFFFFFFFFFFF424D3600
+      494C01010B000E00040010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000003000000001002000000000000030
       000000000000000000000000000000000000EFEFEF00DEDBDE00DEDBDE00DEDB
       DE00DEDBDE00DEDBDE00DEDBDE00DEDBDE00DEDBDE00DEDBDE00DEDBDE00DEDB
@@ -658,7 +657,8 @@ object ShortCutManForm: TShortCutManForm
       FE3FFBFF8003F81FF00FF9FF8003F81FC007F8FF8007F81F8003F87F80070001
       0001F83FC00700010000F81FE00700010000F81FC00700010000F83FC0070001
       0000F87FC00300010001F8FFC00300010001F9FFE003F81F8003FBFFE003F81F
-      C007FFFFF007F81FE00FFFFFFC0FF81F}
+      C007FFFFF007F81FE00FFFFFFC0FF81F00000000000000000000000000000000
+      000000000000}
   end
   object pmShortCutMan: TPopupMenu
     Left = 120

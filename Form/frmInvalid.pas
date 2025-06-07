@@ -3,20 +3,8 @@ unit frmInvalid;
 interface
 
 uses
-  Windows,
-  Messages,
-  SysUtils,
-  Variants,
-  Classes,
-  Graphics,
-  Controls,
-  Forms,
-  Dialogs,
-  ComCtrls,
-  StdCtrls,
-  Buttons,
-  Menus,
-  untALTRunOption;
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ComCtrls, StdCtrls, Buttons, Menus, untALTRunOption;
 
 type
   TInvalidForm = class(TForm)
@@ -42,6 +30,7 @@ var
   InvalidForm: TInvalidForm;
 
 implementation
+
 uses
   untShortCutMan;
 
@@ -49,27 +38,27 @@ uses
 
 procedure TInvalidForm.FormCreate(Sender: TObject);
 begin
-  Self.Caption:=resInvalidFormCaption;
+  Self.Caption := resInvalidFormCaption;
   btnOK.Caption := resBtnOK;
   btnCancel.Caption := resBtnCancel;
 
-  lvShortCut.Columns.Items[0].Caption:=resShortCut;
-  lvShortCut.Columns.Items[1].Caption:=resName;
-  lvShortCut.Columns.Items[2].Caption:=resParamType;
-  lvShortCut.Columns.Items[3].Caption:=resCommandLine;
+  lvShortCut.Columns.Items[0].Caption := resShortCut;
+  lvShortCut.Columns.Items[1].Caption := resName;
+  lvShortCut.Columns.Items[2].Caption := resParamType;
+  lvShortCut.Columns.Items[3].Caption := resCommandLine;
 end;
 
 procedure TInvalidForm.mniTestClick(Sender: TObject);
 var
   ShortCutItem: TShortCutItem;
 begin
-  if lvShortCut.ItemIndex < 0 then Exit;
+  if lvShortCut.ItemIndex < 0 then
+    Exit;
 
   //命令行不能为空
   if lvShortCut.Selected.SubItems[2] = '' then
   begin
-    Application.MessageBox(PChar(resCommandLineEempty), PChar(resInfo),
-      MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+    Application.MessageBox(PChar(resCommandLineEempty), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
     Exit;
   end;
 

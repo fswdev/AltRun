@@ -3,26 +3,10 @@ unit frmShortCutMan;
 interface
 
 uses
-  Windows,
-  Messages,
-  SysUtils,
-  Variants,
-  Classes,
-  Graphics,
-  Controls,
-  Forms,
-  Dialogs,
-  ActnList,
-  StdCtrls,
-  ComCtrls,
-  Buttons,
-  ImgList,
-  Menus,
-  ShellAPI,
-  untShortCutMan,
-  untUtilities,
-  untALTRunOption,
-  ToolWin;
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, ActnList, StdCtrls, ComCtrls, Buttons, ImgList, Menus, ShellAPI,
+  untShortCutMan, untUtilities, untALTRunOption, ToolWin, System.ImageList,
+  System.Actions;
 
 type
   TShortCutManForm = class(TForm)
@@ -57,11 +41,9 @@ type
     procedure FormCreate(Sender: TObject);
     procedure MyDrag(var Msg: TWMDropFiles); message WM_DropFiles;
     procedure actAddExecute(Sender: TObject);
-    procedure lvShortCutMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
+    procedure lvShortCutMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure lvShortCutDragDrop(Sender, Source: TObject; X, Y: Integer);
-    procedure lvShortCutDragOver(Sender, Source: TObject; X, Y: Integer;
-      State: TDragState; var Accept: Boolean);
+    procedure lvShortCutDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
     procedure actEditExecute(Sender: TObject);
     procedure actDeleteExecute(Sender: TObject);
     procedure lvShortCutKeyPress(Sender: TObject; var Key: Char);
@@ -73,15 +55,12 @@ type
     procedure actCancelExecute(Sender: TObject);
     procedure actValidateExecute(Sender: TObject);
     procedure lvShortCutEdited(Sender: TObject; Item: TListItem; var S: string);
-    procedure lvShortCutEditing(Sender: TObject; Item: TListItem;
-      var AllowEdit: Boolean);
+    procedure lvShortCutEditing(Sender: TObject; Item: TListItem; var AllowEdit: Boolean);
     procedure actPathConvertExecute(Sender: TObject);
     procedure lvShortCutColumnClick(Sender: TObject; Column: TListColumn);
   private
     //m_ShortCutList: TShortCutList;
     m_SrcItem: TListItem;
-    m_CuttedItem: TListItem;
-    m_Cutted: Boolean;
 
     function ExistListItem(itm: TListItem): Boolean;
     procedure LoadShortCutList;
@@ -97,16 +76,14 @@ implementation
 {$R *.dfm}
 
 uses
-  frmShortCut,
-  frmInvalid;
+  frmShortCut, frmInvalid;
 
 procedure TShortCutManForm.actAddExecute(Sender: TObject);
 var
   ShortCutForm: TShortCutForm;
-  NewLine: string;
   ListItem: TListItem;
-  ShortCutItem: TShortCutItem;
 begin
+  ShortCutForm := nil;
   try
     ShortCutForm := TShortCutForm.Create(Self);
     with ShortCutForm do
@@ -118,7 +95,8 @@ begin
 
       ShowModal;
 
-      if ModalResult = mrCancel then Exit;
+      if ModalResult = mrCancel then
+        Exit;
 
       ListItem := TListItem.Create(lvShortCut.Items);
 
@@ -142,8 +120,7 @@ begin
       //若有重复，则报错
       if ExistListItem(ListItem) then
       begin
-        Application.MessageBox('This ShortCut has already existed!', PChar(resInfo),
-          MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+        Application.MessageBox('This ShortCut has already existed!', PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
 
         ListItem.Free;
         Exit;
@@ -165,7 +142,7 @@ begin
       ListItem.Caption := lbledtShortCut.Text;
     end;
   finally
-    ShortCutForm.Free;
+    freeAndNil(ShortCutForm);
   end;
 end;
 
@@ -181,19 +158,17 @@ end;
 
 procedure TShortCutManForm.actDeleteExecute(Sender: TObject);
 begin
-  if lvShortCut.ItemIndex < 0 then Exit;
+  if lvShortCut.ItemIndex < 0 then
+    Exit;
 
   if lvShortCut.Selected.Caption = '' then
   begin
-    if Application.MessageBox(PChar(resDeleteBlankLine),
-      PChar(resInfo), MB_OKCANCEL + MB_ICONQUESTION + MB_TOPMOST) = IDOK then
+    if Application.MessageBox(PChar(resDeleteBlankLine), PChar(resInfo), MB_OKCANCEL + MB_ICONQUESTION + MB_TOPMOST) = IDOK then
       lvShortCut.DeleteSelected;
   end
   else
   begin
-    if Application.MessageBox(PChar(Format(PChar(resDeleteConfirm),
-      [lvShortCut.Selected.Caption, lvShortCut.Selected.SubItems[0]])),
-      PChar(resInfo), MB_OKCANCEL + MB_ICONQUESTION + MB_TOPMOST) = IDOK then
+    if Application.MessageBox(PChar(Format(PChar(resDeleteConfirm), [lvShortCut.Selected.Caption, lvShortCut.Selected.SubItems[0]])), PChar(resInfo), MB_OKCANCEL + MB_ICONQUESTION + MB_TOPMOST) = IDOK then
       lvShortCut.DeleteSelected;
   end;
 end;
@@ -203,10 +178,11 @@ var
   ShortCutForm: TShortCutForm;
   itm: TListItem;
   ParamType: TParamType;
-  ShortCutItem: TShortCutItem;
 begin
-  if lvShortCut.ItemIndex < 0 then Exit;
-  if lvShortCut.Selected.ImageIndex <> Ord(siItem) then Exit;
+  if lvShortCut.ItemIndex < 0 then
+    Exit;
+  if lvShortCut.Selected.ImageIndex <> Ord(siItem) then
+    Exit;
 
   try
     ShortCutForm := TShortCutForm.Create(Self);
@@ -220,8 +196,10 @@ begin
 
       ShowModal;
 
-      if ModalResult = mrCancel then Exit;
+      if ModalResult = mrCancel then
+        Exit;
 
+      itm := nil;
       try
         itm := TListItem.Create(lvShortCut.Items);
 
@@ -245,8 +223,7 @@ begin
         //若有重复，则报错
         if ExistListItem(itm) then
         begin
-          Application.MessageBox('This ShortCut has already existed!', PChar(resInfo),
-            MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+          Application.MessageBox('This ShortCut has already existed!', PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
 
           Exit;
         end;
@@ -260,11 +237,11 @@ begin
         //使其可见
         lvShortCut.Selected.MakeVisible(True);
       finally
-        itm.Free;
+        FreeAndNil(itm);
       end;
     end;
   finally
-    ShortCutForm.Free;
+    freeandNil(ShortCutForm);
   end;
 end;
 
@@ -280,9 +257,9 @@ var
   CommandLine: string;
   IsAbsoluteToRelative: Boolean;
 begin
+  IsAbsoluteToRelative := False;
   //看看是否真的需要
-  case Application.MessageBox(PChar(Format(resPathConvertConfirm, [#13#10, #13#10])), PChar(resInfo),
-    MB_YESNOCANCEL + MB_ICONQUESTION + MB_TOPMOST) of
+  case Application.MessageBox(PChar(Format(resPathConvertConfirm, [#13#10, #13#10])), PChar(resInfo), MB_YESNOCANCEL + MB_ICONQUESTION + MB_TOPMOST) of
     IDCANCEL:
       begin
         Exit;
@@ -327,16 +304,15 @@ end;
 procedure TShortCutManForm.actValidateExecute(Sender: TObject);
 var
   i: Cardinal;
-  Item: TShortCutItem;
   InvalidForm: TInvalidForm;
   lvwitm: TListItem;
   CommandLine: string;
 begin
-  if lvShortCut.Items.Count = 0 then Exit;
+  if lvShortCut.Items.Count = 0 then
+    Exit;
 
   //看看是否真的需要
-  if Application.MessageBox(PChar(resValidateConfirm), PChar(resInfo),
-    MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDNO then
+  if Application.MessageBox(PChar(resValidateConfirm), PChar(resInfo), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDNO then
   begin
     Exit;
   end;
@@ -372,30 +348,30 @@ begin
     //若没有找到有问题的项目，则退出
     if InvalidForm.lvShortCut.Items.Count = 0 then
     begin
-      Application.MessageBox(PChar(resNoInvalidShortCut), PChar(resInfo),
-        MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+      Application.MessageBox(PChar(resNoInvalidShortCut), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
       Exit;
     end;
 
     InvalidForm.ShowModal;
 
-    if InvalidForm.ModalResult = mrCancel then Exit;
+    if InvalidForm.ModalResult = mrCancel then
+      Exit;
 
     //将选中的都删除
     for i := InvalidForm.lvShortCut.Items.Count - 1 downto 0 do
     begin
-      if not InvalidForm.lvShortCut.Items[i].Checked then Continue;
+      if not InvalidForm.lvShortCut.Items[i].Checked then
+        Continue;
 
       lvShortCut.Items.Delete(Integer(InvalidForm.lvShortCut.Items[i].Data));
     end;
   finally
-    InvalidForm.Free;
+   FreeAndNil( InvalidForm);
   end;
 end;
 
 function TShortCutManForm.IsValidCommandLine(strCommandLine: string): Boolean;
 var
-  BlankPos: Integer;
   SlashPos: Integer;
   i: Cardinal;
   strTemp: string;
@@ -412,10 +388,12 @@ begin
     strCommandLine := CutLeftString(strCommandLine, Length(SHOW_HIDE_FLAG));
 
   //出现'\\'认为是网络相关，别做检查
-  if Pos('\\', strCommandLine) > 0 then Exit;
+  if Pos('\\', strCommandLine) > 0 then
+    Exit;
 
   //出现'\'才认为是文件或文件夹，才去做检查
-  if Pos('\', strCommandLine) = 0 then Exit;
+  if Pos('\', strCommandLine) = 0 then
+    Exit;
 
   //替换环境变量
   strCommandLine := ShortCutMan.ReplaceEnvStr(strCommandLine);
@@ -426,26 +404,29 @@ begin
 
   //如果是.\开头，替换出当前路径
   if Pos('.\', strCommandLine) = 1 then
-    strCommandLine := ExtractFilePath(Application.ExeName) +
-      Copy(strCommandLine, 3, Length(strCommandLine) - 2);
+    strCommandLine := ExtractFilePath(Application.ExeName) + Copy(strCommandLine, 3, Length(strCommandLine) - 2);
 
   //有这个文件，当然没问题
-  if FileExists(strCommandLine) then Exit;
+  if FileExists(strCommandLine) then
+    Exit;
 
   //有这个文件夹，当然没问题
-  if DirectoryExists(strCommandLine) then Exit;
+  if DirectoryExists(strCommandLine) then
+    Exit;
 
   //如果被""包围，就认为是文件，或者文件夹，要么有它，要么没有
   if strCommandLine <> RemoveQuotationMark(strCommandLine, '"') then
-  Begin
+  begin
     strCommandLine := RemoveQuotationMark(strCommandLine, '"');
 
-    if FileExists(strCommandLine) then Exit;
-    if DirectoryExists(strCommandLine) then Exit;
+    if FileExists(strCommandLine) then
+      Exit;
+    if DirectoryExists(strCommandLine) then
+      Exit;
 
     Result := False;
     Exit;
-  End;
+  end;
 
   // 剩下的可能是带参数的，找最后一个\
   SlashPos := 0;
@@ -466,7 +447,7 @@ begin
   end;
 
   // 还不行就从开头进行寻找
-  if Not Result then
+  if not Result then
   begin
     // "C:\Program Files\ChromePlus\chrome.exe" ".\Shit.txt"
     // C:\Program Files\IDM Computer Solutions\UltraEdit-32\uedit32.exe .\HandleList.txt
@@ -501,7 +482,7 @@ begin
   //带参数的，都不检查
   //D:\Philips\Lenovo\Lenovo Status.xls 这种带有空格的残废路径，会在此逃掉
   if Pos(' ', strCommandLine) > 1 then Exit;
- 
+
 
   //TODO: 其他的，都认为比较可疑，是否运行一下看看？
   Result := False;
@@ -514,17 +495,16 @@ var
 begin
   Result := False;
 
-  if lvShortCut.Items.Count = 0 then Exit;
+  if lvShortCut.Items.Count = 0 then
+    Exit;
 
   //若是空行
-  if itm.Caption = '' then Exit;
+  if itm.Caption = '' then
+    Exit;
 
   for i := 0 to lvShortCut.Items.Count - 1 do
     with lvShortCut.Items.Item[i] do
-      if (itm.Caption = Caption) and
-        (itm.SubItems[0] = SubItems[0]) and
-        (itm.SubItems[1] = SubItems[1]) and
-        (itm.SubItems[2] = SubItems[2]) then
+      if (itm.Caption = Caption) and (itm.SubItems[0] = SubItems[0]) and (itm.SubItems[1] = SubItems[1]) and (itm.SubItems[2] = SubItems[2]) then
       begin
         Result := True;
         Exit;
@@ -534,7 +514,7 @@ end;
 procedure TShortCutManForm.FormCreate(Sender: TObject);
 begin
   // Disable Close Button
-  EnableMenuItem(GetSystemMenu(Self.Handle,False), SC_CLOSE,MF_GRAYED);
+  EnableMenuItem(GetSystemMenu(Self.Handle, False), SC_CLOSE, MF_GRAYED);
 
   //mniCut.Enabled := False;
   //mniInsert.Enabled := False;
@@ -567,7 +547,7 @@ begin
   actAdd.Caption := resBtnAdd;
   actEdit.Caption := resBtnEdit;
   actDelete.Caption := resBtnDelete;
-  
+
   DragAcceptFiles(Handle, True);
   LoadShortCutList;
 end;
@@ -627,45 +607,41 @@ end;
 procedure TShortCutManForm.lvShortCutDragDrop(Sender, Source: TObject; X, Y: Integer);
 var
   tempItem1, tempItem2: TListItem;
-  hit: THitTests;
 begin
   begin
     //如果拖到不是列表项的地方，就退出
-    if lvShortCut.GetItemAt(x, y) = nil then Exit;
-    
-    tempItem1 := lvShortCut.GetItemAt(x, y);
-    tempItem2 := lvShortCut.Items.Insert(tempitem1.index);
-    tempitem2.Caption := m_SrcItem.Caption;
-    tempitem2.SubItems.Add(m_SrcItem.SubItems[0]);
-    tempitem2.SubItems.Add(m_SrcItem.SubItems[1]);
-    tempitem2.SubItems.Add(m_SrcItem.SubItems[2]);
-    tempitem2.ImageIndex := m_SrcItem.ImageIndex;
+    if lvShortCut.GetItemAt(X, Y) = nil then
+      Exit;
+
+    tempItem1 := lvShortCut.GetItemAt(X, Y);
+    tempItem2 := lvShortCut.Items.Insert(tempItem1.index);
+    tempItem2.Caption := m_SrcItem.Caption;
+    tempItem2.SubItems.Add(m_SrcItem.SubItems[0]);
+    tempItem2.SubItems.Add(m_SrcItem.SubItems[1]);
+    tempItem2.SubItems.Add(m_SrcItem.SubItems[2]);
+    tempItem2.ImageIndex := m_SrcItem.ImageIndex;
 
     m_SrcItem.Delete;
     lvShortCut.Refresh;
   end;
 end;
 
-procedure TShortCutManForm.lvShortCutDragOver(Sender, Source: TObject; X,
-  Y: Integer; State: TDragState; var Accept: Boolean);
+procedure TShortCutManForm.lvShortCutDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
 begin
   Accept := True;
 end;
 
-procedure TShortCutManForm.lvShortCutEdited(Sender: TObject; Item: TListItem;
-  var S: string);
+procedure TShortCutManForm.lvShortCutEdited(Sender: TObject; Item: TListItem; var S: string);
 begin
   btnOK.Default := True;
 end;
 
-procedure TShortCutManForm.lvShortCutEditing(Sender: TObject; Item: TListItem;
-  var AllowEdit: Boolean);
+procedure TShortCutManForm.lvShortCutEditing(Sender: TObject; Item: TListItem; var AllowEdit: Boolean);
 begin
   btnOK.Default := False;
 end;
 
-procedure TShortCutManForm.lvShortCutKeyDown(Sender: TObject; var Key: Word;
-  Shift: TShiftState);
+procedure TShortCutManForm.lvShortCutKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   case Key of
     VK_F2:
@@ -685,10 +661,9 @@ begin
   //if Key = #13 then actEditExecute(Sender);
 end;
 
-procedure TShortCutManForm.lvShortCutMouseDown(Sender: TObject;
-  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TShortCutManForm.lvShortCutMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
-  m_SrcItem := lvShortCut.GetItemAt(x, y);
+  m_SrcItem := lvShortCut.GetItemAt(X, Y);
   //mniCut.Enabled := True;
 end;
 
@@ -709,8 +684,7 @@ begin
     begin
       if not ShortCutMan.ExtractShortCutItemFromFileName(ShortCutItem, FileName) then
       begin
-        Application.MessageBox('Can not get file name!', 'Info',
-          MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+        Application.MessageBox('Can not get file name!', 'Info', MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
 
         Exit;
       end;
@@ -750,8 +724,7 @@ begin
       //若有重复，则报错
       if ExistListItem(ListItem) then
       begin
-        Application.MessageBox('This ShortCut has already existed!', PChar(resInfo),
-          MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+        Application.MessageBox('This ShortCut has already existed!', PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
 
         ListItem.Free;
         Exit;

@@ -3,28 +3,10 @@ unit frmConfig;
 interface
 
 uses
-  Windows,
-  Messages,
-  SysUtils,
-  Variants,
-  Classes,
-  Graphics,
-  Controls,
-  Forms,
-  Dialogs,
-  StdCtrls,
-  Buttons,
-  HotKeyManager,
-  ExtCtrls,
-  CheckLst,
-  ComCtrls,
-  Mask,
-  Spin,
-  rxToolEdit,
-  RXSpin,
-  untShortCutMan,
-  untALTRunOption,
-  untUtilities, jpeg, ActnList, Menus;
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Buttons, HotKeyManager, ExtCtrls, CheckLst, ComCtrls, Mask,
+  Spin, untShortCutMan, untALTRunOption, untUtilities, jpeg, ActnList, Menus,
+  System.Actions;
 
 type
   TConfigForm = class(TForm)
@@ -67,14 +49,13 @@ type
     lstAlphaColor: TColorBox;
     lblFormAlpha: TLabel;
     lblBackGroundImage: TLabel;
-    edtClientDBFileBGFileName: TFilenameEdit;
     lblAlphaHint: TLabel;
     tsLang: TTabSheet;
     lblLanguage: TLabel;
     cbbLang: TComboBox;
     lblLanguageHint: TLabel;
-    seAlpha: TRxSpinEdit;
-    seRoundBorderRadius: TRxSpinEdit;
+    seAlpha: TSpinEdit;
+    seRoundBorderRadius: TSpinEdit;
     lblRoundBorderRadius: TLabel;
     lbledtHotKey2: TLabeledEdit;
     grpKeys2: TGroupBox;
@@ -84,7 +65,7 @@ type
     chkShift2: TCheckBox;
     lbl1: TLabel;
     lblHotkeyHint: TLabel;
-    seFormWidth: TRxSpinEdit;
+    seFormWidth: TSpinEdit;
     lblFormWidth: TLabel;
     tsStyle: TTabSheet;
     dlgColor: TColorDialog;
@@ -103,8 +84,7 @@ type
     pmFont: TPopupMenu;
     actlstGUI: TActionList;
     actSelectChange: TAction;
-    procedure lbledtHotKey1KeyDown(Sender: TObject; var Key: Word;
-      Shift: TShiftState);
+    procedure lbledtHotKey1KeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure chklstConfigClick(Sender: TObject);
     procedure fontcbbTitleChange(Sender: TObject);
     procedure btnModifyTitleFontClick(Sender: TObject);
@@ -113,20 +93,15 @@ type
     procedure btnResetClick(Sender: TObject);
     procedure btnResetFontClick(Sender: TObject);
     procedure cbbListFormatChange(Sender: TObject);
-    procedure seAlphaKeyDown(Sender: TObject; var Key: Word;
-      Shift: TShiftState);
+    procedure seAlphaKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormCreate(Sender: TObject);
-    procedure seRoundBorderRadiusKeyDown(Sender: TObject; var Key: Word;
-      Shift: TShiftState);
-    procedure lbledtHotKey2KeyDown(Sender: TObject; var Key: Word;
-      Shift: TShiftState);
-    procedure seFormWidthKeyDown(Sender: TObject; var Key: Word;
-      Shift: TShiftState);
+    procedure seRoundBorderRadiusKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure lbledtHotKey2KeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure seFormWidthKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure edtShortCutChange(Sender: TObject);
     procedure actSelectChangeExecute(Sender: TObject);
   private
     { Private declarations }
-    procedure RefreshDemo;
     procedure RefreshOperationHint;
     function DirAvailable: Boolean;
   public
@@ -153,14 +128,16 @@ const
 
 procedure TConfigForm.actSelectChangeExecute(Sender: TObject);
 begin
-  if lstShortCut.ItemIndex = -1 then Exit;
+  if lstShortCut.ItemIndex = -1 then
+    Exit;
 
   lblShortCut.Caption := TShortCutItem(lstShortCut.Items.Objects[lstShortCut.ItemIndex]).Name;
   lblShortCut.Hint := TShortCutItem(lstShortCut.Items.Objects[lstShortCut.ItemIndex]).CommandLine;
   //edtCommandLine.Hint := lblShortCut.Hint;
   edtCommandLine.Text := resCMDLine + lblShortCut.Hint;
 
-  if DirAvailable then lblShortCut.Caption := '[' + lblShortCut.Caption + ']';
+  if DirAvailable then
+    lblShortCut.Caption := '[' + lblShortCut.Caption + ']';
 end;
 
 procedure TConfigForm.btnModifyKeywordFontClick(Sender: TObject);
@@ -183,8 +160,7 @@ end;
 
 procedure TConfigForm.btnResetClick(Sender: TObject);
 begin
-  if Application.MessageBox(PChar(resResetAllConfig),
-    PChar(resInfo), MB_OKCANCEL + MB_ICONQUESTION + MB_TOPMOST) = IDCANCEL then
+  if Application.MessageBox(PChar(resResetAllConfig), PChar(resInfo), MB_OKCANCEL + MB_ICONQUESTION + MB_TOPMOST) = IDCANCEL then
     Exit;
 
   ModalResult := mrRetry;
@@ -192,8 +168,7 @@ end;
 
 procedure TConfigForm.btnResetFontClick(Sender: TObject);
 begin
-  if Application.MessageBox(PChar(resResetAllFonts), PChar(resInfo),
-    MB_OKCANCEL + MB_ICONQUESTION + MB_TOPMOST) = IDCANCEL then
+  if Application.MessageBox(PChar(resResetAllFonts), PChar(resInfo), MB_OKCANCEL + MB_ICONQUESTION + MB_TOPMOST) = IDCANCEL then
     Exit;
 
   StrToFont(DEFAULT_TITLE_FONT_STR, lblTitleSample.Font);
@@ -238,15 +213,14 @@ end;
 function TConfigForm.DirAvailable: Boolean;
 var
   itm: TShortCutItem;
-  Index: Integer;
   CommandLine: string;
 begin
   Result := False;
 
-  if lstShortCut.ItemIndex < 0 then Exit;
+  if lstShortCut.ItemIndex < 0 then
+    Exit;
 
   itm := TShortCutItem(lstShortCut.Items.Objects[lstShortCut.ItemIndex]);
-  Index := ShortCutMan.GetShortCutItemIndex(itm);
 
   //去除前导的@/@+/@-
   CommandLine := itm.CommandLine;
@@ -259,7 +233,8 @@ begin
 
   CommandLine := RemoveQuotationMark(CommandLine, '"');
 
-  if Pos('\\', CommandLine) > 0 then Exit;
+  if Pos('\\', CommandLine) > 0 then
+    Exit;
 
   if (FileExists(CommandLine) or DirectoryExists(CommandLine)) then
     Result := True
@@ -312,7 +287,7 @@ begin
 
     lbledtHotKey1.Text := KeyList.Strings[KeyList.Count - 1];
   finally
-    KeyList.Free;
+    freeandNil(KeyList);
   end;
 end;
 
@@ -367,11 +342,8 @@ end;
 
 procedure TConfigForm.edtShortCutChange(Sender: TObject);
 var
-  i, j, k: Cardinal;
-  Rank, ExistRank: Integer;
-  IsInserted: Boolean;
+  i: integer;
   StringList: TStringList;
-  HintIndex: Integer;
 begin
   lblShortCut.Caption := '';
   lblShortCut.Hint := '';
@@ -432,14 +404,12 @@ begin
 end;
 
 procedure TConfigForm.FormCreate(Sender: TObject);
-var
-  i: Cardinal;
 begin
   Self.DoubleBuffered := True;
   Self.Caption := resConfigFormCaption;
 
   tsStyle.TabVisible := False;
-  
+
   btnOK.Caption := resBtnOK;
   btnCancel.Caption := resBtnCancel;
   btnReset.Caption := resBtnReset;
@@ -475,8 +445,8 @@ begin
   lblHotkeyHint.Caption := resLblHotKeyHint;
   lbledtHotKey1.EditLabel.Caption := resLblHotKey1;
   lbledtHotKey2.EditLabel.Caption := resLblHotKey2;
-  lbledtHotKey1.Hint:=resLblHotKeyHint1;
-  lbledtHotKey2.Hint:=resLblHotKeyHint2;
+  lbledtHotKey1.Hint := resLblHotKeyHint1;
+  lbledtHotKey2.Hint := resLblHotKeyHint2;
   LblTitleFont.Caption := resLblTitleFont;
   LblTitleSample.Caption := resLblTitleSample;
   LblKeywordFont.Caption := resLblKeywordFont;
@@ -508,10 +478,14 @@ function TConfigForm.GetHotKey1: string;
 begin
   Result := '';
 
-  if chkWindows1.Checked then Result := Result + WIN_KEY + ' + ';
-  if chkAlt1.Checked then Result := Result + ALT_KEY + ' + ';
-  if chkCtrl1.Checked then Result := Result + CTRL_KEY + ' + ';
-  if chkShift1.Checked then Result := Result + SHIFT_KEY + ' + ';
+  if chkWindows1.Checked then
+    Result := Result + WIN_KEY + ' + ';
+  if chkAlt1.Checked then
+    Result := Result + ALT_KEY + ' + ';
+  if chkCtrl1.Checked then
+    Result := Result + CTRL_KEY + ' + ';
+  if chkShift1.Checked then
+    Result := Result + SHIFT_KEY + ' + ';
 
   Result := Result + lbledtHotKey1.Text;
 end;
@@ -520,22 +494,24 @@ function TConfigForm.GetHotKey2: string;
 begin
   Result := '';
 
-  if chkWindows2.Checked then Result := Result + WIN_KEY + ' + ';
-  if chkAlt2.Checked then Result := Result + ALT_KEY + ' + ';
-  if chkCtrl2.Checked then Result := Result + CTRL_KEY + ' + ';
-  if chkShift2.Checked then Result := Result + SHIFT_KEY + ' + ';
+  if chkWindows2.Checked then
+    Result := Result + WIN_KEY + ' + ';
+  if chkAlt2.Checked then
+    Result := Result + ALT_KEY + ' + ';
+  if chkCtrl2.Checked then
+    Result := Result + CTRL_KEY + ' + ';
+  if chkShift2.Checked then
+    Result := Result + SHIFT_KEY + ' + ';
 
   Result := Result + lbledtHotKey2.Text;
 end;
 
-procedure TConfigForm.lbledtHotKey1KeyDown(Sender: TObject; var Key: Word;
-  Shift: TShiftState);
+procedure TConfigForm.lbledtHotKey1KeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   lbledtHotKey1.Text := HotKeyManager.HotKeyToText(Key, LOCALIZED_KEYNAMES);
 end;
 
-procedure TConfigForm.lbledtHotKey2KeyDown(Sender: TObject; var Key: Word;
-  Shift: TShiftState);
+procedure TConfigForm.lbledtHotKey2KeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if Key = VK_DELETE then
   begin
@@ -543,82 +519,11 @@ begin
     chkAlt2.Checked := False;
     chkShift2.Checked := False;
     chkCtrl2.Checked := False;
-    
+
     lbledtHotKey2.Text := HotKeyManager.HotKeyToText(0, LOCALIZED_KEYNAMES);
   end
   else
     lbledtHotKey2.Text := HotKeyManager.HotKeyToText(Key, LOCALIZED_KEYNAMES);
-end;
-
-procedure TConfigForm.RefreshDemo;
-begin
-  //字体
-  StrToFont(TitleFontStr, lblShortCut.Font);
-  StrToFont(KeywordFontStr, edtShortCut.Font);
-  StrToFont(ListFontStr, lstShortCut.Font);
-
-  //修改背景图
-  if not FileExists(ExtractFilePath(Application.ExeName) + BGFileName) then
-    imgBackground.Picture.SaveToFile(ExtractFilePath(Application.ExeName) + BGFileName);
-
-  if ShowSkin then
-  begin
-    imgBackground.Picture.LoadFromFile(ExtractFilePath(Application.ExeName) + BGFileName);
-    imgBackground.Show;
-  end
-  else
-  begin
-    imgBackground.Picture := nil;
-    imgBackground.Hide;
-  end;
-
-
-  //按钮是否显示
-  btnShortCut.Visible := ShowShortCutButton;
-  btnConfig.Visible := ShowConfigButton;
-  btnClose.Visible := ShowCloseButton;
-
-  //根据按钮显示决定标题栏显示长度
-  //快捷项管理按钮
-  if ShowShortCutButton then
-    lblShortCut.Left := btnShortCut.Left + btnShortCut.Width
-  else
-    lblShortCut.Left := 0;
-
-  //配置按钮和关闭按钮
-  if ShowCloseButton then
-  begin
-    if ShowConfigButton then
-    begin
-      btnConfig.Left := btnClose.Left - btnConfig.Width - 10;
-      lblShortCut.Width := btnConfig.Left - lblShortCut.Left;
-    end
-    else
-    begin
-      lblShortCut.Width := btnClose.Left - lblShortCut.Left;
-    end;
-  end
-  else
-  begin
-    if ShowConfigButton then
-    begin
-      btnConfig.Left := pnlDemo.Width - btnConfig.Width - 10;
-      lblShortCut.Width := btnConfig.Left - lblShortCut.Left;
-    end
-    else
-    begin
-      lblShortCut.Width := pnlDemo.Width - lblShortCut.Left;
-    end
-  end;
-
-  //显示命令行
-  if ShowCommandLine then
-    pnlDemo.Height := 250 {Self.Height + 20}
-  else
-    pnlDemo.Height := 230 {Self.Height - 20};
-//
-  edtShortCut.Text := '';
-  edtShortCutChange(nil);
 end;
 
 procedure TConfigForm.RefreshOperationHint;
@@ -658,30 +563,33 @@ begin
   end;
 end;
 
-procedure TConfigForm.seAlphaKeyDown(Sender: TObject; var Key: Word;
-  Shift: TShiftState);
+procedure TConfigForm.seAlphaKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   case Key of
-    13: ModalResult := mrOk;                           //回车
-    VK_ESCAPE: ModalResult := mrCancel;                //ESC
+    13:
+      ModalResult := mrOk;                           //回车
+    VK_ESCAPE:
+      ModalResult := mrCancel;                //ESC
   end;
 end;
 
-procedure TConfigForm.seFormWidthKeyDown(Sender: TObject; var Key: Word;
-  Shift: TShiftState);
+procedure TConfigForm.seFormWidthKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   case Key of
-    13: ModalResult := mrOk;                           //回车
-    VK_ESCAPE: ModalResult := mrCancel;                //ESC
+    13:
+      ModalResult := mrOk;                           //回车
+    VK_ESCAPE:
+      ModalResult := mrCancel;                //ESC
   end;
 end;
 
-procedure TConfigForm.seRoundBorderRadiusKeyDown(Sender: TObject; var Key: Word;
-  Shift: TShiftState);
+procedure TConfigForm.seRoundBorderRadiusKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   case Key of
-    13: ModalResult := mrOk;                           //回车
-    VK_ESCAPE: ModalResult := mrCancel;                //ESC
+    13:
+      ModalResult := mrOk;                           //回车
+    VK_ESCAPE:
+      ModalResult := mrCancel;                //ESC
   end;
 end;
 

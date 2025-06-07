@@ -10,13 +10,11 @@ object InvalidForm: TInvalidForm
   Font.Height = -13
   Font.Name = #23435#20307
   Font.Style = []
-  OldCreateOrder = False
   Position = poScreenCenter
   OnCreate = FormCreate
   DesignSize = (
     472
     326)
-  PixelsPerInch = 96
   TextHeight = 13
   object btnOK: TBitBtn
     Left = 308
@@ -27,11 +25,6 @@ object InvalidForm: TInvalidForm
     Anchors = [akRight, akBottom]
     Caption = '&OK'
     Default = True
-    ModalResult = 1
-    ParentShowHint = False
-    ShowHint = True
-    TabOrder = 0
-    TabStop = False
     Glyph.Data = {
       DE010000424DDE01000000000000760000002800000024000000120000000100
       0400000000006801000000000000000000001000000000000000000000000000
@@ -49,7 +42,14 @@ object InvalidForm: TInvalidForm
       3338F38F000033333333333333A223333333333333338F830000333333333333
       333A333333333333333338330000333333333333333333333333333333333333
       0000}
+    ModalResult = 1
     NumGlyphs = 2
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 0
+    TabStop = False
+    ExplicitLeft = 306
+    ExplicitTop = 285
   end
   object btnCancel: TBitBtn
     Left = 389
@@ -59,11 +59,14 @@ object InvalidForm: TInvalidForm
     Hint = 'Cancel all modification'
     Anchors = [akRight, akBottom]
     Caption = '&Cancel'
+    Kind = bkCancel
+    NumGlyphs = 2
     ParentShowHint = False
     ShowHint = True
     TabOrder = 1
     TabStop = False
-    Kind = bkCancel
+    ExplicitLeft = 387
+    ExplicitTop = 285
   end
   object lvShortCut: TListView
     Left = 0
