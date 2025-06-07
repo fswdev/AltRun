@@ -91,7 +91,7 @@ unit CnDebug;
 
 interface
 
-{$I CnPack.inc}
+//{$I CnPack.inc}
 
 // {$DEFINE DUMP_TO_FILE}
 // 定义此条件可重定向到文件.
