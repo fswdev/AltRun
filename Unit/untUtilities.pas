@@ -1,6 +1,7 @@
 unit untUtilities;
 
 interface
+{$I Defines.inc} // 包含宏定义
 
 uses
   Windows, Forms, SysUtils, Registry, Classes, ShlObj, ActiveX, ShellAPI,
@@ -208,10 +209,20 @@ begin
 end;
 
 function GetFileModifyTime(const FileName: string): string;
+var
+  FileDateTime: TDateTime;
 begin
   //Win2003和XP的日期格式不同,如 2007-11-14 上午 09:40:02
   //Result := DateTimeToStr(FileDateToDateTime(FileAge(FileName)));
-  DateTimeToString(Result, 'yyyy-mm-dd hh:mm:ss', FileDateToDateTime(FileAge(FileName)));
+  //DateTimeToString(Result, 'yyyy-mm-dd hh:mm:ss', FileDateToDateTime(FileAge(FileName)));
+
+  begin
+    // 使用非弃用的 FileAge 重载，直接获取 TDateTime
+    if FileAge(FileName, FileDateTime) then
+      DateTimeToString(Result, 'yyyy-mm-dd hh:mm:ss', FileDateTime)
+    else
+      Result := '0000-00-00 00:00:00'; // 或抛出异常，根据需求调整
+  end;
 end;
 
 function SetFileModifyTime(const FileName: string; AgeOfFile: Integer): Boolean;
@@ -260,18 +271,16 @@ end;
 function GetFileSize(const FileName: string): Integer;
 var
   fs: TFileStream;
-  FileHandle: Integer;
 begin
   try
     try
       fs := TFileStream.Create(FileName, {fmOpenRead}fmShareDenyNone);
       Result := fs.Size;
-
     except
       Result := -1;
     end;
   finally
-    fs.Free;
+    freeandnil(fs);
   end;
 end;
 
@@ -606,7 +615,7 @@ var
   PosSpace: Byte;
   I, L: Integer;
   NumTimes, MKey: Word;
-  KeyString: string[20];
+  KeyString: string;
   AllocationSize: Integer;
 
   procedure DisplayMessage(Message: PChar);
@@ -844,7 +853,7 @@ begin
             if (Length(KeyString) = 1) then
               MKey := vkKeyScanA(ansichar(KeyString[1]))
             else
-              MKey := StringToVKey(KeyString);
+              MKey := StringToVKey(ansistring(KeyString));
             if (MKey <> INVALIDKEY) then
             begin
               SendKey(MKey, NumTimes, True);
@@ -1306,12 +1315,14 @@ var
   h: HWnd;
   p: array[0..254] of char;
   s: string;
+  {$ifdef    DEBUG_MODE}
   WindowList: TStringList;
+  {$endif}
 begin
   Result := 0;
-
-  if DEBUG_MODE then
+  {$ifdef DEBUG_MODE}
     WindowList := TStringList.Create;
+  {$endif}
   try
     h := GetWindow(Application.Handle, GW_HWNDFIRST);
     while h <> 0 do
@@ -1319,16 +1330,15 @@ begin
       if GetWindowText(h, p, 255) > 0 then
       begin
         s := p;
-
-        if DEBUG_MODE then
+        {$ifdef    DEBUG_MODE}
           WindowList.Add(Format('%s : %d', [s, h]));
-
+        {$endif}
         if s = Caption then
         begin
           Result := h;
-
-          if not DEBUG_MODE then
-            Exit;
+          {$ifdef DEBUG_MODE}
+          Exit;
+          {$endif}
         end;
 
       end;
@@ -1337,11 +1347,12 @@ begin
     end;
 
   finally
-    if DEBUG_MODE then
+    {$ifdef    DEBUG_MODE}
     begin
       WindowList.SaveToFile('WindowList.txt');
       WindowList.Free;
     end;
+    {$endif}
   end;
 end;
 

@@ -1,6 +1,7 @@
 unit frmALTRun;
 
 interface
+ {$I Defines.inc} // 包含宏定义
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
@@ -125,7 +126,6 @@ type
     m_LastKeyIsNumKey: Boolean;
     m_LastActiveTime: Cardinal;
     m_IsExited: Boolean;
-    m_AgeOfFile: Integer;
     m_NeedRefresh: Boolean;
     m_IsTop: Boolean;
 
@@ -157,25 +157,14 @@ uses
 procedure TALTRunForm.actAboutExecute(Sender: TObject);
 var
   AboutForm: TAboutForm;
-  hALTRun: HWND;
 begin
   TraceMsg('actAboutExecute()');
-
-  if DEBUG_MODE then
-  begin
-    hALTRun := FindWindow('TALTRunForm', nil);
-//    hALTRun := FindWindowByCaption(TITLE);
-    SendMessage(hALTRun, WM_ALTRUN_ADD_SHORTCUT, 0, 0);
-    //SendMessage(Self.Handle, WM_ALTRUN_ADD_SHORTCUT, 0, 0);
-    Exit;
-  end;
-
   try
     AboutForm := TAboutForm.Create(Self);
     AboutForm.Caption := Format('%s %s %s', [resAbout, TITLE, ALTRUN_VERSION]);
     AboutForm.ShowModal;
   finally
-    AboutForm.Free;
+    freeandnil(AboutForm);
   end;
 end;
 
@@ -821,11 +810,12 @@ var
 begin
   TraceMsg('actShortCutExecute()');
 
-  if DEBUG_MODE then
+  {$ifdef DEBUG_MODE}
   begin
     SetEnvironmentVariable(PChar('MyTool'), PChar('C:\'));
     Exit;
   end;
+  {$endif}
 
   try
     ShortCutManForm := TShortCutManForm.Create(Self);
@@ -858,7 +848,7 @@ begin
       RestartHideTimer(HideDelay);
     end;
   finally
-    ShortCutManForm.Free;
+    freeandnil(ShortCutManForm);
   end;
 end;
 
@@ -1108,14 +1098,14 @@ procedure TALTRunForm.btnShortCutClick(Sender: TObject);
 begin
   TraceMsg('btnShortCutClick()');
 
-  if DEBUG_MODE then
+  {$ifdef DEBUG_MODE}
   begin
     if ShortCutMan.Test then
       ShowMessage('True')
     else
       ShowMessage('False');
-  end
-  else
+  end;
+  {$else}
   begin
     actShortCutExecute(Sender);
     if m_IsShow then
@@ -1125,6 +1115,7 @@ begin
       TraceMsg('edtShortCut.SetFocus failed');
     end;
   end;
+  {$endif}
 end;
 
 function TALTRunForm.DirAvailable: Boolean;
@@ -1659,13 +1650,14 @@ begin
     WM_SYSCOMMAND:                                     //点击关闭按钮
       if Msg.WParam = SC_CLOSE then
       begin
-        if DEBUG_MODE then
-          actCloseExecute(Self)                        //如果Debug模式，可以Alt-F4关闭
-        else
+        {$ifdef DEBUG_MODE}
+        actCloseExecute(Self);                        //如果Debug模式，可以Alt-F4关闭
+        {$else}
         begin
           evtMainMinimize(Self);                       //正常模式，仅仅隐藏
           edtShortCut.Text := '';
         end
+        {$endif}
       end
       else
         inherited;
@@ -1847,18 +1839,15 @@ begin
   //Load 快捷方式
   ShortCutMan := TShortCutMan.Create;
   ShortCutMan.LoadShortCutList;
-  m_AgeOfFile := FileAge(ShortCutMan.ShortCutFileName);
 
   //初始化上次列表
   m_LastShortCutCmdIndex := -1;
   m_LastKeyIsNumKey := False;
 
-
-
-
   //LOG
-  InitLogger(DEBUG_MODE, DEBUG_MODE, False);
-//  InitLogger(DEBUG_MODE, False, False);
+  {$ifdef DEBUG_MODE}
+  InitLogger(True, True, False);
+  {$endif}
 
   //Trace
   TraceMsg('FormCreate()');
@@ -2224,11 +2213,13 @@ var
 begin
   TraceMsg('hkmMainHotKeyPressed(%d)', [HotKey]);
 
-  if DEBUG_SORT then
+  {$ifdef DEBUG_SORT}
+//  if DEBUG_SORT then
   begin
     actShortCutExecute(Self);
     Exit;
   end;
+  {$ENDIF}
 
   // 取得当前剪贴板中的文字
   ShortCutMan.Param[0] := Clipboard.AsUnicodeText;

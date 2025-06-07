@@ -1,14 +1,14 @@
 unit untALTRunOption;
 
 interface
-
+{$I Defines.inc} // °üº¬ºê¶¨Òå
 uses
   Windows, IniFiles, Classes, SysUtils, Graphics, Forms, HotKeyManager,
   untUtilities, untLogger;
 
 const
-  DEBUG_MODE = true;
-  DEBUG_SORT = false;
+//  DEBUG_MODE = false;
+//  DEBUG_SORT = false;
 
   //TITLE = 'HotRun';
   //VERSION = 'V0.96';
@@ -628,6 +628,9 @@ function FontToStr(Font: TFont): string;
 function StrToFont(strFont: string; Font: TFont): Boolean;
 
 implementation
+
+uses
+  UITypes ;
 
 function FontStylesToStr(FontStyles: TFontStyles): string;
 begin

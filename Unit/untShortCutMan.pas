@@ -138,209 +138,211 @@ var
 implementation
 
 uses
-  frmShortCut;
+  frmShortCut, AnsiStrings;
 
-//function ExecuteCmd(cmd: Pointer): LongInt; stdcall;
-//var
-//  PCommandStr, PParamStr, PWorkingDir: PAnsiChar;
-//  cmdobj: TCmdObject;
-//  Regex: TRegExpr;
-//  strCommand, strTemp: string;
-//  ret: Integer;
-//  ShowCmd: Integer;
-//begin
-//  cmdobj := TCmdObject(cmd);
-//
-//  ShowCmd := SW_SHOWNORMAL;
-//  if Pos(SHOW_MAX_FLAG, cmdobj.Command) = 1 then
-//  begin
-//    cmdobj.Command := Trim(CutLeftString(cmdobj.Command, Length(SHOW_MAX_FLAG)));
-//    ShowCmd := SW_SHOWMAXIMIZED;
-//  end
-//  else if Pos(SHOW_MIN_FLAG, cmdobj.Command) = 1 then
-//  begin
-//    cmdobj.Command := Trim(CutLeftString(cmdobj.Command, Length(SHOW_MIN_FLAG)));
-//    ShowCmd := SW_SHOWMINIMIZED;
-//  end
-//  else if Pos(SHOW_HIDE_FLAG, cmdobj.Command) = 1 then
-//  begin
-//    cmdobj.Command := Trim(CutLeftString(cmdobj.Command, Length(SHOW_HIDE_FLAG)));
-//    ShowCmd := SW_HIDE
-//  end;
-//
-//  //处理相对路径 ".\", "..\"，如果有，就将本程序的路径代入
-//  if (Pos('.\', cmdobj.Command) > 0) or (Pos('..\', cmdobj.Command) > 0) then
-//    cmdobj.WorkingDir := ExtractFileDir(Application.ExeName);
-//
-//  case cmdobj.ParamType of
-//    ptNone:
-//      begin
-//        PCommandStr := PansiChar(ansistring(cmdobj.Command));
-//        PParamStr := nil;
-//        PWorkingDir := PansiChar(ansiString(cmdobj.WorkingDir));
-//      end;
-//
-//    ptNoEncoding:
-//      begin
-//        //如果命令行有参数标志，则替换参数
-//        if Pos(NEW_PARAM_FLAG, cmdobj.Command) > 0 then
-//        begin
-//          try
-//            Regex := TRegExpr.Create;
-//            Regex.Expression := NEW_PARAM_FLAG;
-//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-//          finally
-//           freeandNil( Regex);
-//          end;
-//
-//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
-//          PParamStr := nil;
-//        end
-//        else if Pos(PARAM_FLAG, cmdobj.Command) > 0 then
-//        begin
-//          try
-//            Regex := TRegExpr.Create;
-//            Regex.Expression := PARAM_FLAG;
-//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-//          finally
-//            Regex.Free;
-//          end;
-//
-//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
-//          PParamStr := nil;
-//        end
-//        else if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then
-//        begin
-//          try
-//            Regex := TRegExpr.Create;
-//            Regex.Expression := CLIPBOARD_FLAG;
-//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-//          finally
-//            Regex.Free;
-//          end;
-//
-//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
-//          PParamStr := nil;
-//        end
-//        else if Pos(FOREGROUND_WINDOW_ID_FLAG, cmdobj.Command) > 0 then
-//        begin
-//          try
-//            Regex := TRegExpr.Create;
-//            Regex.Expression := FOREGROUND_WINDOW_ID_FLAG;
-//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-//          finally
-//            Regex.Free;
-//          end;
-//
-//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
-//          PParamStr := nil;
-//        end
-//        else if Pos(FOREGROUND_WINDOW_TEXT_FLAG, cmdobj.Command) > 0 then
-//        begin
-//          try
-//            Regex := TRegExpr.Create;
-//            Regex.Expression := FOREGROUND_WINDOW_TEXT_FLAG;
-//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-//          finally
-//            Regex.Free;
-//          end;
-//
-//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
-//          PParamStr := nil;
-//        end
-//        else if Pos(FOREGROUND_WINDOW_CLASS_FLAG, cmdobj.Command) > 0 then
-//        begin
-//          try
-//            Regex := TRegExpr.Create;
-//            Regex.Expression := FOREGROUND_WINDOW_CLASS_FLAG;
-//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-//          finally
-//            Regex.Free;
-//          end;
-//
-////          PCommandStr := PChar(cmdobj.Command);
-//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
-//          PParamStr := nil;
-//        end
-//        else
-//        begin
-////          PCommandStr := PChar(cmdobj.Command);
-//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
-//          PParamStr := PansiChar(ansistring(cmdobj.Param));
-//        end;
-//
-//        PWorkingDir := PansiChar(ansistring(cmdobj.WorkingDir));
-//      end;
-//
-//    ptURLQuery, ptUTF8Query:
-//      begin
-//        //如果命令行有参数标志，则替换参数
-//        if Pos(NEW_PARAM_FLAG, cmdobj.Command) > 0 then
-//        begin
-//          try
-//            Regex := TRegExpr.Create;
-//            Regex.Expression := NEW_PARAM_FLAG;
-//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-//          finally
-//            Regex.Free;
-//          end;
-//
-//          PCommandStr := PANSIChar(ANSISTRING(cmdobj.Command));
-//        end
-//        else if Pos(PARAM_FLAG, cmdobj.Command) > 0 then
-//        begin
-//          try
-//            Regex := TRegExpr.Create;
-//            Regex.Expression := PARAM_FLAG;
-//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-//          finally
-//            Regex.Free;
-//          end;
-//
-//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
-//        end
-//        else if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then
-//        begin
-//          try
-//            Regex := TRegExpr.Create;
-//            Regex.Expression := CLIPBOARD_FLAG;
-//            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-//          finally
-//            Regex.Free;
-//          end;
-//
-//          PCommandStr := PansiChar(ansistring(cmdobj.Command));
-//        end
-//        else
-//        begin
-//          PCommandStr := PansiChar(ansistring(cmdobj.Command + cmdobj.Param));
-//        end;
-//
-//        PParamStr := nil;
-//        PWorkingDir := nil;
-//      end;
-//  end;
-//
-//  //替换环境变量
-//  PCommandStr := PAnsiChar(ansistring(ReplaceEnvStr(string(StrPas(PCommandStr)))));
-//
-//  ret := ShellExecuteA(GetDesktopWindow, nil, PCommandStr, PParamStr, PWorkingDir, ShowCmd);
-//  if ret < 33 then
-//  begin
-//    TraceMsg('ShellExecute(%s, %s, %s) Failed', [StrPas(PCommandStr), StrPas(PParamStr), StrPas(PWorkingDir)]);
-//
-//    ret := WinExec(PCommandStr, ShowCmd);
-//    if ret < 33 then
-//    begin
-//      TraceMsg('WinExec(%s) Failed', [StrPas(PCommandStr)]);
-//
-//      Application.MessageBox(PChar(Format(resCanNotExecute, [StrPas(PCommandStr), StrPas(PParamStr)])), PChar(resWarning), MB_OK + MB_ICONWARNING);
-//    end;
-//  end;
-//
-//  //释放对象；
-//  cmdobj.Free;
-//end;
+function ExecuteCmd(cmd: Pointer): LongInt; stdcall;
+var
+  PCommandStr, PParamStr, PWorkingDir: PChar;
+  cmdobj: TCmdObject;
+  Regex: TRegExpr;
+  strCommand, strTemp: string;
+  ret: Integer;
+  ShowCmd: Integer;
+begin
+  cmdobj := TCmdObject(cmd);
+  PCommandStr := nil;
+  PParamStr := nil;
+  PWorkingDir := nil;
+
+  ShowCmd := SW_SHOWNORMAL;
+  if Pos(SHOW_MAX_FLAG, cmdobj.Command) = 1 then
+  begin
+    cmdobj.Command := Trim(CutLeftString(cmdobj.Command, Length(SHOW_MAX_FLAG)));
+    ShowCmd := SW_SHOWMAXIMIZED;
+  end
+  else if Pos(SHOW_MIN_FLAG, cmdobj.Command) = 1 then
+  begin
+    cmdobj.Command := Trim(CutLeftString(cmdobj.Command, Length(SHOW_MIN_FLAG)));
+    ShowCmd := SW_SHOWMINIMIZED;
+  end
+  else if Pos(SHOW_HIDE_FLAG, cmdobj.Command) = 1 then
+  begin
+    cmdobj.Command := Trim(CutLeftString(cmdobj.Command, Length(SHOW_HIDE_FLAG)));
+    ShowCmd := SW_HIDE
+  end;
+
+  //处理相对路径 ".\", "..\"，如果有，就将本程序的路径代入
+  if (Pos('.\', cmdobj.Command) > 0) or (Pos('..\', cmdobj.Command) > 0) then
+    cmdobj.WorkingDir := ExtractFileDir(Application.ExeName);
+
+  case cmdobj.ParamType of
+    ptNone:
+      begin
+        PCommandStr := PChar(cmdobj.Command);
+        PParamStr := nil;
+        PWorkingDir := PChar(cmdobj.WorkingDir);
+      end;
+
+    ptNoEncoding:
+      begin
+        //如果命令行有参数标志，则替换参数
+        if Pos(NEW_PARAM_FLAG, cmdobj.Command) > 0 then
+        begin
+          try
+            Regex := TRegExpr.Create;
+            Regex.Expression := NEW_PARAM_FLAG;
+            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+          finally
+            freeandNil(Regex);
+          end;
+
+          PCommandStr := PChar(cmdobj.Command);
+          PParamStr := nil;
+        end
+        else if Pos(PARAM_FLAG, cmdobj.Command) > 0 then
+        begin
+          try
+            Regex := TRegExpr.Create;
+            Regex.Expression := PARAM_FLAG;
+            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+          finally
+            Regex.Free;
+          end;
+
+          PCommandStr := PChar(cmdobj.Command);
+          PParamStr := nil;
+        end
+        else if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then
+        begin
+          try
+            Regex := TRegExpr.Create;
+            Regex.Expression := CLIPBOARD_FLAG;
+            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+          finally
+            Regex.Free;
+          end;
+
+          PCommandStr := PChar(cmdobj.Command);
+          PParamStr := nil;
+        end
+        else if Pos(FOREGROUND_WINDOW_ID_FLAG, cmdobj.Command) > 0 then
+        begin
+          try
+            Regex := TRegExpr.Create;
+            Regex.Expression := FOREGROUND_WINDOW_ID_FLAG;
+            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+          finally
+            Regex.Free;
+          end;
+
+          PCommandStr := PChar(cmdobj.Command);
+          PParamStr := nil;
+        end
+        else if Pos(FOREGROUND_WINDOW_TEXT_FLAG, cmdobj.Command) > 0 then
+        begin
+          try
+            Regex := TRegExpr.Create;
+            Regex.Expression := FOREGROUND_WINDOW_TEXT_FLAG;
+            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+          finally
+            Regex.Free;
+          end;
+
+          PCommandStr := PChar(cmdobj.Command);
+          PParamStr := nil;
+        end
+        else if Pos(FOREGROUND_WINDOW_CLASS_FLAG, cmdobj.Command) > 0 then
+        begin
+          try
+            Regex := TRegExpr.Create;
+            Regex.Expression := FOREGROUND_WINDOW_CLASS_FLAG;
+            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+          finally
+            Regex.Free;
+          end;
+
+//          PCommandStr := PChar(cmdobj.Command);
+          PCommandStr := PChar(cmdobj.Command);
+          PParamStr := nil;
+        end
+        else
+        begin
+//          PCommandStr := PChar(cmdobj.Command);
+          PCommandStr := PChar(cmdobj.Command);
+          PParamStr := PChar(cmdobj.Param);
+        end;
+
+        PWorkingDir := PChar((cmdobj.WorkingDir));
+      end;
+
+    ptURLQuery, ptUTF8Query:
+      begin
+        //如果命令行有参数标志，则替换参数
+        if Pos(NEW_PARAM_FLAG, cmdobj.Command) > 0 then
+        begin
+          try
+            Regex := TRegExpr.Create;
+            Regex.Expression := NEW_PARAM_FLAG;
+            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+          finally
+            Regex.Free;
+          end;
+
+          PCommandStr := PChar((cmdobj.Command));
+        end
+        else if Pos(PARAM_FLAG, cmdobj.Command) > 0 then
+        begin
+          try
+            Regex := TRegExpr.Create;
+            Regex.Expression := PARAM_FLAG;
+            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+          finally
+            Regex.Free;
+          end;
+
+          PCommandStr := PChar((cmdobj.Command));
+        end
+        else if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then
+        begin
+          try
+            Regex := TRegExpr.Create;
+            Regex.Expression := CLIPBOARD_FLAG;
+            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+          finally
+            Regex.Free;
+          end;
+
+          PCommandStr := PChar((cmdobj.Command));
+        end
+        else
+        begin
+          PCommandStr := PChar((cmdobj.Command + cmdobj.Param));
+        end;
+
+        PParamStr := nil;
+        PWorkingDir := nil;
+      end;
+  end;
+
+  //替换环境变量
+  PCommandStr := PChar(ReplaceEnvStr(string(StrPas(PCommandStr))));
+
+  ret := ShellExecute(GetDesktopWindow, nil, PCommandStr, PParamStr, PWorkingDir, ShowCmd);
+  if ret < 33 then
+  begin
+    TraceMsg('ShellExecute(%s, %s, %s) Failed', [StrPas(PCommandStr), StrPas(PParamStr), StrPas(PWorkingDir)]);
+
+    ret := WinExec(pansichar(ansistring(strpas(PCommandStr))), ShowCmd);
+    if ret < 33 then
+    begin
+      TraceMsg('WinExec(%s) Failed', [StrPas(PCommandStr)]);
+      Application.MessageBox(PChar(Format(resCanNotExecute, [StrPas(PCommandStr), StrPas(PParamStr)])), PChar(resWarning), MB_OK + MB_ICONWARNING);
+    end;
+  end;
+
+  //释放对象；
+  cmdobj.Free;
+end;
 
 { TShortCutMan }
 
@@ -1595,8 +1597,9 @@ var
   i: Cardinal;
   Item: TShortCutItem;
 begin
-  if not DEBUG_SORT then
-    Exit;
+  {$ifndef DEBUG_SORT}
+  Exit;
+  {$endif}
 
   TraceMsg('  - %s', [Title]);
 
@@ -1658,8 +1661,9 @@ var
   i: Cardinal;
   Item: TShortCutItem;
 begin
-  if not DEBUG_SORT then
-    Exit;
+  {$ifndef DEBUG_SORT}
+  Exit;
+  {$endif}
 
   TraceMsg('  - %s', [Title]);
 
@@ -1796,8 +1800,9 @@ begin
   Randomize;
   Result := p + Random(r - p + 1);
 
-  if DEBUG_SORT then
-    TraceMsg('SelectPivot(%d, %d) = %d', [p, r, Result]);
+  {$ifdef DEBUG_SORT }
+  TraceMsg('SelectPivot(%d, %d) = %d', [p, r, Result]);
+  {$endif}
 end;
 
 function TShortCutMan.SetLatestShortCutIndexList(IndexList: string): Boolean;
@@ -2036,12 +2041,16 @@ begin
 end;
 
 function TShortCutMan.Execute(cmdobj: TCmdObject): Boolean;
+var
+  hThread: THandle;
+  ThreadID: DWORD;
 begin
   Result := False;
 
   if cmdobj.Command = '' then
     Exit;
 
+  hThread := CreateThread(nil, 0, @ExecuteCmd, Pointer(cmdobj), 0, ThreadID);
 
   //Count ++
   Inc(ShortCutRunCount);
@@ -2049,7 +2058,7 @@ begin
   if (ShortCutRunCount mod 10000) = 0 then
     Application.MessageBox(PChar(Format(resCongratulations, [ShortCutRunCount])), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
 
-  Result := True;
+  Result := hThread > 0;
 end;
 
 end.

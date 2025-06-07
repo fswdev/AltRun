@@ -1,4 +1,4 @@
-program ALTRun;
+program ALTRun_Y;
 
 uses
   Forms,
@@ -28,8 +28,6 @@ uses
   HotKeyManager in '3rdUnit\HotKeyManager\HotKeyManager.pas';
 
 {$R *.res}
-const
-  WM_RECEIVE_FILE = WM_USER + 100;
 
 function SendFileNameToExistingInstance(const FileList: string): Boolean;
 var
@@ -47,11 +45,12 @@ begin
     CopyData.lpData := PChar(FileList);
     // 发送消息
     SendMessage(hWnd, WM_COPYDATA, 0, LPARAM(@CopyData));
+    hWnd := getlasterror();
+    if hWnd > 0 then
+      showmessage('向AltRun添加命令失败,错误: ' + SysErrorMessage(hWnd));
     Result := True;
   end;
 end;
-
-
 
 begin
   //----- 内存泄漏管理

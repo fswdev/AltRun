@@ -33,13 +33,14 @@ type
     procedure FormKeyPress(Sender: TObject; var Key: Char);
 
     procedure StopTimer;
+
+    procedure CreateParams(var params: TCreateParams); override;
   protected
     procedure RestartTimer;
   private
     m_ParamHistoryFileName: string;
     m_FileModifyTime: string;
 
-    procedure CreateParams(var params: TCreateParams); override;
 
   public
     function LoadParamHistory: Boolean;
@@ -313,8 +314,9 @@ end;
 
 procedure TParamForm.RestartTimer;
 begin
-  if DEBUG_MODE then
-    Exit;
+  {$ifdef DEBUG_MODE}
+  Exit;
+  {$endif}
 
   if Visible then
   begin
