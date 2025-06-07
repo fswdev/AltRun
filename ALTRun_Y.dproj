@@ -160,6 +160,12 @@
                 <Platform value="Win64">False</Platform>
             </Platforms>
             <Deployment Version="5">
+                <DeployFile LocalName="Defines.inc" Configuration="Debug" Class="ProjectFile">
+                    <Platform Name="Win32">
+                        <RemoteDir>.\</RemoteDir>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName="bin\ALTRun_Y.exe" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>ALTRun_Y.exe</RemoteName>
@@ -1159,6 +1165,7 @@
         <RcCompile Include="Res\ALTRun.rc">
             <Form>Res\ALTRun.res</Form>
         </RcCompile>
+        <None Include="Defines.inc"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

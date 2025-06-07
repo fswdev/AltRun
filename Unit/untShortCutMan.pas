@@ -29,6 +29,7 @@ type
     WorkingDir: string;
     Param: string;
     ParamType: TParamType;
+    RunAsAdmin: bool;
   end;
 
   //快捷项
@@ -41,6 +42,7 @@ type
     CommandLine: string;
     Rank: Integer;
     Freq: Integer;
+    RunAsAdmin: bool;
   end;
 
   //快捷项列表
@@ -87,21 +89,21 @@ type
     function GetLatestShortCutIndexList: string;
     function SetLatestShortCutIndexList(IndexList: string): Boolean;
 
+    function RunAsToString(RunAsAdmin: bool): string;
+    function StringToRunAs(s_RunAsAdmin: string): Bool;
     function ParamTypeToString(ParamType: TParamType): string;
     function StringToParamType(str: string; var ParamType: TParamType): Boolean;
-    function ShortCutItemToString(ShortCutType: TShortCutType; ParamType: TParamType = ptNone; ShortCut: string = ''; Name: string = ''; CommandLine: string = ''; Freq: Integer = 0): string; overload;
+    function ShortCutItemToString(ShortCutType: TShortCutType; ParamType: TParamType = ptNone; ShortCut: string = ''; Name: string = ''; CommandLine: string = ''; Freq: Integer = 0; RunAsAdmin: bool = false): string; overload;
     function ShortCutItemToString(ShortCutItem: TShortCutItem): string; overload;
     function StringToShortCutItem(str: string; var ShortCutItem: TShortCutItem): Boolean;
 
     procedure CloneShortCutItem(ShortCutItem: TShortCutItem; var NewItem: TShortCutItem);
-    procedure AppendShortCutItem(ShortCutType: TShortCutType; ShortCut, Name, CommandLine: string); overload;
+    procedure AppendShortCutItem(ShortCutType: TShortCutType; ShortCut, Name: string; RunAsAdmin: Boolean; CommandLine: string); overload;
     procedure AppendShortCutItem(ShortCutItem: TShortCutItem); overload;
-    procedure ModifyShortCutItem(ShortCutType: TShortCutType; ShortCut, Name, CommandLine: string; Index: Integer); overload;
+    procedure ModifyShortCutItem(ShortCutType: TShortCutType; ShortCut, Name: string; RunAsAdmin: boolean; CommandLine: string; Index: Integer); overload;
     procedure ModifyShortCutItem(ShortCutItem: TShortCutItem; Index: Integer); overload;
-    function ContainShortCutItem(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string): Boolean; overload;
+    function ContainShortCutItem(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string; RunAsAdmin: boolean): Boolean; overload;
     function ContainShortCutItem(ShortCutItem: TShortCutItem): Boolean; overload;
-    function InsertShortCutItem(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string; Index: Integer): Boolean; overload;
-    function InsertShortCutItem(ShortCutItem: TShortCutItem; Index: Integer): Boolean; overload;
     function DeleteShortCutItem(Index: Integer): Boolean; overload;
     function GetShortCutItemIndex(ShortCutItem: TShortCutItem): Integer;
     function GetShortCutItemByShortCut(ShortCut: string; var ShortCutItem: TShortCutItem): Boolean;
@@ -140,12 +142,62 @@ implementation
 uses
   frmShortCut, AnsiStrings;
 
+procedure split_cmd_param(cmd_param: string; out cmd: string; out param: string);
+var
+  i: Integer;
+  InQuote: Boolean;
+  TrimmedCmd: string;
+begin
+  // 初始化输出参数
+  cmd := '';
+  param := '';
+
+  // 去除首尾空格
+  TrimmedCmd := Trim(cmd_param);
+  if TrimmedCmd = '' then
+    Exit;
+
+  // 初始化状态
+  InQuote := False;
+  i := 1;
+
+  // 查找命令部分（考虑双引号和空格）
+  while (i <= Length(TrimmedCmd)) do
+  begin
+    if TrimmedCmd[i] = '"' then
+    begin
+      InQuote := not InQuote; // 切换引号状态
+      Inc(i);
+      Continue;
+    end;
+
+    if (not InQuote) and (TrimmedCmd[i] = ' ') then
+    begin
+      // 找到第一个非引号中的空格，命令部分结束
+      cmd := Copy(TrimmedCmd, 1, i - 1);
+      // 剩余部分为参数
+      param := Trim(Copy(TrimmedCmd, i + 1, MaxInt));
+      Break;
+    end;
+
+    Inc(i);
+  end;
+
+  // 如果没有找到空格，整个字符串是命令
+  if cmd = '' then
+    cmd := TrimmedCmd;
+
+  // 移除命令部分的引号（如果有）
+  if (Length(cmd) >= 2) and (cmd[1] = '"') and (cmd[Length(cmd)] = '"') then
+    cmd := Copy(cmd, 2, Length(cmd) - 2);
+end;
+
 function ExecuteCmd(cmd: Pointer): LongInt; stdcall;
 var
   PCommandStr, PParamStr, PWorkingDir: PChar;
   cmdobj: TCmdObject;
   Regex: TRegExpr;
-  strCommand, strTemp: string;
+  strCommand, strTemp, s_cmd, s_param: string;
   ret: Integer;
   ShowCmd: Integer;
 begin
@@ -196,21 +248,23 @@ begin
             freeandNil(Regex);
           end;
 
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := nil;
+          split_cmd_param(cmdobj.Command, s_cmd, s_param);
+          PCommandStr := PChar(s_cmd);
+          PParamStr := PChar(s_param);
         end
         else if Pos(PARAM_FLAG, cmdobj.Command) > 0 then
         begin
           try
             Regex := TRegExpr.Create;
             Regex.Expression := PARAM_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
+            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, false);
           finally
             Regex.Free;
           end;
 
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := nil;
+          split_cmd_param(cmdobj.Command, s_cmd, s_param);
+          PCommandStr := PChar(s_cmd);
+          PParamStr := PChar(s_param);
         end
         else if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then
         begin
@@ -222,8 +276,9 @@ begin
             Regex.Free;
           end;
 
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := nil;
+          split_cmd_param(cmdobj.Command, s_cmd, s_param);
+          PCommandStr := PChar(s_cmd);
+          PParamStr := PChar(s_param);
         end
         else if Pos(FOREGROUND_WINDOW_ID_FLAG, cmdobj.Command) > 0 then
         begin
@@ -235,8 +290,11 @@ begin
             Regex.Free;
           end;
 
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := nil;
+//          PCommandStr := PChar(cmdobj.Command);
+//          PParamStr := nil;
+          split_cmd_param(cmdobj.Command, s_cmd, s_param);
+          PCommandStr := PChar(s_cmd);
+          PParamStr := PChar(s_param);
         end
         else if Pos(FOREGROUND_WINDOW_TEXT_FLAG, cmdobj.Command) > 0 then
         begin
@@ -248,8 +306,11 @@ begin
             Regex.Free;
           end;
 
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := nil;
+//          PCommandStr := PChar(cmdobj.Command);
+//          PParamStr := nil;
+          split_cmd_param(cmdobj.Command, s_cmd, s_param);
+          PCommandStr := PChar(s_cmd);
+          PParamStr := PChar(s_param);
         end
         else if Pos(FOREGROUND_WINDOW_CLASS_FLAG, cmdobj.Command) > 0 then
         begin
@@ -262,12 +323,13 @@ begin
           end;
 
 //          PCommandStr := PChar(cmdobj.Command);
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := nil;
+//          PParamStr := nil;
+          split_cmd_param(cmdobj.Command, s_cmd, s_param);
+          PCommandStr := PChar(s_cmd);
+          PParamStr := PChar(s_param);
         end
         else
         begin
-//          PCommandStr := PChar(cmdobj.Command);
           PCommandStr := PChar(cmdobj.Command);
           PParamStr := PChar(cmdobj.Param);
         end;
@@ -327,7 +389,28 @@ begin
   //替换环境变量
   PCommandStr := PChar(ReplaceEnvStr(string(StrPas(PCommandStr))));
 
-  ret := ShellExecute(GetDesktopWindow, nil, PCommandStr, PParamStr, PWorkingDir, ShowCmd);
+  // ret := ShellExecute(GetDesktopWindow, nil, PCommandStr, PParamStr, PWorkingDir, ShowCmd);
+  // 以管理员权限运行
+  if cmdobj.RunAsAdmin then
+    ret := ShellExecute(GetDesktopWindow, 'runas', PCommandStr, PParamStr, PWorkingDir, ShowCmd)
+  else
+    ret := ShellExecute(GetDesktopWindow, nil, PCommandStr, PParamStr, PWorkingDir, ShowCmd);
+  var ss := format('ShellExecute(%s,  %s,  %s)', [StrPas(PCommandStr), StrPas(PParamStr), StrPas(PWorkingDir)]);
+//  ShowMessage(ss);
+  if ret <= 32 then
+  begin
+    case ret of
+      ERROR_FILE_NOT_FOUND:
+        ShowMessage('文件未找到！' + ss);
+      ERROR_PATH_NOT_FOUND:
+        ShowMessage('路径未找到！' + ss);
+      ERROR_ACCESS_DENIED:
+        ShowMessage('权限被拒绝，可能用户取消了 UAC 提示！');
+    else
+      ShowMessage('启动失败，错误代码: ' + IntToStr(ret));
+    end;
+  end;
+
   if ret < 33 then
   begin
     TraceMsg('ShellExecute(%s, %s, %s) Failed', [StrPas(PCommandStr), StrPas(PParamStr), StrPas(PWorkingDir)]);
@@ -346,7 +429,7 @@ end;
 
 { TShortCutMan }
 
-procedure TShortCutMan.AppendShortCutItem(ShortCutType: TShortCutType; ShortCut, Name, CommandLine: string);
+procedure TShortCutMan.AppendShortCutItem(ShortCutType: TShortCutType; ShortCut, Name: string; RunAsAdmin: Boolean; CommandLine: string);
 var
   Item: TShortCutItem;
 begin
@@ -354,6 +437,7 @@ begin
   Item.ShortCutType := ShortCutType;
   Item.ShortCut := ShortCut;
   Item.Name := Name;
+  Item.RunAsAdmin := RunAsAdmin;
   Item.CommandLine := CommandLine;
 
   m_ShortCutList.Add(Item);
@@ -402,6 +486,7 @@ begin
         Item.ParamType := TParamType(rgParam.ItemIndex);
         Item.ShortCut := lbledtShortCut.Text;
         Item.Name := lbledtName.Text;
+        Item.RunAsAdmin := cb_RunAsAdmin.Checked;
         Item.CommandLine := Trim(lbledtCommandLine.Text);
       end
       else
@@ -412,6 +497,7 @@ begin
         Item.ParamType := ptNone;
         Item.ShortCut := '';
         Item.Name := '';
+        Item.RunAsAdmin := false;
         Item.CommandLine := '';
       end;
 
@@ -531,6 +617,7 @@ begin
   NewItem.ParamType := ShortCutItem.ParamType;
   NewItem.ShortCut := ShortCutItem.ShortCut;
   NewItem.Name := ShortCutItem.Name;
+  NewItem.RunAsAdmin := ShortCutItem.RunAsAdmin;
   NewItem.CommandLine := ShortCutItem.CommandLine;
 end;
 
@@ -566,7 +653,9 @@ begin
     Item := TShortCutItem(m_ShortCutList.Items[i]);
 
     //全都一样，就是包含了
-    if (Item.ShortCutType = scItem) and (Item.ParamType = ShortCutItem.ParamType) and (Item.ShortCut = ShortCutItem.ShortCut) and (Item.Name = ShortCutItem.Name) and (Item.CommandLine = ShortCutItem.CommandLine) then
+    if (Item.ShortCutType = scItem) and (Item.ParamType = ShortCutItem.ParamType) and  //
+      (Item.ShortCut = ShortCutItem.ShortCut) and (Item.Name = ShortCutItem.Name) and        //
+      (Item.RunAsAdmin = ShortCutItem.RunAsAdmin) and (Item.CommandLine = ShortCutItem.CommandLine) then
     begin
       Result := True;
       Exit;
@@ -574,7 +663,7 @@ begin
   end;
 end;
 
-function TShortCutMan.ContainShortCutItem(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string): Boolean;
+function TShortCutMan.ContainShortCutItem(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string; RunAsAdmin: boolean): Boolean;
 var
   ShortCutItem: TShortCutItem;
 begin
@@ -582,6 +671,7 @@ begin
   ShortCutItem.ShortCutType := ShortCutType;
   ShortCutItem.ShortCut := ShortCut;
   ShortCutItem.Name := Name;
+  ShortCutItem.RunAsAdmin := RunAsAdmin;
   ShortCutItem.CommandLine := CommandLine;
   ShortCutItem.ParamType := ParamType;
 
@@ -674,6 +764,7 @@ begin
   cmdobj.WorkingDir := '';
   cmdobj.Param := '';
   cmdobj.ParamType := ptNone;
+  cmdobj.RunAsAdmin := ShortCutItem.RunAsAdmin;
 
   //赋值
   cmdobj.Command := ShortCutItem.CommandLine;
@@ -751,6 +842,7 @@ begin
     end
     else
     begin
+      ParamForm := TParamForm.create(nil);
       ParamForm.Caption := ShortCutItem.Name;
       if ParamForm <> nil then
         if ParamForm.ShowModal = mrCancel then
@@ -760,6 +852,7 @@ begin
         end;
 
       cmdobj.Param := ParamForm.cbbParam.Text;
+      ParamForm.free;
     end;
 
     cmdobj.ParamType := ShortCutItem.ParamType;
@@ -909,6 +1002,7 @@ var
   i: Cardinal;
   Item: TShortCutItem;
   CostTick: Cardinal;
+  SearchKey: string; // 新增
 begin
   Result := False;
 
@@ -927,12 +1021,17 @@ begin
   if KeyWord = ' ' then
     Exit;
 
+  // 新增：如果以#开头，去掉#再匹配
+  SearchKey := KeyWord;
+  if (Length(SearchKey) > 0) and (SearchKey[1] = '#') then
+    SearchKey := Copy(SearchKey, 2, MaxInt);
+
   //如果KeyWord为空，则按照使用频率显示全部内容，否则只显示过滤内容
-  if KeyWord = '' then
+  if SearchKey = '' then
     StringList.Assign(m_SortedShortCutList)
   else
   begin
-    KeyWord := LowerCase(KeyWord);
+    SearchKey := LowerCase(SearchKey);
 
     TraceMsg('FilterKeyWord - 10');
 
@@ -941,17 +1040,13 @@ begin
     begin
       //----- 处理*
       //先把.*临时变为~！@#
-      KeyWord := StringReplace(KeyWord, '.*', '~!@#', [rfReplaceAll]);
-
+      SearchKey := StringReplace(SearchKey, '.*', '~!@#', [rfReplaceAll]);
       //再把*都变为.*
-      KeyWord := StringReplace(KeyWord, '*', '.*', [rfReplaceAll]);
-
+      SearchKey := StringReplace(SearchKey, '*', '.*', [rfReplaceAll]);
       //最后把~!@#变回.*
-      KeyWord := StringReplace(KeyWord, '~!@#', '.*', [rfReplaceAll]);
-
+      SearchKey := StringReplace(SearchKey, '~!@#', '.*', [rfReplaceAll]);
       //----- 处理?
-      KeyWord := StringReplace(KeyWord, '?', '.', [rfReplaceAll]);
-
+      SearchKey := StringReplace(SearchKey, '?', '.', [rfReplaceAll]);
       //先把.?临时变为~！@#
       //KeyWord:=StringReplace(KeyWord,'.?','~!@#',[rfReplaceAll]);
 
@@ -973,12 +1068,12 @@ begin
         Continue;
 
       //如果长度太小，不理
-      if Length(KeyWord) > Length(Item.ShortCut) then
+      if Length(SearchKey) > Length(Item.ShortCut) then
         Continue;
 
       if EnableRegex then
       begin
-        m_Regex.Expression := KeyWord;
+        m_Regex.Expression := SearchKey;
         try
           if not m_Regex.Exec(LowerCase(Item.ShortCut)) then
             Continue;
@@ -996,7 +1091,7 @@ begin
       end
       else
       begin
-        Item.Rank := Pos(LowerCase(KeyWord), LowerCase(Item.ShortCut));
+        Item.Rank := Pos(LowerCase(SearchKey), LowerCase(Item.ShortCut));
 
         //如果必须从头匹配
         if (not MatchAnywhere) and (Item.Rank > 1) then
@@ -1010,7 +1105,7 @@ begin
         //加权系数作为排列值
         //Item.Rank := Item.Rank * 10000 + (Length(Item.ShortCut) - Length(KeyWord));
         //Item.Rank := Item.Rank * 100 + (Length(Item.ShortCut) - Length(KeyWord)) * 2 - Item.Freq * 5;
-        Item.Rank := 1024 + Item.Freq * 4 - Item.Rank * 128 - (Length(Item.ShortCut) - Length(KeyWord)) * 16;
+        Item.Rank := 1024 + Item.Freq * 4 - Item.Rank * 128 - (Length(Item.ShortCut) - Length(SearchKey)) * 16;
 
         TraceMsg('FilterKeyWord - 40');
 
@@ -1159,14 +1254,19 @@ end;
 function TShortCutMan.GetShortCutItemByShortCut(ShortCut: string; var ShortCutItem: TShortCutItem): Boolean;
 var
   i: Cardinal;
+  SearchKey: string; // 新增
 begin
   Result := False;
+  // 新增：如果以#开头，去掉#再匹配
+  SearchKey := ShortCut;
+  if (Length(SearchKey) > 0) and (SearchKey[1] = '#') then
+    SearchKey := Copy(SearchKey, 2, MaxInt);
 
   for i := 0 to m_ShortCutList.Count - 1 do
   begin
     ShortCutItem := TShortCutItem(m_ShortCutList.Items[i]);
 
-    if (ShortCutItem.ShortCut = ShortCut) then
+    if (ShortCutItem.ShortCut = SearchKey) then
     begin
       Result := True;
       Exit;
@@ -1191,26 +1291,6 @@ begin
       Break;
     end;
   end;
-end;
-
-function TShortCutMan.InsertShortCutItem(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string; Index: Integer): Boolean;
-var
-  Item: TShortCutItem;
-begin
-  Result := False;
-
-  if (Index < 0) or (Index >= m_ShortCutList.Count) then
-    Exit;
-
-  Item := TShortCutItem.Create;
-  Item.ShortCutType := ShortCutType;
-  Item.ShortCut := ShortCut;
-  Item.Name := Name;
-  Item.CommandLine := CommandLine;
-
-  m_ShortCutList.Insert(Index, Item);
-
-  Result := True;
 end;
 
 procedure TShortCutMan.BubbleSort(var StringList: TStringList; p, r: integer);
@@ -1243,18 +1323,6 @@ begin
     end;
 
   PrintStringList(Format('After BubbleSort(%d, %d)', [p, r]), StringList, p, r);
-end;
-
-function TShortCutMan.InsertShortCutItem(ShortCutItem: TShortCutItem; Index: Integer): Boolean;
-begin
-  Result := False;
-
-  if (Index < 0) or (Index >= m_ShortCutList.Count) then
-    Exit;
-
-  m_ShortCutList.Insert(Index, ShortCutItem);
-
-  Result := True;
 end;
 
 function TShortCutMan.LoadFavoriteList: Boolean;
@@ -1515,7 +1583,7 @@ begin
   Result := True;
 end;
 
-procedure TShortCutMan.ModifyShortCutItem(ShortCutType: TShortCutType; ShortCut, Name, CommandLine: string; Index: Integer);
+procedure TShortCutMan.ModifyShortCutItem(ShortCutType: TShortCutType; ShortCut, Name: string; RunAsAdmin: boolean; CommandLine: string; Index: Integer);
 var
   Item: TShortCutItem;
 begin
@@ -1533,7 +1601,20 @@ end;
 procedure TShortCutMan.ModifyShortCutItem(ShortCutItem: TShortCutItem; Index: Integer);
 begin
   with ShortCutItem do
-    ModifyShortCutItem(ShortCutType, ShortCut, Name, CommandLine, Index);
+    ModifyShortCutItem(ShortCutType, ShortCut, Name, RunAsAdmin, CommandLine, Index);
+end;
+
+function TShortCutMan.RunAsToString(RunAsAdmin: bool): string;
+begin
+  if RunAsAdmin then
+    result := 'RunAsAdmin'
+  else
+    result := 'RunAsNormal';
+end;
+
+function TShortCutMan.StringToRunAs(s_RunAsAdmin: string): Bool;
+begin
+  result := trim(s_RunAsAdmin) = 'RunAsAdmin';
 end;
 
 function TShortCutMan.ParamTypeToString(ParamType: TParamType): string;
@@ -1548,6 +1629,22 @@ begin
     ptUTF8Query:
       Result := 'UTF8_Query';
   end;
+end;
+
+function TShortCutMan.StringToParamType(str: string; var ParamType: TParamType): Boolean;
+begin
+  Result := True;
+
+  if Trim(str) = '' then
+    ParamType := ptNone
+  else if LowerCase(Trim(str)) = 'no_encoding' then
+    ParamType := ptNoEncoding
+  else if LowerCase(Trim(str)) = 'url_query' then
+    ParamType := ptURLQuery
+  else if LowerCase(Trim(str)) = 'utf8_query' then
+    ParamType := ptUTF8Query
+  else
+    Result := False;
 end;
 
 function TShortCutMan.Partition(var StringList: TObjectList; p, r: Integer): Integer;
@@ -1758,6 +1855,7 @@ begin
     CloseFile(MyFile);
   end;
 end;
+
 function TShortCutMan.SaveShortCutList(FileName: string = ''): Boolean;
 var
   i: Cardinal;
@@ -1804,7 +1902,10 @@ begin
   begin
     // 先备份原文件
     if FileExists(m_ShortCutFileName) then
+    begin
       CopyFile(PChar(m_ShortCutFileName), PChar(BackupFileName), False);
+      deletefile(m_shortcutfileName);
+    end;
 
     // 用临时文件替换原文件
     if not RenameFile(TempFileName, m_ShortCutFileName) then
@@ -1863,7 +1964,7 @@ begin
   for i := 0 to m_LatestList.Count - 1 do
   begin
     ShortCutIndex := StrToInt(m_LatestList.Strings[i]);
-    if (ShortCutIndex >= 0) and (ShortCutIndex <= m_ShortCutList.Count) then
+    if (ShortCutIndex >= 0) and (ShortCutIndex < m_ShortCutList.Count) then
     begin
       m_LatestList.Objects[Index] := m_ShortCutList.Items[ShortCutIndex];
       Inc(Index);
@@ -1876,11 +1977,120 @@ begin
   m_Param[Index] := Value;
 end;
 
-function TShortCutMan.ShortCutItemToString(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string; Freq: Integer): string;
+function TShortCutMan.StringToShortCutItem(str: string; var ShortCutItem: TShortCutItem): Boolean;
+var
+  ShortCutSubItemList: TStringList;
+  i, offset: Cardinal;
+  CmdPos: Integer;
+  strTemp: string;
+begin
+  //将全角逗号替换为半角逗号
+  str := StringReplace(Trim(str), '，', ',', [rfReplaceAll]);
+
+//  with  do
+  begin
+    //默认是Other，Name = strLine
+    ShortCutItem.ShortCutType := scOther;
+    ShortCutItem.ShortCut := '';
+    ShortCutItem.Name := str;
+    ShortCutItem.CommandLine := '';
+    ShortCutItem.Freq := 0;
+    ShortCutItem.RunAsAdmin := false;
+
+    //若是空白行，添加此行
+    if str = '' then
+    begin
+      ShortCutItem.ShortCutType := scBlank;
+      Result := True;
+      Exit;
+    end;
+
+    //若是注释行
+    //if str[1] = '%' then
+    //begin
+    //  ShortCutType := scRemark;
+    //  Result := True;
+    //  Exit;
+    //end;
+
+    //看看是不是Item
+    try
+      ShortCutSubItemList := TStringList.Create;
+
+      //古时候的版本用","来分隔各项, 新版本用"|"来分隔各项
+      SplitString(str, ',', ShortCutSubItemList);
+
+      //如 explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}
+      if (ShortCutSubItemList.Count < 3) or (Pos('F', str) = 1) then
+        SplitString(str, '|', ShortCutSubItemList);
+
+      if ShortCutSubItemList.Count >= 3 then
+      begin
+        ShortCutItem.ShortCutType := scItem;
+
+        //为了继承老的List文件，需要判断第一项
+        //如果第一项是"F"开头，后跟数字，说明是最新版本的文件
+        //如果第一项为空，说明是最近版本的文件
+        //如果第一项非空，且为参数类型，也说明是最近版本的文件
+        //否则就是老版本文件
+        //offset是偏移
+
+        offset := 0;
+
+        ShortCutSubItemList.Strings[0] := Trim(ShortCutSubItemList.Strings[0]);
+        if Length(ShortCutSubItemList.Strings[0]) >= 1 then
+          if ShortCutSubItemList.Strings[0][1] = 'F' then
+          begin
+            //去掉最前面的"F"
+            ShortCutSubItemList.Strings[0] := Copy(ShortCutSubItemList.Strings[0], 2, Length(ShortCutSubItemList.Strings[0]) - 1);
+            if IsNumericStr(ShortCutSubItemList.Strings[0]) then
+            begin
+              //如比“99999999”还要长，就无法解析了
+              if Length(ShortCutSubItemList.Strings[0]) > 8 then
+                ShortCutItem.Freq := 10000
+              else
+                ShortCutItem.Freq := StrToInt(ShortCutSubItemList.Strings[0]);
+            end
+            else
+              ShortCutItem.Freq := 0;
+
+            Inc(offset);
+          end;
+
+        ShortCutItem.ParamType := ptNone;
+        if StringToParamType(Trim(ShortCutSubItemList.Strings[offset]), ShortCutItem.ParamType) then
+          Inc(offset);
+
+        ShortCutItem.ShortCut := Trim(ShortCutSubItemList.Strings[offset]);
+        Inc(offset);
+        ShortCutItem.Name := Trim(ShortCutSubItemList.Strings[offset]);
+        ShortCutItem.RunAsAdmin := StringToRunAs(ShortCutSubItemList.Strings[offset + 1]);
+
+        //把剩下的都拼在一起好了
+        //注意，拼在一起，不如按照原样拷贝！
+        //如http://translate.google.cn/translate_t?hl=zh-CN#en|zh-CN|这样带有|的
+
+        strTemp := str;
+        for i := 0 to offset + 1 do
+          strTemp := StringReplace(strTemp, ShortCutSubItemList.Strings[i], '', [rfIgnoreCase]);
+
+        CmdPos := Pos(ShortCutSubItemList.Strings[offset + 2], strTemp);
+        ShortCutItem.CommandLine := Copy(strTemp, CmdPos, Length(strTemp) - CmdPos + 1);
+
+      end;
+    finally
+      ShortCutSubItemList.Free;
+    end;
+  end;
+
+  Result := True;
+end;
+
+function TShortCutMan.ShortCutItemToString(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string; Freq: Integer; RunAsAdmin: bool): string;
 begin
   case ShortCutType of
     scItem:
-      Result := Format('F%-8d|%-20s|%-30s|%-30s|%s', [Freq, ParamTypeToString(ParamType), ShortCut, Name, CommandLine]);
+      Result := Format('F%-8d|%-20s|%-30s|%-30s|%-20s|%s', [Freq, ParamTypeToString(ParamType), ShortCut, Name, RunAsToString(RunAsAdmin), CommandLine]);
     scBlank:
       Result := '';
     scRemark, scOther:
@@ -1891,7 +2101,7 @@ end;
 function TShortCutMan.ShortCutItemToString(ShortCutItem: TShortCutItem): string;
 begin
   with ShortCutItem do
-    Result := ShortCutItemToString(ShortCutType, ParamType, ShortCut, Name, CommandLine, Freq);
+    Result := ShortCutItemToString(ShortCutType, ParamType, ShortCut, Name, CommandLine, Freq, RunAsAdmin);
 end;
 
 procedure TShortCutMan.Sort;
@@ -1932,134 +2142,6 @@ begin
   QuickSort(m_SortedShortCutList, 0, m_SortedShortCutList.Count - 1);
 end;
 
-function TShortCutMan.StringToParamType(str: string; var ParamType: TParamType): Boolean;
-begin
-  Result := True;
-
-  if Trim(str) = '' then
-    ParamType := ptNone
-  else if LowerCase(Trim(str)) = 'no_encoding' then
-    ParamType := ptNoEncoding
-  else if LowerCase(Trim(str)) = 'url_query' then
-    ParamType := ptURLQuery
-  else if LowerCase(Trim(str)) = 'utf8_query' then
-    ParamType := ptUTF8Query
-  else
-    Result := False;
-end;
-
-function TShortCutMan.StringToShortCutItem(str: string; var ShortCutItem: TShortCutItem): Boolean;
-var
-  ShortCutSubItemList: TStringList;
-  i, offset: Cardinal;
-  CmdPos: Integer;
-  strTemp: string;
-begin
-  //将全角逗号替换为半角逗号
-  str := StringReplace(Trim(str), '，', ',', [rfReplaceAll]);
-
-  with ShortCutItem do
-  begin
-    //默认是Other，Name = strLine
-    ShortCutType := scOther;
-    ShortCut := '';
-    Name := str;
-    CommandLine := '';
-    Freq := 0;
-
-    //若是空白行，添加此行
-    if str = '' then
-    begin
-      ShortCutType := scBlank;
-      Result := True;
-      Exit;
-    end;
-
-    //若是注释行
-    //if str[1] = '%' then
-    //begin
-    //  ShortCutType := scRemark;
-    //  Result := True;
-    //  Exit;
-    //end;
-
-    //看看是不是Item
-    try
-      ShortCutSubItemList := TStringList.Create;
-
-      //古时候的版本用","来分隔各项, 新版本用"|"来分隔各项
-      SplitString(str, ',', ShortCutSubItemList);
-
-      //如 explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}
-      if (ShortCutSubItemList.Count < 3) or (Pos('F', str) = 1) then
-        SplitString(str, '|', ShortCutSubItemList);
-
-      if ShortCutSubItemList.Count >= 3 then
-      begin
-        ShortCutType := scItem;
-
-        //为了继承老的List文件，需要判断第一项
-        //如果第一项是"F"开头，后跟数字，说明是最新版本的文件
-        //如果第一项为空，说明是最近版本的文件
-        //如果第一项非空，且为参数类型，也说明是最近版本的文件
-        //否则就是老版本文件
-        //offset是偏移
-
-        offset := 0;
-
-        ShortCutSubItemList.Strings[0] := Trim(ShortCutSubItemList.Strings[0]);
-        if Length(ShortCutSubItemList.Strings[0]) >= 1 then
-          if ShortCutSubItemList.Strings[0][1] = 'F' then
-          begin
-            //去掉最前面的"F"
-            ShortCutSubItemList.Strings[0] := Copy(ShortCutSubItemList.Strings[0], 2, Length(ShortCutSubItemList.Strings[0]) - 1);
-            if IsNumericStr(ShortCutSubItemList.Strings[0]) then
-            begin
-              //如比“99999999”还要长，就无法解析了
-              if Length(ShortCutSubItemList.Strings[0]) > 8 then
-                Freq := 10000
-              else
-                Freq := StrToInt(ShortCutSubItemList.Strings[0]);
-            end
-            else
-              Freq := 0;
-
-            Inc(offset);
-          end;
-
-        ParamType := ptNone;
-        if StringToParamType(Trim(ShortCutSubItemList.Strings[offset]), ParamType) then
-          Inc(offset);
-
-        ShortCut := Trim(ShortCutSubItemList.Strings[offset]);
-        Name := Trim(ShortCutSubItemList.Strings[offset + 1]);
-
-        //把剩下的都拼在一起好了
-        //注意，拼在一起，不如按照原样拷贝！
-        //如http://translate.google.cn/translate_t?hl=zh-CN#en|zh-CN|这样带有|的
-
-        strTemp := str;
-        for i := 0 to offset + 1 do
-          strTemp := StringReplace(strTemp, ShortCutSubItemList.Strings[i], '', [rfIgnoreCase]);
-
-        CmdPos := Pos(ShortCutSubItemList.Strings[offset + 2], strTemp);
-        CommandLine := Copy(strTemp, CmdPos, Length(strTemp) - CmdPos + 1);
-
-        //CommandLine := '';
-        //for i := offset + 2 to ShortCutSubItemList.Count - 1 do
-        //  if i = ShortCutSubItemList.Count - 1 then
-        //    CommandLine := CommandLine + Trim(ShortCutSubItemList.Strings[i])
-        //  else
-        //    CommandLine := CommandLine + Trim(ShortCutSubItemList.Strings[i]) + ', ';
-      end;
-    finally
-      ShortCutSubItemList.Free;
-    end;
-  end;
-
-  Result := True;
-end;
-
 function TShortCutMan.Test: Boolean;
 begin
 
@@ -2069,6 +2151,9 @@ end;
 function TShortCutMan.Execute(ShortCutItem: TShortCutItem; KeyWord: string): Boolean;
 begin
   m_FavoriteList.Values[LowerCase(KeyWord)] := ShortCutItem.Name;
+
+  ShortCutItem.RunAsAdmin := KeyWord.StartsWith('#') or ShortCutItem.RunAsAdmin;
+
   AddLatestShortCutItem(ShortCutItem);
   Inc(ShortCutItem.Freq);
   Result := Execute(ShortCutItem);

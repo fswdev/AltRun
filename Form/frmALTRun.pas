@@ -585,6 +585,7 @@ begin
     begin
       lbledtShortCut.Text := itm.ShortCut;
       lbledtName.Text := itm.Name;
+      cb_RunAsAdmin.Checked := itm.RunAsAdmin;
       lbledtCommandLine.Text := itm.CommandLine;
       rgParam.ItemIndex := Ord(itm.ParamType);
 
@@ -599,6 +600,7 @@ begin
       itm.ShortCutType := scItem;
       itm.ShortCut := lbledtShortCut.Text;
       itm.Name := lbledtName.Text;
+      itm.RunAsAdmin := cb_runasadmin.Checked;
       itm.CommandLine := lbledtCommandLine.Text;
       itm.ParamType := TParamType(rgParam.ItemIndex);
 
@@ -1844,11 +1846,6 @@ begin
   m_LastShortCutCmdIndex := -1;
   m_LastKeyIsNumKey := False;
 
-  //LOG
-  {$ifdef DEBUG_MODE}
-  InitLogger(True, True, False);
-  {$endif}
-
   //Trace
   TraceMsg('FormCreate()');
 
@@ -2214,7 +2211,6 @@ begin
   TraceMsg('hkmMainHotKeyPressed(%d)', [HotKey]);
 
   {$ifdef DEBUG_SORT}
-//  if DEBUG_SORT then
   begin
     actShortCutExecute(Self);
     Exit;

@@ -8,7 +8,6 @@ uses
 type
   TRegExpr = class
   private
-    FExpression: string;
     FMatch: TMatch;
     FInput: string;
     FOptions: TRegExOptions;
@@ -52,7 +51,7 @@ begin
     // 只替换第一个
     var m := TRegEx.Match(AInput, Expression, FOptions);
     if m.Success then
-      Result := Copy(AInput, 1, m.Index) + AReplace + Copy(AInput, m.Index + m.Length, MaxInt)
+      Result := Copy(AInput, 1, m.Index-1) + AReplace + Copy(AInput, m.Index + m.Length, MaxInt)
     else
       Result := AInput;
   end;

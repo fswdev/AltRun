@@ -3,7 +3,7 @@ object ShortCutForm: TShortCutForm
   Top = 0
   BorderStyle = bsDialog
   Caption = 'ShortCut'
-  ClientHeight = 257
+  ClientHeight = 302
   ClientWidth = 494
   Color = clBtnFace
   Font.Charset = ANSI_CHARSET
@@ -17,11 +17,11 @@ object ShortCutForm: TShortCutForm
   OnShow = FormShow
   DesignSize = (
     494
-    257)
+    302)
   TextHeight = 13
   object btnOK: TBitBtn
     Left = 330
-    Top = 224
+    Top = 269
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
@@ -47,30 +47,34 @@ object ShortCutForm: TShortCutForm
     NumGlyphs = 2
     TabOrder = 2
     OnClick = btnOKClick
+    ExplicitLeft = 328
+    ExplicitTop = 216
   end
   object btnCancel: TBitBtn
     Left = 411
-    Top = 224
+    Top = 269
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
     Kind = bkCancel
     NumGlyphs = 2
     TabOrder = 3
+    ExplicitLeft = 409
+    ExplicitTop = 216
   end
   object grpShortCut: TGroupBox
     Left = 8
     Top = 8
     Width = 478
-    Height = 105
+    Height = 137
     Anchors = [akLeft, akTop, akRight]
     Caption = 'ShortCut'
     TabOrder = 0
     DesignSize = (
       478
-      105)
+      137)
     object btnFile: TButton
-      Left = 360
+      Left = 362
       Top = 71
       Width = 52
       Height = 21
@@ -83,7 +87,7 @@ object ShortCutForm: TShortCutForm
       OnClick = btnFileClick
     end
     object lbledtCommandLine: TLabeledEdit
-      Left = 96
+      Left = 98
       Top = 71
       Width = 258
       Height = 19
@@ -104,8 +108,8 @@ object ShortCutForm: TShortCutForm
       Text = ''
     end
     object lbledtName: TLabeledEdit
-      Left = 96
-      Top = 42
+      Left = 98
+      Top = 46
       Width = 372
       Height = 19
       Anchors = [akLeft, akRight]
@@ -119,8 +123,8 @@ object ShortCutForm: TShortCutForm
       Text = ''
     end
     object lbledtShortCut: TLabeledEdit
-      Left = 96
-      Top = 13
+      Left = 98
+      Top = 20
       Width = 372
       Height = 19
       Anchors = [akLeft, akRight]
@@ -135,7 +139,7 @@ object ShortCutForm: TShortCutForm
       Text = ''
     end
     object btnDir: TButton
-      Left = 416
+      Left = 418
       Top = 71
       Width = 52
       Height = 21
@@ -147,10 +151,18 @@ object ShortCutForm: TShortCutForm
       TabOrder = 4
       OnClick = btnDirClick
     end
+    object cb_RunAsAdmin: TCheckBox
+      Left = 98
+      Top = 103
+      Width = 97
+      Height = 17
+      Caption = 'Run as admin'
+      TabOrder = 5
+    end
   end
   object rgParam: TRadioGroup
     Left = 8
-    Top = 119
+    Top = 151
     Width = 478
     Height = 98
     Anchors = [akLeft, akTop, akRight]
@@ -167,7 +179,7 @@ object ShortCutForm: TShortCutForm
   end
   object btnHelp: TBitBtn
     Left = 249
-    Top = 223
+    Top = 268
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
@@ -176,10 +188,12 @@ object ShortCutForm: TShortCutForm
     TabOrder = 4
     Visible = False
     OnClick = btnHelpClick
+    ExplicitLeft = 247
+    ExplicitTop = 215
   end
   object btnTest: TBitBtn
     Left = 8
-    Top = 224
+    Top = 269
     Width = 75
     Height = 25
     Anchors = [akLeft, akBottom]
@@ -204,6 +218,7 @@ object ShortCutForm: TShortCutForm
     NumGlyphs = 2
     TabOrder = 5
     OnClick = btnTestClick
+    ExplicitTop = 216
   end
   object dlgOpenFile: TOpenDialog
     Left = 280

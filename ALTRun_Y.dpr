@@ -54,14 +54,9 @@ begin
 end;
 
 begin
-  //----- 内存泄漏管理
-  //  mmPopupMsgDlg := DEBUG_MODE;
-  //  mmShowObjectInfo := DEBUG_MODE;
-  //  mmUseObjectList := DEBUG_MODE;
-  //  mmSaveToLogFile := DEBUG_MODE;
 
   //----- Trace
-  //  InitLogger(DEBUG_MODE,DEBUG_MODE, False);
+    InitLogger(true,true, False);
 
    //若有参数，则判断之
   if ParamStr(1) <> '' then
@@ -109,7 +104,6 @@ begin
   //SaveSettings;
 
   Application.Title := TITLE;
-//  Application.CreateForm(TParamForm, ParamForm);
   Application.CreateForm(TALTRunForm, ALTRunForm);
   Application.ShowMainForm := False;
   Application.OnMinimize := ALTRunForm.evtMainMinimize;

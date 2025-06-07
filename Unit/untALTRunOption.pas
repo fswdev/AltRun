@@ -289,6 +289,7 @@ const
   //ShortCutForm
   KEY_SHORTCUTFORMCAPTION = 'ShortCutFormCaption';
   KEY_GRPSHORTCUT = 'GrpShortCut';
+  KEY_RUNASADMIN = 'RunAsAdmin';
   KEY_BTNFILE = 'BtnFile';
   KEY_BTNDIR = 'BtnDir';
   KEY_GRPPARAMTYPE = 'GrpParamType';
@@ -428,6 +429,7 @@ var
   resParamType: string;
   resCommandLine: string;
   resCanNotExecute: string;
+  resRunAsAdmin:string;
 
   //ALTRunForm
   resStarted: string;
@@ -1065,6 +1067,7 @@ begin
   //ShortCutForm
   resShortCutFormCaption := IniFile.ReadString(SECTION_SHORTCUTFORM, KEY_ShortCutFormCaption, 'ShortCut');
   resGrpShortCut := IniFile.ReadString(SECTION_SHORTCUTFORM, KEY_GrpShortCut, 'ShortCut');
+  resRunAsAdmin:= IniFile.ReadString(SECTION_SHORTCUTFORM, KEY_RunAsAdmin, 'Run as admin') ;
   resBtnFile := IniFile.ReadString(SECTION_SHORTCUTFORM, KEY_BtnFile, 'File');
   resBtnDir := IniFile.ReadString(SECTION_SHORTCUTFORM, KEY_BtnDir, 'Dir');
   resGrpParamType := IniFile.ReadString(SECTION_SHORTCUTFORM, KEY_GrpParamType, 'Param Type');

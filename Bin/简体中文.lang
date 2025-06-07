@@ -191,6 +191,7 @@ BtnCancelHint             = 不保存并关闭
 [ShortCutForm]
 ShortCutFormCaption       = 快捷项
 GrpShortCut               = 快捷项
+RunAsAdmin				  = 管理员权限
 BtnFile                   = 文件
 BtnDir                    = 文件夹
 GrpParamType              = 参数类型

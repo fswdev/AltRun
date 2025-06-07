@@ -21,6 +21,7 @@ type
     btnDir: TButton;
     btnHelp: TBitBtn;
     btnTest: TBitBtn;
+    cb_RunAsAdmin: TCheckBox;
     procedure btnFileClick(Sender: TObject);
     procedure MyDrag(var Msg: TWMDropFiles); message WM_DropFiles;
     procedure FormCreate(Sender: TObject);
@@ -217,6 +218,8 @@ begin
   rgParam.Items.Add(resParamType_2);
   rgParam.Items.Add(resParamType_3);
   rgParam.ItemIndex := 0;
+
+  cb_RunAsAdmin.Caption := resRunAsAdmin;
 
   btnTest.Caption := resBtnTest;
   btnOK.Caption := resBtnOK;
