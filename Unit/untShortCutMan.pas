@@ -1,4 +1,4 @@
-unit untShortCutMan;
+ï»¿unit untShortCutMan;
 
 interface
 
@@ -14,13 +14,13 @@ const
   MAX_LATEST_NUM = 10;
 
 type
-  //¿ì½İÏîÀàĞÍ
+  //å¿«æ·é¡¹ç±»å‹
   TShortCutType = (scOther, scItem, scBlank, scRemark);
 
-  //²ÎÊıÀàĞÍ
+  //å‚æ•°ç±»å‹
   TParamType = (ptNone, ptNoEncoding, ptURLQuery, ptUTF8Query);
 
-  //¿ì½İÏîÍ¼±ê
+  //å¿«æ·é¡¹å›¾æ ‡
   TShortCutIcon = (siItem, siInfo);
 
   TCmdObject = class
@@ -31,7 +31,7 @@ type
     ParamType: TParamType;
   end;
 
-  //¿ì½İÏî
+  //å¿«æ·é¡¹
   TShortCutItem = class
   public
     ShortCutType: TShortCutType;
@@ -43,10 +43,10 @@ type
     Freq: Integer;
   end;
 
-  //¿ì½İÏîÁĞ±í
+  //å¿«æ·é¡¹åˆ—è¡¨
   TShortCutList = TObjectList;
 
-  //¿ì½İÏî¹ÜÀíÆ÷
+  //å¿«æ·é¡¹ç®¡ç†å™¨
   TShortCutMan = class
   private
     m_WriteDefaultShortCutList: Boolean;
@@ -171,7 +171,7 @@ begin
     ShowCmd := SW_HIDE
   end;
 
-  //´¦ÀíÏà¶ÔÂ·¾¶ ".\", "..\"£¬Èç¹ûÓĞ£¬¾Í½«±¾³ÌĞòµÄÂ·¾¶´úÈë
+  //å¤„ç†ç›¸å¯¹è·¯å¾„ ".\", "..\"ï¼Œå¦‚æœæœ‰ï¼Œå°±å°†æœ¬ç¨‹åºçš„è·¯å¾„ä»£å…¥
   if (Pos('.\', cmdobj.Command) > 0) or (Pos('..\', cmdobj.Command) > 0) then
     cmdobj.WorkingDir := ExtractFileDir(Application.ExeName);
 
@@ -185,7 +185,7 @@ begin
 
     ptNoEncoding:
       begin
-        //Èç¹ûÃüÁîĞĞÓĞ²ÎÊı±êÖ¾£¬ÔòÌæ»»²ÎÊı
+        //å¦‚æœå‘½ä»¤è¡Œæœ‰å‚æ•°æ ‡å¿—ï¼Œåˆ™æ›¿æ¢å‚æ•°
         if Pos(NEW_PARAM_FLAG, cmdobj.Command) > 0 then
         begin
           try
@@ -277,7 +277,7 @@ begin
 
     ptURLQuery, ptUTF8Query:
       begin
-        //Èç¹ûÃüÁîĞĞÓĞ²ÎÊı±êÖ¾£¬ÔòÌæ»»²ÎÊı
+        //å¦‚æœå‘½ä»¤è¡Œæœ‰å‚æ•°æ ‡å¿—ï¼Œåˆ™æ›¿æ¢å‚æ•°
         if Pos(NEW_PARAM_FLAG, cmdobj.Command) > 0 then
         begin
           try
@@ -324,7 +324,7 @@ begin
       end;
   end;
 
-  //Ìæ»»»·¾³±äÁ¿
+  //æ›¿æ¢ç¯å¢ƒå˜é‡
   PCommandStr := PChar(ReplaceEnvStr(string(StrPas(PCommandStr))));
 
   ret := ShellExecute(GetDesktopWindow, nil, PCommandStr, PParamStr, PWorkingDir, ShowCmd);
@@ -340,7 +340,7 @@ begin
     end;
   end;
 
-  //ÊÍ·Å¶ÔÏó£»
+  //é‡Šæ”¾å¯¹è±¡ï¼›
   cmdobj.Free;
 end;
 
@@ -415,7 +415,7 @@ begin
         Item.CommandLine := '';
       end;
 
-      //Ïà¶ÔÂ·¾¶½¨Òé
+      //ç›¸å¯¹è·¯å¾„å»ºè®®
       if Pos(LowerCase(ExtractFileDir(Application.ExeName)), LowerCase(Item.CommandLine)) > 0 then
       begin
         if Application.MessageBox(PChar(resRelativePathSuggestion), PChar(resInfo), MB_OKCANCEL + MB_ICONQUESTION + MB_TOPMOST) = IDOK then
@@ -424,18 +424,18 @@ begin
         end;
       end;
 
-      //ÈôÓĞÖØ¸´£¬Ôò±¨´í
+      //è‹¥æœ‰é‡å¤ï¼Œåˆ™æŠ¥é”™
       {if ContainShortCutItem(Item) then
       begin
         Application.MessageBox(PChar(resShortCutExisted), PChar(resInfo),
           MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
 
-        //Èç¹û²»ÊÍ·ÅItem£¬¾Í»áÄÚ´æĞ¹Â¶
+        //å¦‚æœä¸é‡Šæ”¾Itemï¼Œå°±ä¼šå†…å­˜æ³„éœ²
         Item.Free;
         Exit;
       end;}
 
-      //ÈçÓĞShortCutÏàÍ¬(»òÕßNameÏàÍ¬)£¬ÔòÌáÊ¾ÊÇ·ñÌæ»»Ô­ÓĞµÄ
+      //å¦‚æœ‰ShortCutç›¸åŒ(æˆ–è€…Nameç›¸åŒ)ï¼Œåˆ™æç¤ºæ˜¯å¦æ›¿æ¢åŸæœ‰çš„
       if (Item.ShortCutType = scItem) and GetShortCutItemByShortCut(Item.ShortCut, ExistItem) then
       begin
         if Application.MessageBox(PChar(Format(resShortCutExisted, [ExistItem.ShortCut, ExistItem.Name, ExistItem.CommandLine])), PChar(resInfo), MB_YESNO + MB_ICONINFORMATION + MB_TOPMOST) = IDYES then
@@ -453,7 +453,7 @@ begin
         end;
       end;
 
-      //Èç¹ûAppend´ËÏî£¬¾Í²»ÓÃFree´ËItem
+      //å¦‚æœAppendæ­¤é¡¹ï¼Œå°±ä¸ç”¨Freeæ­¤Item
       AppendShortCutItem(Item);
       SaveShortCutList;
       LoadShortCutList(m_ShortCutFileName);
@@ -472,12 +472,12 @@ begin
   result := false;
   ItemIndex := m_LatestList.IndexOfObject(ShortCutItem);
 
-  //Èç¹û´ËÏîÒÑ¾­ÔÚ×î½üÁĞ±íÖĞ£¬ÔòÒÆµ½µÚÒ»Ïî
+  //å¦‚æœæ­¤é¡¹å·²ç»åœ¨æœ€è¿‘åˆ—è¡¨ä¸­ï¼Œåˆ™ç§»åˆ°ç¬¬ä¸€é¡¹
   if ItemIndex >= 0 then
     m_LatestList.Move(ItemIndex, 0)
   else
   begin
-    //Èç¹ûµ±Ç°ÁĞ±íÒÑ¾­³¬¹ı×î´óÏî£¬ÔòÉ¾³ı×îºóÒ»¸ö
+    //å¦‚æœå½“å‰åˆ—è¡¨å·²ç»è¶…è¿‡æœ€å¤§é¡¹ï¼Œåˆ™åˆ é™¤æœ€åä¸€ä¸ª
     if m_LatestList.Count >= MAX_LATEST_NUM then
       m_LatestList.Delete(MAX_LATEST_NUM - 1);
 
@@ -553,11 +553,11 @@ var
 begin
   Result := False;
 
-  //ÁĞ±íÎª¿Õ£¬µ±È»²»´æÔÚ
+  //åˆ—è¡¨ä¸ºç©ºï¼Œå½“ç„¶ä¸å­˜åœ¨
   if m_ShortCutList.Count = 0 then
     Exit;
 
-  //Ö»Òª²»ÊÇ¿ì½İÏîÀàĞÍ£¬Ëæ±ã¼Ó
+  //åªè¦ä¸æ˜¯å¿«æ·é¡¹ç±»å‹ï¼Œéšä¾¿åŠ 
   if ShortCutItem.ShortCutType <> scItem then
     Exit;
 
@@ -565,7 +565,7 @@ begin
   begin
     Item := TShortCutItem(m_ShortCutList.Items[i]);
 
-    //È«¶¼Ò»Ñù£¬¾ÍÊÇ°üº¬ÁË
+    //å…¨éƒ½ä¸€æ ·ï¼Œå°±æ˜¯åŒ…å«äº†
     if (Item.ShortCutType = scItem) and (Item.ParamType = ShortCutItem.ParamType) and (Item.ShortCut = ShortCutItem.ShortCut) and (Item.Name = ShortCutItem.Name) and (Item.CommandLine = ShortCutItem.CommandLine) then
     begin
       Result := True;
@@ -591,27 +591,27 @@ end;
 
 constructor TShortCutMan.Create;
 begin
-  //³õÊ¼»¯¿ì½İÏîÁĞ±íÎÄ¼şÃû
+  //åˆå§‹åŒ–å¿«æ·é¡¹åˆ—è¡¨æ–‡ä»¶å
   m_ShortCutFileName := ExtractFilePath(Application.ExeName) + SHORTCUT_FILENAME;
 
-  //Èç¹û¿ì½İÏîÁĞ±íÎÄ¼ş²»´æÔÚ£¬Ğ´ÈëÖ®
+  //å¦‚æœå¿«æ·é¡¹åˆ—è¡¨æ–‡ä»¶ä¸å­˜åœ¨ï¼Œå†™å…¥ä¹‹
   m_WriteDefaultShortCutList := True;
 
-  //³õÊ¼»¯ÎÄ¼şĞŞ¸ÄÊ±¼ä
+  //åˆå§‹åŒ–æ–‡ä»¶ä¿®æ”¹æ—¶é—´
   m_FileModifyTime := '';
 
-  //³õÊ¼»¯ÁĞ±í£¬×Ô¶¯ÊÍ·Å¶ÔÏó
+  //åˆå§‹åŒ–åˆ—è¡¨ï¼Œè‡ªåŠ¨é‡Šæ”¾å¯¹è±¡
   m_ShortCutList := TShortCutList.Create(True);
 
   m_SortedShortCutList := TStringList.Create;
   m_LatestList := TStringList.Create;
 
-  //³õÊ¼»¯°®ºÃÁĞ±íÎÄ¼şÃû
+  //åˆå§‹åŒ–çˆ±å¥½åˆ—è¡¨æ–‡ä»¶å
   m_FavoriteListFileName := ExtractFilePath(Application.ExeName) + FAVOURIT_FILENAME;
   m_FavoriteList := TStringList.Create;
   LoadFavoriteList;
 
-  //ÕıÔò±í´ïÊ½
+  //æ­£åˆ™è¡¨è¾¾å¼
   m_Regex := TRegExpr.Create;
 end;
 
@@ -624,7 +624,7 @@ begin
   if (Index < 0) or (Index >= m_ShortCutList.Count) then
     Exit;
 
-  //Èç¹û×î½üÁĞ±íÖĞ°üº¬´ËÏî£¬ÔòÉ¾³ıÖ®
+  //å¦‚æœæœ€è¿‘åˆ—è¡¨ä¸­åŒ…å«æ­¤é¡¹ï¼Œåˆ™åˆ é™¤ä¹‹
   ItemIndex := m_LatestList.IndexOfObject(m_ShortCutList.Items[Index]);
   if ItemIndex >= 0 then
     m_LatestList.Delete(ItemIndex);
@@ -639,7 +639,7 @@ end;
 
 destructor TShortCutMan.Destroy;
 begin
-  //±¸·İ m_ShortCutFileName
+  //å¤‡ä»½ m_ShortCutFileName
   TraceMsg('Backup the ShortCutFileName file');
 
   if GetFileSize(m_ShortCutFileName) > 0 then
@@ -666,45 +666,45 @@ begin
   if ShortCutItem.ShortCutType <> scItem then
     Exit;
 
-  //×¢Òâ: Õâ¸ö¶ÔÏó²»ÔÚÕâÀïÊÍ·Å£¬ĞèÒªÔÚÏß³ÌÀïÃæÊÍ·Å£¡
+  //æ³¨æ„: è¿™ä¸ªå¯¹è±¡ä¸åœ¨è¿™é‡Œé‡Šæ”¾ï¼Œéœ€è¦åœ¨çº¿ç¨‹é‡Œé¢é‡Šæ”¾ï¼
   cmdobj := TCmdObject.Create;
 
-  //ÏÈ³õÊ¼»¯Çå¿Õ
+  //å…ˆåˆå§‹åŒ–æ¸…ç©º
   cmdobj.Command := '';
   cmdobj.WorkingDir := '';
   cmdobj.Param := '';
   cmdobj.ParamType := ptNone;
 
-  //¸³Öµ
+  //èµ‹å€¼
   cmdobj.Command := ShortCutItem.CommandLine;
 
-  //Ìæ»»»·¾³±äÁ¿
+  //æ›¿æ¢ç¯å¢ƒå˜é‡
   cmdobj.Command := ReplaceEnvStr(cmdobj.Command);
 
-  //¶ÔÓÚ"..."ÕâÑùµÄÎÄ¼şÃû£¬ÏÈ°şÈ¥Á½¶ËµÄ""
+  //å¯¹äº"..."è¿™æ ·çš„æ–‡ä»¶åï¼Œå…ˆå‰¥å»ä¸¤ç«¯çš„""
   str := RemoveQuotationMark(Trim(ShortCutItem.CommandLine), '"');
 
-  //¶ÔÓÚ"\\"¿ªÍ·µÄ£¬²»ÒªÈ¥²éÕÒFileExist£¬·ñÔòºÜÂı£¡
+  //å¯¹äº"\\"å¼€å¤´çš„ï¼Œä¸è¦å»æŸ¥æ‰¾FileExistï¼Œå¦åˆ™å¾ˆæ…¢ï¼
   if Pos('\\', str) <> 1 then
   begin
     if FileExists(str) then
       cmdobj.WorkingDir := ExtractFileDir(str)
     else
     begin
-      //ÕâÖÖµÄÒ²ÒªÕıÈ·´¦Àí
+      //è¿™ç§çš„ä¹Ÿè¦æ­£ç¡®å¤„ç†
       //"C:\Program Files\Mozilla Firefox\firefox.exe" -Profile "Profiles"
       if str[1] = '"' then
       begin
-        //ÏÈ³õÊ¼»¯Îª¿Õ°×
+        //å…ˆåˆå§‹åŒ–ä¸ºç©ºç™½
         cmdobj.WorkingDir := '';
 
-        // È¥µô¿ªÍ·µÄ"
+        // å»æ‰å¼€å¤´çš„"
         TrueCmdFile := Copy(str, 2, Length(str) - 1);
 
         FlagPos := Pos('"', TrueCmdFile);
         if FlagPos > 0 then
         begin
-          //È¡µÃµÚÒ»¸ö"Ö®Ç°µÄÄÚÈİ
+          //å–å¾—ç¬¬ä¸€ä¸ª"ä¹‹å‰çš„å†…å®¹
           TrueCmdFile := Copy(TrueCmdFile, 1, FlagPos - 1);
 
           if FileExists(TrueCmdFile) then
@@ -733,19 +733,19 @@ begin
   end
   else
   begin
-    if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then               // ¼ôÌù°å
+    if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then               // å‰ªè´´æ¿
     begin
       cmdobj.Param := m_Param[0];
     end
-    else if Pos(FOREGROUND_WINDOW_ID_FLAG, cmdobj.Command) > 0 then    // Ç°Ì¨´°¿ÚID
+    else if Pos(FOREGROUND_WINDOW_ID_FLAG, cmdobj.Command) > 0 then    // å‰å°çª—å£ID
     begin
       cmdobj.Param := m_Param[1];
     end
-    else if Pos(FOREGROUND_WINDOW_TEXT_FLAG, cmdobj.Command) > 0 then  // Ç°Ì¨´°¿ÚText
+    else if Pos(FOREGROUND_WINDOW_TEXT_FLAG, cmdobj.Command) > 0 then  // å‰å°çª—å£Text
     begin
       cmdobj.Param := m_Param[2];
     end
-    else if Pos(FOREGROUND_WINDOW_CLASS_FLAG, cmdobj.Command) > 0 then  // Ç°Ì¨´°¿ÚClass
+    else if Pos(FOREGROUND_WINDOW_CLASS_FLAG, cmdobj.Command) > 0 then  // å‰å°çª—å£Class
     begin
       cmdobj.Param := m_Param[3];
     end
@@ -798,14 +798,14 @@ begin
   end
   else
   begin
-    //Èç¹ûÊÇLNK¿ì½İ·½Ê½ÎÄ¼ş£¬ÔòÌáÈ¡ÀïÃæµÄÎÄ¼şÂ·¾¶
-    //Òª¿¼ÂÇµ½"....lnk"ÕâÖÖÇ°ºó´øÓĞ"µÄÎÄ¼ş
+    //å¦‚æœæ˜¯LNKå¿«æ·æ–¹å¼æ–‡ä»¶ï¼Œåˆ™æå–é‡Œé¢çš„æ–‡ä»¶è·¯å¾„
+    //è¦è€ƒè™‘åˆ°"....lnk"è¿™ç§å‰åå¸¦æœ‰"çš„æ–‡ä»¶
     if (LowerCase(Copy(FileName, Length(FileName) - 3, 4)) = '.lnk') or ((FileName[1] = '"') and (FileName[Length(FileName)] = '"') and (LowerCase(Copy(FileName, Length(FileName) - 4, 4)) = '.lnk')) then
     begin
       TempFileName := ResolveLink(FileName);
 
-      //ÓĞµÄÊ±ºò£¬¿ì½İ·½Ê½Ö¸Ïò¿Õ£¬ÄÇ¾ÍÖ±½Ó°ÑÕâ¸ö¿ì½İ·½Ê½¸ã³É¿ì½İÏî
-      //¶ÔÓÚÏÂÃæÕâÖÖ½â³öÀ´µÄÎÄ¼ş£¬ÆäÊµÃ»·¨Ö±½Óµ÷ÓÃ£¬²»ÈçÖ±½Óµ÷ÓÃlnkÎÄ¼ş
+      //æœ‰çš„æ—¶å€™ï¼Œå¿«æ·æ–¹å¼æŒ‡å‘ç©ºï¼Œé‚£å°±ç›´æ¥æŠŠè¿™ä¸ªå¿«æ·æ–¹å¼ææˆå¿«æ·é¡¹
+      //å¯¹äºä¸‹é¢è¿™ç§è§£å‡ºæ¥çš„æ–‡ä»¶ï¼Œå…¶å®æ²¡æ³•ç›´æ¥è°ƒç”¨ï¼Œä¸å¦‚ç›´æ¥è°ƒç”¨lnkæ–‡ä»¶
       //C:\WINDOWS\Installer\{90120000-0011-0000-0000-0000000FF1CE}\wordicon.exe
       if (Trim(TempFileName) <> '') and (Pos(GetEnvironmentVariable('windir') + '\Installer\{', TempFileName) <= 0) then
         FileName := TempFileName;
@@ -828,16 +828,16 @@ begin
       begin
         FileName := ExtractFileName(FileName);
 
-        //¶ÔÓÚÇ°ºó¶¼ÊÇ""µÄÎÄ¼şÃû»òÄ¿Â¼Ãû£¬É¾µô×îºóµÄ"
+        //å¯¹äºå‰åéƒ½æ˜¯""çš„æ–‡ä»¶åæˆ–ç›®å½•åï¼Œåˆ æ‰æœ€åçš„"
         if FileName[Length(FileName)] = '"' then
           FileName := Copy(FileName, 1, Length(FileName) - 1);
 
-        //¶ÔÓÚChromeµÄ¿ì½İ·½Ê½£¬Èç
+        //å¯¹äºChromeçš„å¿«æ·æ–¹å¼ï¼Œå¦‚
         //"C:\Documents and Settings\cnh31515\Local Settings\Application Data\Google\Chrome\Application\chrome.exe"  --app=http://www.douban.com/group/topic/4876691/
-        //ExtractFileNameÖ®ºó¾ÍÊÇ '//www.douban.com/group/topic/4876691/'
+        //ExtractFileNameä¹‹åå°±æ˜¯ '//www.douban.com/group/topic/4876691/'
         if (Pos('//', FileName) = 1) then
         begin
-          //¶ÔÓÚhttps://shit.comÖ®ÀàµÄÍøÖ·£¬ExtractFileNameÖ®ºó¾ÍÊÇ'//shit.com'
+          //å¯¹äºhttps://shit.comä¹‹ç±»çš„ç½‘å€ï¼ŒExtractFileNameä¹‹åå°±æ˜¯'//shit.com'
           if (FileName[Length(FileName)] = '/') then
             ShortCut := Copy(FileName, 3, Length(FileName) - 3)
           else
@@ -845,7 +845,7 @@ begin
         end
         else
         begin
-          // Èç¹ûÊÇÎÄ¼ş¼Ğ£¬ÈçÎÄ¼ş¼Ğ½Ğ×ö"1.2Í¼Æ¬"£¬¾Í²»³ıÈ¥ºóÃæµÄ"À©Õ¹Ãû (.2Í¼Æ¬)"
+          // å¦‚æœæ˜¯æ–‡ä»¶å¤¹ï¼Œå¦‚æ–‡ä»¶å¤¹å«åš"1.2å›¾ç‰‡"ï¼Œå°±ä¸é™¤å»åé¢çš„"æ‰©å±•å (.2å›¾ç‰‡)"
           if DirectoryExists(RemoveQuotationMark(ShortCutItem.CommandLine, '"')) then
             ShortCut := FileName
           else
@@ -916,18 +916,18 @@ begin
 
   TraceMsg('FilterKeyWord(%s)', [KeyWord]);
 
-  //Çå¿Õ½á¹ûÁĞ±í
+  //æ¸…ç©ºç»“æœåˆ—è¡¨
   StringList.Clear;
 
-  //Èç¹ûÃ»ÓĞ¶«Î÷£¬ÍË³ö
+  //å¦‚æœæ²¡æœ‰ä¸œè¥¿ï¼Œé€€å‡º
   if m_SortedShortCutList.Count = 0 then
     Exit;
 
-  //Èç¹ûKeyWordÎª' '£¬ÔòÍË³ö
+  //å¦‚æœKeyWordä¸º' 'ï¼Œåˆ™é€€å‡º
   if KeyWord = ' ' then
     Exit;
 
-  //Èç¹ûKeyWordÎª¿Õ£¬Ôò°´ÕÕÊ¹ÓÃÆµÂÊÏÔÊ¾È«²¿ÄÚÈİ£¬·ñÔòÖ»ÏÔÊ¾¹ıÂËÄÚÈİ
+  //å¦‚æœKeyWordä¸ºç©ºï¼Œåˆ™æŒ‰ç…§ä½¿ç”¨é¢‘ç‡æ˜¾ç¤ºå…¨éƒ¨å†…å®¹ï¼Œå¦åˆ™åªæ˜¾ç¤ºè¿‡æ»¤å†…å®¹
   if KeyWord = '' then
     StringList.Assign(m_SortedShortCutList)
   else
@@ -936,29 +936,29 @@ begin
 
     TraceMsg('FilterKeyWord - 10');
 
-    //Èç¹ûÖ§³ÖRegex£¬¶ÔKeyWord½øĞĞÔ¤´¦Àí£¬¶Ôµ¥¶ÀµÄ*¶¼Ìæ»»Îª.*, ¶Ôµ¥¶ÀµÄ?¶¼Ìæ»»Îª.?
+    //å¦‚æœæ”¯æŒRegexï¼Œå¯¹KeyWordè¿›è¡Œé¢„å¤„ç†ï¼Œå¯¹å•ç‹¬çš„*éƒ½æ›¿æ¢ä¸º.*, å¯¹å•ç‹¬çš„?éƒ½æ›¿æ¢ä¸º.?
     if EnableRegex then
     begin
-      //----- ´¦Àí*
-      //ÏÈ°Ñ.*ÁÙÊ±±äÎª~£¡@#
+      //----- å¤„ç†*
+      //å…ˆæŠŠ.*ä¸´æ—¶å˜ä¸º~ï¼@#
       KeyWord := StringReplace(KeyWord, '.*', '~!@#', [rfReplaceAll]);
 
-      //ÔÙ°Ñ*¶¼±äÎª.*
+      //å†æŠŠ*éƒ½å˜ä¸º.*
       KeyWord := StringReplace(KeyWord, '*', '.*', [rfReplaceAll]);
 
-      //×îºó°Ñ~!@#±ä»Ø.*
+      //æœ€åæŠŠ~!@#å˜å›.*
       KeyWord := StringReplace(KeyWord, '~!@#', '.*', [rfReplaceAll]);
 
-      //----- ´¦Àí?
+      //----- å¤„ç†?
       KeyWord := StringReplace(KeyWord, '?', '.', [rfReplaceAll]);
 
-      //ÏÈ°Ñ.?ÁÙÊ±±äÎª~£¡@#
+      //å…ˆæŠŠ.?ä¸´æ—¶å˜ä¸º~ï¼@#
       //KeyWord:=StringReplace(KeyWord,'.?','~!@#',[rfReplaceAll]);
 
-      //ÔÙ°Ñ?¶¼±äÎª.?
+      //å†æŠŠ?éƒ½å˜ä¸º.?
       //KeyWord:=StringReplace(KeyWord,'?','.?',[rfReplaceAll]);
 
-      //×îºó°Ñ~!@#±ä»Ø.?
+      //æœ€åæŠŠ~!@#å˜å›.?
       //KeyWord:=StringReplace(KeyWord,'~!@#','.?',[rfReplaceAll]);
     end;
 
@@ -968,11 +968,11 @@ begin
     begin
       Item := TShortCutItem(m_SortedShortCutList.Objects[i]);
 
-      //²»ÊÇ¿ì½İÏî£¬²»Àí
+      //ä¸æ˜¯å¿«æ·é¡¹ï¼Œä¸ç†
       if Item.ShortCutType <> scItem then
         Continue;
 
-      //Èç¹û³¤¶ÈÌ«Ğ¡£¬²»Àí
+      //å¦‚æœé•¿åº¦å¤ªå°ï¼Œä¸ç†
       if Length(KeyWord) > Length(Item.ShortCut) then
         Continue;
 
@@ -984,11 +984,11 @@ begin
             Continue;
         except
           on E: Exception do
-            Continue; // Ö±½ÓÌøµ½ÏÂÒ»¸öÑ­»·µü´ú
+            Continue; // ç›´æ¥è·³åˆ°ä¸‹ä¸€ä¸ªå¾ªç¯è¿­ä»£
 //            Result := False;
         end;
 
-        //Èç¹û±ØĞë´ÓÍ·Æ¥Åä
+        //å¦‚æœå¿…é¡»ä»å¤´åŒ¹é…
         if (not MatchAnywhere) and (m_Regex.MatchPos[0] > 1) then
           Continue
         else
@@ -998,7 +998,7 @@ begin
       begin
         Item.Rank := Pos(LowerCase(KeyWord), LowerCase(Item.ShortCut));
 
-        //Èç¹û±ØĞë´ÓÍ·Æ¥Åä
+        //å¦‚æœå¿…é¡»ä»å¤´åŒ¹é…
         if (not MatchAnywhere) and (Item.Rank > 1) then
           Continue;
       end;
@@ -1007,7 +1007,7 @@ begin
 
       if Item.Rank > 0 then
       begin
-        //¼ÓÈ¨ÏµÊı×÷ÎªÅÅÁĞÖµ
+        //åŠ æƒç³»æ•°ä½œä¸ºæ’åˆ—å€¼
         //Item.Rank := Item.Rank * 10000 + (Length(Item.ShortCut) - Length(KeyWord));
         //Item.Rank := Item.Rank * 100 + (Length(Item.ShortCut) - Length(KeyWord)) * 2 - Item.Freq * 5;
         Item.Rank := 1024 + Item.Freq * 4 - Item.Rank * 128 - (Length(Item.ShortCut) - Length(KeyWord)) * 16;
@@ -1023,13 +1023,13 @@ begin
 
     TraceMsg('FilterKeyWord - 60');
 
-    //¶ÔStringList½øĞĞ¿ìËÙÅÅĞò
+    //å¯¹StringListè¿›è¡Œå¿«é€Ÿæ’åº
     QuickSort(StringList, 0, StringList.Count - 1);
   end;
 
   TraceMsg('FilterKeyWord - 70');
 
-  //Èç¹ûKeyWord³öÏÖÔÚFavoriteListÄÚ£¬ÇÒµ±Ç°ÁĞ±íÄÚÒ²ÓĞËü¶ÔÓ¦µÄÃû³Æ£¬Ôò½«ÆäÒÆµ½µÚÒ»Ïî
+  //å¦‚æœKeyWordå‡ºç°åœ¨FavoriteListå†…ï¼Œä¸”å½“å‰åˆ—è¡¨å†…ä¹Ÿæœ‰å®ƒå¯¹åº”çš„åç§°ï¼Œåˆ™å°†å…¶ç§»åˆ°ç¬¬ä¸€é¡¹
   if RememberFavouratMatch then
     if StringList.Count > 0 then
       if m_FavoriteList.IndexOfName(KeyWord) >= 0 then
@@ -1081,11 +1081,11 @@ var
 begin
   Result := '';
 
-  //Èç¹ûÃ»ÓĞ¶«Î÷£¬ÍË³ö
+  //å¦‚æœæ²¡æœ‰ä¸œè¥¿ï¼Œé€€å‡º
   if m_LatestList.Count = 0 then
     Exit;
 
-  //È¡³ö¶ÔÓ¦µÄ¿ì½İ·½Ê½
+  //å–å‡ºå¯¹åº”çš„å¿«æ·æ–¹å¼
   for i := 0 to m_LatestList.Count - 1 do
   begin
     if m_ShortCutList.IndexOf(m_LatestList.Objects[i]) < 0 then
@@ -1105,14 +1105,14 @@ var
 begin
   Result := False;
 
-  //Çå¿Õ½á¹ûÁĞ±í
+  //æ¸…ç©ºç»“æœåˆ—è¡¨
   StringList.Clear;
 
-  //Èç¹ûÃ»ÓĞ¶«Î÷£¬ÍË³ö
+  //å¦‚æœæ²¡æœ‰ä¸œè¥¿ï¼Œé€€å‡º
   if m_LatestList.Count = 0 then
     Exit;
 
-  //È¡³ö¶ÔÓ¦µÄ¿ì½İ·½Ê½
+  //å–å‡ºå¯¹åº”çš„å¿«æ·æ–¹å¼
   for i := 0 to m_LatestList.Count - 1 do
   begin
     if m_LatestList.Objects[i] <> nil then
@@ -1265,7 +1265,7 @@ var
 begin
   Result := False;
 
-  //ÈôÎÄ¼ş²»´æÔÚ£¬ÔòĞ´ÈëÈ±Ê¡ÄÚÈİ
+  //è‹¥æ–‡ä»¶ä¸å­˜åœ¨ï¼Œåˆ™å†™å…¥ç¼ºçœå†…å®¹
   if not FileExists(m_FavoriteListFileName) then
   begin
     try
@@ -1280,14 +1280,14 @@ begin
     end;
   end;
 
-  //¶ÁÈ¡¿ì½İÏîÁĞ±íÎÄ¼ş
+  //è¯»å–å¿«æ·é¡¹åˆ—è¡¨æ–‡ä»¶
   try
     try
       AssignFile(MyFile, m_FavoriteListFileName);
       Reset(MyFile);
       ParamItem := TStringList.Create;
 
-      //Çå¿ÕÀúÊ·ÁĞ±í
+      //æ¸…ç©ºå†å²åˆ—è¡¨
       m_FavoriteList.Clear;
 
       while not Eof(MyFile) do
@@ -1347,22 +1347,22 @@ var
 begin
   Result := False;
 
-  //Èô²ÎÊı²»¿Õ£¬ÔòÌæ»»ÎÄ¼şÃû
+  //è‹¥å‚æ•°ä¸ç©ºï¼Œåˆ™æ›¿æ¢æ–‡ä»¶å
   if FileName <> '' then
     m_ShortCutFileName := FileName;
 
-  //ÈôÎÄ¼şÃûÎª¿Õ£¬Ôò·µ»Ø
+  //è‹¥æ–‡ä»¶åä¸ºç©ºï¼Œåˆ™è¿”å›
   if Trim(m_ShortCutFileName) = '' then
     Exit;
 
-  //ÆäÊµÃ»±ØÒªÌí¼ÓÒ»¸ö×Ô¶¨ÒåÃüÁîµÄÄ¿Â¼
+  //å…¶å®æ²¡å¿…è¦æ·»åŠ ä¸€ä¸ªè‡ªå®šä¹‰å‘½ä»¤çš„ç›®å½•
   {
-  //×Ô¶¨ÒåÃüÁî´æ·ÅÎ»ÖÃ
+  //è‡ªå®šä¹‰å‘½ä»¤å­˜æ”¾ä½ç½®
   CmdDir := ExtractFilePath(Application.ExeName) + CMD_DIR;
   if not DirectoryExists(CmdDir) then CreateDir(CmdDir);
   }
 
-  //ÈôÎÄ¼ş²»´æÔÚ£¬ÔòĞ´ÈëÈ±Ê¡ÄÚÈİ
+  //è‹¥æ–‡ä»¶ä¸å­˜åœ¨ï¼Œåˆ™å†™å…¥ç¼ºçœå†…å®¹
   if not FileExists(m_ShortCutFileName) then
   begin
     try
@@ -1370,12 +1370,12 @@ begin
         AssignFile(MyFile, m_ShortCutFileName);
         ReWrite(MyFile);
 
-        //Ğ´ÈëÎÄ¼şÍ·£¨ÒòÎªÌ«Âé·³£¬²»ÒªÕâ¸öÎÄ¼şÍ·ÁË£©
+        //å†™å…¥æ–‡ä»¶å¤´ï¼ˆå› ä¸ºå¤ªéº»çƒ¦ï¼Œä¸è¦è¿™ä¸ªæ–‡ä»¶å¤´äº†ï¼‰
         //WriteLn(MyFile, '%------------------------------------------------------------------------------%');
         //WriteLn(MyFile, '%Please follow [ShortCut, Name, Command Line], DO NOT rename or delete me      %');
         //WriteLn(MyFile, '%------------------------------------------------------------------------------%');
 
-        //ÈôĞèÒªĞ´ÈëÊ¾Àı
+        //è‹¥éœ€è¦å†™å…¥ç¤ºä¾‹
         if m_WriteDefaultShortCutList then
         begin
           WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'Computer', resDefault_ShortCut_Name_0, '::{20D04FE0-3AEA-1069-A2D8-08002B30309D}', 100));
@@ -1387,9 +1387,9 @@ begin
           WriteLn(MyFile, ShortCutItemToString(scItem, ptNoEncoding, 'cmd', resDefault_ShortCut_Name_6, 'cmd /k %p', 6));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'Calc', resDefault_ShortCut_Name_7, 'calc', 5));
 
-          //ÒòÎªÓĞÁË×ÔĞ´µÄWinCtl.exe£¬ËùÒÔ²»ĞèÒª×öÕâ¸ö†ªàÂÊÂ¶ùÁË
+          //å› ä¸ºæœ‰äº†è‡ªå†™çš„WinCtl.exeï¼Œæ‰€ä»¥ä¸éœ€è¦åšè¿™ä¸ªå•°å—¦äº‹å„¿äº†
           {
-          //ÖĞÎÄ°æWindowsÏÂÊÇ¡°ÏÔÊ¾×ÀÃæ.scf¡±£¬Ó¢ÎÄ°æÊÇ"Show Desktop.scf"£¬±ğµÄÓïÑÔ²»ÖªµÀ£¬ËùÒÔ¸É´à´æµ½×Ô¼ºÄ¿Â¼°É
+          //ä¸­æ–‡ç‰ˆWindowsä¸‹æ˜¯â€œæ˜¾ç¤ºæ¡Œé¢.scfâ€ï¼Œè‹±æ–‡ç‰ˆæ˜¯"Show Desktop.scf"ï¼Œåˆ«çš„è¯­è¨€ä¸çŸ¥é“ï¼Œæ‰€ä»¥å¹²è„†å­˜åˆ°è‡ªå·±ç›®å½•å§
           CmdFile := CmdDir + '\Desktop.scf';
           if not FileExists(CmdFile) then
           try
@@ -1405,7 +1405,7 @@ begin
           end;
           }
 
-          //ÕâÌõ±»¸Ä±äÎª WinCtl.exe MinAll
+          //è¿™æ¡è¢«æ”¹å˜ä¸º WinCtl.exe MinAll
           //WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'Desktop', resDefault_ShortCut_Name_8, '.\' + CMD_DIR + '\Desktop.scf'));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'Desktop', resDefault_ShortCut_Name_8, '@.\WinCtl.exe MinAll'));
 
@@ -1453,7 +1453,7 @@ begin
     end;
   end;
 
-  //Èç¹ûÎÄ¼ş³¤¶ÈÎª0£¬ÔòÊ¹ÓÃ±¸·İµÄÎÄ¼ş
+  //å¦‚æœæ–‡ä»¶é•¿åº¦ä¸º0ï¼Œåˆ™ä½¿ç”¨å¤‡ä»½çš„æ–‡ä»¶
   if GetFileSize(m_ShortCutFileName) = 0 then
   begin
     TraceErr('Size of ShortCutFileName = 0, restore the backup file');
@@ -1462,10 +1462,10 @@ begin
   end;
 
 
-  //È¡µÃÎÄ¼şĞŞ¸ÄÊ±¼ä
+  //å–å¾—æ–‡ä»¶ä¿®æ”¹æ—¶é—´
   NewFileModifyTime := GetFileModifyTime(m_ShortCutFileName);
 
-  //Èç¹ûÎÄ¼şĞŞ¸ÄÊ±¼äÃ»ÓĞ¸Ä±ä£¬¾Í²»ÓÃË¢ĞÂÁË
+  //å¦‚æœæ–‡ä»¶ä¿®æ”¹æ—¶é—´æ²¡æœ‰æ”¹å˜ï¼Œå°±ä¸ç”¨åˆ·æ–°äº†
   if m_FileModifyTime = NewFileModifyTime then
     Exit
   else
@@ -1475,13 +1475,13 @@ begin
   end;
 
 
-  //¶ÁÈ¡¿ì½İÏîÁĞ±íÎÄ¼ş
+  //è¯»å–å¿«æ·é¡¹åˆ—è¡¨æ–‡ä»¶
   try
     try
       AssignFile(MyFile, m_ShortCutFileName);
       Reset(MyFile);
 
-      //Çå¿Õ¿ì½İÏîÁĞ±í
+      //æ¸…ç©ºå¿«æ·é¡¹åˆ—è¡¨
       m_ShortCutList.Clear;
 
       while not Eof(MyFile) do
@@ -1489,10 +1489,10 @@ begin
         Readln(MyFile, strLine);
         strLine := Trim(strLine);
 
-        //ÏÈÔö¼ÓÒ»ÏîÔÙËµ
+        //å…ˆå¢åŠ ä¸€é¡¹å†è¯´
         Item := TShortCutItem.Create;
 
-        //½âÎöµ±Ç°ĞĞ
+        //è§£æå½“å‰è¡Œ
         StringToShortCutItem(strLine, Item);
 
         case Item.ShortCutType of
@@ -1557,7 +1557,7 @@ var
 begin
   PrintStringList(Format('Before Partition(%d, %d)', [p, r]), StringList, p, r);
 
-  PivotIndex := SelectPivot(p, r);                     //ÔÚL[p..r]ÖĞÑ¡ÔñÒ»¸öÖ§µãÔªËØpivot
+  PivotIndex := SelectPivot(p, r);                     //åœ¨L[p..r]ä¸­é€‰æ‹©ä¸€ä¸ªæ”¯ç‚¹å…ƒç´ pivot
   PivotValue := TShortCutItem(StringList.Items[PivotIndex]).Rank;
 
   i := p - 1;
@@ -1565,26 +1565,26 @@ begin
 
   while True do
   begin
-    //ÒÆ¶¯ÓÒÖ¸Õë£¬×¢ÒâÕâÀï²»ÄÜÓÃwhileÑ­»·
+    //ç§»åŠ¨å³æŒ‡é’ˆï¼Œæ³¨æ„è¿™é‡Œä¸èƒ½ç”¨whileå¾ªç¯
     repeat
       j := j - 1
     until TShortCutItem(StringList.Items[j]).Rank >= PivotValue;
 
-    //ÒÆ¶¯×óÖ¸Õë£¬×¢ÒâÕâÀï²»ÄÜÓÃwhileÑ­»·
+    //ç§»åŠ¨å·¦æŒ‡é’ˆï¼Œæ³¨æ„è¿™é‡Œä¸èƒ½ç”¨whileå¾ªç¯
     repeat
       i := i + 1
     until TShortCutItem(StringList.Items[i]).Rank <= PivotValue;
 
     if i < j then
-      StringList.Exchange(i, j)                        //½»»»L[i]ºÍL[j]
+      StringList.Exchange(i, j)                        //äº¤æ¢L[i]å’ŒL[j]
     else if j <> r then
     begin
-      Result := j;                                   //·µ»ØjµÄÖµ×÷Îª·Ö¸îµã
+      Result := j;                                   //è¿”å›jçš„å€¼ä½œä¸ºåˆ†å‰²ç‚¹
       Break;
     end
     else
     begin
-      Result := j - 1;                               //·µ»ØjÇ°Ò»Î»ÖÃ×÷Îª·Ö¸îµã
+      Result := j - 1;                               //è¿”å›jå‰ä¸€ä½ç½®ä½œä¸ºåˆ†å‰²ç‚¹
       Break;
     end;
   end;
@@ -1617,11 +1617,11 @@ var
   i, j: Integer;
 begin
   //Bug
-  //3,0,8,2,8,6,1,3,0,8£¬Èç¹û PivotIndex = 1£¬·µ»Ø 3,8,8,2,8,6,1,3,0,0
+  //3,0,8,2,8,6,1,3,0,8ï¼Œå¦‚æœ PivotIndex = 1ï¼Œè¿”å› 3,8,8,2,8,6,1,3,0,0
 
   PrintStringList(Format('Before Partition(%d, %d)', [p, r]), StringList, p, r);
 
-  PivotIndex := SelectPivot(p, r);                     //ÔÚL[p..r]ÖĞÑ¡ÔñÒ»¸öÖ§µãÔªËØpivot
+  PivotIndex := SelectPivot(p, r);                     //åœ¨L[p..r]ä¸­é€‰æ‹©ä¸€ä¸ªæ”¯ç‚¹å…ƒç´ pivot
   PivotValue := TShortCutItem(StringList.Objects[PivotIndex]).Rank;
 
   i := p - 1;
@@ -1629,26 +1629,26 @@ begin
 
   while True do
   begin
-    //ÒÆ¶¯ÓÒÖ¸Õë£¬×¢ÒâÕâÀï²»ÄÜÓÃwhileÑ­»·
+    //ç§»åŠ¨å³æŒ‡é’ˆï¼Œæ³¨æ„è¿™é‡Œä¸èƒ½ç”¨whileå¾ªç¯
     repeat
       j := j - 1
     until TShortCutItem(StringList.Objects[j]).Rank >= PivotValue;
 
-    //ÒÆ¶¯×óÖ¸Õë£¬×¢ÒâÕâÀï²»ÄÜÓÃwhileÑ­»·
+    //ç§»åŠ¨å·¦æŒ‡é’ˆï¼Œæ³¨æ„è¿™é‡Œä¸èƒ½ç”¨whileå¾ªç¯
     repeat
       i := i + 1
     until TShortCutItem(StringList.Objects[i]).Rank <= PivotValue;
 
     if i < j then
-      StringList.Exchange(i, j)                        //½»»»L[i]ºÍL[j]
+      StringList.Exchange(i, j)                        //äº¤æ¢L[i]å’ŒL[j]
     else if j <> r then
     begin
-      Result := j;                                   //·µ»ØjµÄÖµ×÷Îª·Ö¸îµã
+      Result := j;                                   //è¿”å›jçš„å€¼ä½œä¸ºåˆ†å‰²ç‚¹
       Break;
     end
     else
     begin
-      Result := j - 1;                               //·µ»ØjÇ°Ò»Î»ÖÃ×÷Îª·Ö¸îµã
+      Result := j - 1;                               //è¿”å›jå‰ä¸€ä½ç½®ä½œä¸ºåˆ†å‰²ç‚¹
       Break;
     end;
   end;
@@ -1683,16 +1683,16 @@ var
 begin
   PrintStringList(Format('Before QuickSort(%d, %d)', [p, r]), StringList, p, r);
 
-  //ÈôL[p..r]×ã¹»Ğ¡ÔòÖ±½Ó¶ÔL[p..r]½øĞĞ²åÈëÅÅĞò
+  //è‹¥L[p..r]è¶³å¤Ÿå°åˆ™ç›´æ¥å¯¹L[p..r]è¿›è¡Œæ’å…¥æ’åº
   if r - p <= Q_MIN then
     BubbleSort(StringList, p, r)
   else
   begin
     q := Partition(StringList, p, r);
 
-    //½«L[p..r]·Ö½âÎªL[p..q]ºÍL[q+1..r]Á½²¿·Ö
-    QuickSort(StringList, p, q);                       //µİ¹éÅÅĞòL[p..q]
-    QuickSort(StringList, q + 1, r);                   //µİ¹éÅÅĞòL[q+1..r]
+    //å°†L[p..r]åˆ†è§£ä¸ºL[p..q]å’ŒL[q+1..r]ä¸¤éƒ¨åˆ†
+    QuickSort(StringList, p, q);                       //é€’å½’æ’åºL[p..q]
+    QuickSort(StringList, q + 1, r);                   //é€’å½’æ’åºL[q+1..r]
   end;
 
   PrintStringList(Format('After QuickSort(%d, %d)', [p, r]), StringList, p, r);
@@ -1706,16 +1706,16 @@ var
 begin
   PrintStringList(Format('Before QuickSort(%d, %d)', [p, r]), StringList, p, r);
 
-  //ÈôL[p..r]×ã¹»Ğ¡ÔòÖ±½Ó¶ÔL[p..r]½øĞĞ²åÈëÅÅĞò
+  //è‹¥L[p..r]è¶³å¤Ÿå°åˆ™ç›´æ¥å¯¹L[p..r]è¿›è¡Œæ’å…¥æ’åº
   if r - p <= Q_MIN then
     BubbleSort(StringList, p, r)
   else
   begin
     q := Partition(StringList, p, r);
 
-    //½«L[p..r]·Ö½âÎªL[p..q]ºÍL[q+1..r]Á½²¿·Ö
-    QuickSort(StringList, p, q);                       //µİ¹éÅÅĞòL[p..q]
-    QuickSort(StringList, q + 1, r);                   //µİ¹éÅÅĞòL[q+1..r]
+    //å°†L[p..r]åˆ†è§£ä¸ºL[p..q]å’ŒL[q+1..r]ä¸¤éƒ¨åˆ†
+    QuickSort(StringList, p, q);                       //é€’å½’æ’åºL[p..q]
+    QuickSort(StringList, q + 1, r);                   //é€’å½’æ’åºL[q+1..r]
   end;
 
   PrintStringList(Format('After QuickSort(%d, %d)', [p, r]), StringList, p, r);
@@ -1740,7 +1740,7 @@ var
 begin
   Result := False;
 
-  //ÈôÎÄ¼ş²»´æÔÚ£¬ÔòĞ´ÈëÈ±Ê¡ÄÚÈİ
+  //è‹¥æ–‡ä»¶ä¸å­˜åœ¨ï¼Œåˆ™å†™å…¥ç¼ºçœå†…å®¹
   try
     try
       AssignFile(MyFile, m_FavoriteListFileName);
@@ -1758,28 +1758,33 @@ begin
     CloseFile(MyFile);
   end;
 end;
-
 function TShortCutMan.SaveShortCutList(FileName: string = ''): Boolean;
 var
   i: Cardinal;
   MyFile: TextFile;
+  TempFileName, BackupFileName: string;
+  SaveSuccess: Boolean;
 begin
   TraceMsg('SaveShortCutList');
 
   Result := False;
 
-  //Èô²ÎÊı²»¿Õ£¬ÔòÌæ»»ÎÄ¼şÃû
+  //è‹¥å‚æ•°ä¸ç©ºï¼Œåˆ™æ›¿æ¢æ–‡ä»¶å
   if FileName <> '' then
     m_ShortCutFileName := FileName;
 
-  //ÈôÎÄ¼şÃûÎª¿Õ£¬Ôò·µ»Ø
+  //è‹¥æ–‡ä»¶åä¸ºç©ºï¼Œåˆ™è¿”å›
   if Trim(m_ShortCutFileName) = '' then
     Exit;
 
-  //ÈôÎÄ¼ş²»´æÔÚ£¬ÔòĞ´ÈëÈ±Ê¡ÄÚÈİ
+  // ä½¿ç”¨ä¸´æ—¶æ–‡ä»¶å†™å…¥ï¼Œå†™å®Œåå†æ›¿æ¢åŸæ–‡ä»¶ï¼Œé˜²æ­¢å†™å…¥è¿‡ç¨‹ä¸­ä¸¢å¤±
+  TempFileName := m_ShortCutFileName + '.tmp';
+  BackupFileName := m_ShortCutFileName + '.bak';
+  SaveSuccess := False;
+
   try
     try
-      AssignFile(MyFile, m_ShortCutFileName);
+      AssignFile(MyFile, TempFileName);
       ReWrite(MyFile);
 
       if m_ShortCutList.Count > 0 then
@@ -1787,11 +1792,40 @@ begin
         begin
           WriteLn(MyFile, ShortCutItemToString(TShortCutItem(m_ShortCutList.Items[i])));
         end;
+      SaveSuccess := True;
     except
       Exit;
     end;
   finally
     CloseFile(MyFile);
+  end;
+
+  if SaveSuccess then
+  begin
+    // å…ˆå¤‡ä»½åŸæ–‡ä»¶
+    if FileExists(m_ShortCutFileName) then
+      CopyFile(PChar(m_ShortCutFileName), PChar(BackupFileName), False);
+
+    // ç”¨ä¸´æ—¶æ–‡ä»¶æ›¿æ¢åŸæ–‡ä»¶
+    if not RenameFile(TempFileName, m_ShortCutFileName) then
+    begin
+      // æ›¿æ¢å¤±è´¥ï¼Œæ¢å¤å¤‡ä»½
+      if FileExists(BackupFileName) then
+        CopyFile(PChar(BackupFileName), PChar(m_ShortCutFileName), False);
+      Exit;
+    end;
+
+    // åˆ é™¤å¤‡ä»½æ–‡ä»¶ï¼ˆå¯é€‰ï¼‰
+    // if FileExists(BackupFileName) then
+    //   DeleteFile(BackupFileName);
+
+    Result := True;
+  end
+  else
+  begin
+    // å†™å…¥å¤±è´¥ï¼Œåˆ é™¤ä¸´æ—¶æ–‡ä»¶
+    if FileExists(TempFileName) then
+      DeleteFile(TempFileName);
   end;
 end;
 
@@ -1820,7 +1854,7 @@ begin
   if m_LatestList.Count = 0 then
     Exit;
 
-  //ÒòÎªÓĞÊ±»á³öÏÖ×îºóÒ»¸ö×Ö·ûÊÇ','£¬µ¼ÖÂ±¨´í
+  //å› ä¸ºæœ‰æ—¶ä¼šå‡ºç°æœ€åä¸€ä¸ªå­—ç¬¦æ˜¯','ï¼Œå¯¼è‡´æŠ¥é”™
   for i := m_LatestList.Count - 1 downto 0 do
     if Trim(m_LatestList.Strings[i]) = '' then
       m_LatestList.Delete(i);
@@ -1894,7 +1928,7 @@ begin
     end;
   end;
 
-  //¿ìËÙÅÅĞò
+  //å¿«é€Ÿæ’åº
   QuickSort(m_SortedShortCutList, 0, m_SortedShortCutList.Count - 1);
 end;
 
@@ -1921,19 +1955,19 @@ var
   CmdPos: Integer;
   strTemp: string;
 begin
-  //½«È«½Ç¶ººÅÌæ»»Îª°ë½Ç¶ººÅ
-  str := StringReplace(Trim(str), '£¬', ',', [rfReplaceAll]);
+  //å°†å…¨è§’é€—å·æ›¿æ¢ä¸ºåŠè§’é€—å·
+  str := StringReplace(Trim(str), 'ï¼Œ', ',', [rfReplaceAll]);
 
   with ShortCutItem do
   begin
-    //Ä¬ÈÏÊÇOther£¬Name = strLine
+    //é»˜è®¤æ˜¯Otherï¼ŒName = strLine
     ShortCutType := scOther;
     ShortCut := '';
     Name := str;
     CommandLine := '';
     Freq := 0;
 
-    //ÈôÊÇ¿Õ°×ĞĞ£¬Ìí¼Ó´ËĞĞ
+    //è‹¥æ˜¯ç©ºç™½è¡Œï¼Œæ·»åŠ æ­¤è¡Œ
     if str = '' then
     begin
       ShortCutType := scBlank;
@@ -1941,7 +1975,7 @@ begin
       Exit;
     end;
 
-    //ÈôÊÇ×¢ÊÍĞĞ
+    //è‹¥æ˜¯æ³¨é‡Šè¡Œ
     //if str[1] = '%' then
     //begin
     //  ShortCutType := scRemark;
@@ -1949,14 +1983,14 @@ begin
     //  Exit;
     //end;
 
-    //¿´¿´ÊÇ²»ÊÇItem
+    //çœ‹çœ‹æ˜¯ä¸æ˜¯Item
     try
       ShortCutSubItemList := TStringList.Create;
 
-      //¹ÅÊ±ºòµÄ°æ±¾ÓÃ","À´·Ö¸ô¸÷Ïî, ĞÂ°æ±¾ÓÃ"|"À´·Ö¸ô¸÷Ïî
+      //å¤æ—¶å€™çš„ç‰ˆæœ¬ç”¨","æ¥åˆ†éš”å„é¡¹, æ–°ç‰ˆæœ¬ç”¨"|"æ¥åˆ†éš”å„é¡¹
       SplitString(str, ',', ShortCutSubItemList);
 
-      //Èç explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}
+      //å¦‚ explorer.exe /e,::{20D04FE0-3AEA-1069-A2D8-08002B30309D}
       if (ShortCutSubItemList.Count < 3) or (Pos('F', str) = 1) then
         SplitString(str, '|', ShortCutSubItemList);
 
@@ -1964,12 +1998,12 @@ begin
       begin
         ShortCutType := scItem;
 
-        //ÎªÁË¼Ì³ĞÀÏµÄListÎÄ¼ş£¬ĞèÒªÅĞ¶ÏµÚÒ»Ïî
-        //Èç¹ûµÚÒ»ÏîÊÇ"F"¿ªÍ·£¬ºó¸úÊı×Ö£¬ËµÃ÷ÊÇ×îĞÂ°æ±¾µÄÎÄ¼ş
-        //Èç¹ûµÚÒ»ÏîÎª¿Õ£¬ËµÃ÷ÊÇ×î½ü°æ±¾µÄÎÄ¼ş
-        //Èç¹ûµÚÒ»Ïî·Ç¿Õ£¬ÇÒÎª²ÎÊıÀàĞÍ£¬Ò²ËµÃ÷ÊÇ×î½ü°æ±¾µÄÎÄ¼ş
-        //·ñÔò¾ÍÊÇÀÏ°æ±¾ÎÄ¼ş
-        //offsetÊÇÆ«ÒÆ
+        //ä¸ºäº†ç»§æ‰¿è€çš„Listæ–‡ä»¶ï¼Œéœ€è¦åˆ¤æ–­ç¬¬ä¸€é¡¹
+        //å¦‚æœç¬¬ä¸€é¡¹æ˜¯"F"å¼€å¤´ï¼Œåè·Ÿæ•°å­—ï¼Œè¯´æ˜æ˜¯æœ€æ–°ç‰ˆæœ¬çš„æ–‡ä»¶
+        //å¦‚æœç¬¬ä¸€é¡¹ä¸ºç©ºï¼Œè¯´æ˜æ˜¯æœ€è¿‘ç‰ˆæœ¬çš„æ–‡ä»¶
+        //å¦‚æœç¬¬ä¸€é¡¹éç©ºï¼Œä¸”ä¸ºå‚æ•°ç±»å‹ï¼Œä¹Ÿè¯´æ˜æ˜¯æœ€è¿‘ç‰ˆæœ¬çš„æ–‡ä»¶
+        //å¦åˆ™å°±æ˜¯è€ç‰ˆæœ¬æ–‡ä»¶
+        //offsetæ˜¯åç§»
 
         offset := 0;
 
@@ -1977,11 +2011,11 @@ begin
         if Length(ShortCutSubItemList.Strings[0]) >= 1 then
           if ShortCutSubItemList.Strings[0][1] = 'F' then
           begin
-            //È¥µô×îÇ°ÃæµÄ"F"
+            //å»æ‰æœ€å‰é¢çš„"F"
             ShortCutSubItemList.Strings[0] := Copy(ShortCutSubItemList.Strings[0], 2, Length(ShortCutSubItemList.Strings[0]) - 1);
             if IsNumericStr(ShortCutSubItemList.Strings[0]) then
             begin
-              //Èç±È¡°99999999¡±»¹Òª³¤£¬¾ÍÎŞ·¨½âÎöÁË
+              //å¦‚æ¯”â€œ99999999â€è¿˜è¦é•¿ï¼Œå°±æ— æ³•è§£æäº†
               if Length(ShortCutSubItemList.Strings[0]) > 8 then
                 Freq := 10000
               else
@@ -2000,9 +2034,9 @@ begin
         ShortCut := Trim(ShortCutSubItemList.Strings[offset]);
         Name := Trim(ShortCutSubItemList.Strings[offset + 1]);
 
-        //°ÑÊ£ÏÂµÄ¶¼Æ´ÔÚÒ»ÆğºÃÁË
-        //×¢Òâ£¬Æ´ÔÚÒ»Æğ£¬²»Èç°´ÕÕÔ­Ñù¿½±´£¡
-        //Èçhttp://translate.google.cn/translate_t?hl=zh-CN#en|zh-CN|ÕâÑù´øÓĞ|µÄ
+        //æŠŠå‰©ä¸‹çš„éƒ½æ‹¼åœ¨ä¸€èµ·å¥½äº†
+        //æ³¨æ„ï¼Œæ‹¼åœ¨ä¸€èµ·ï¼Œä¸å¦‚æŒ‰ç…§åŸæ ·æ‹·è´ï¼
+        //å¦‚http://translate.google.cn/translate_t?hl=zh-CN#en|zh-CN|è¿™æ ·å¸¦æœ‰|çš„
 
         strTemp := str;
         for i := 0 to offset + 1 do

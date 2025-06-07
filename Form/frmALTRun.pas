@@ -2544,15 +2544,6 @@ var
   FileName: string;
 begin
   case Msg.Msg of
-//    WM_ALTRUN_ADD_SHORTCUT:
-//      begin
-//        TraceMsg('WM_ALTRUN_ADD_SHORTCUT');
-//
-//        ShortCutMan.AddFileShortCut(PChar(msg.WParam)));
-//        ShortCutMan.SaveShortCutList;
-//        ShowMessage('WM_ALTRUN_ADD_SHORTCUT');
-//      end;
-
     WM_ALTRUN_SHOW_WINDOW:
       begin
         TraceMsg('WM_ALTRUN_SHOW_WINDOW');
