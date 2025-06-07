@@ -1155,6 +1155,7 @@
         <DCCReference Include="3rdUnit\CoolTrayIcon\SimpleTimer.pas"/>
         <DCCReference Include="3rdUnit\CoolTrayIcon\TextTrayIcon.pas"/>
         <DCCReference Include="3rdUnit\HotKeyManager\HotKeyManager.pas"/>
+        <DCCReference Include="Unit\untSysRegExpr.pas"/>
         <RcCompile Include="Res\ALTRun.rc">
             <Form>Res\ALTRun.res</Form>
         </RcCompile>

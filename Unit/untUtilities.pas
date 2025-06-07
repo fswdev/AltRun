@@ -5,7 +5,7 @@ interface
 
 uses
   Windows, Forms, SysUtils, Registry, Classes, ShlObj, ActiveX, ShellAPI,
-  RegExpr, Messages, ComObj;
+  untSysRegExpr, System.RegularExpressions, Messages, ComObj;
 
 function CutLeftString(str: string; Num: Integer): string;
 
@@ -1128,29 +1128,26 @@ begin
   end;
 end;
 
+
+
 function ReplaceEnvStr(str: string): string;
 var
-  Regex: TRegExpr;
+  Match: TMatch;
+  Pattern, EnvValue: string;
+  ResultStr: string;
 begin
-  //如果是环境变量，则替换之
-  //环境变量如%windir%这种形式
-
-  Result := str;
-
-  try
-    Regex := TRegExpr.Create;
-    Regex.Expression := '%(.*?)%';
-
-    if Regex.Exec(str) then
-    begin
-      repeat
-        if GetEnvironmentVariable(Regex.Match[1]) <> '' then
-          Result := StringReplace(str, '%' + Regex.Match[1] + '%', GetEnvironmentVariable(Regex.Match[1]), [rfReplaceAll]);
-      until not Regex.ExecNext;
-    end;
-  finally
-    FreeAndNil(Regex);
+  // 环境变量如 %windir% 这种形式
+  Pattern := '%(.*?)%';
+  ResultStr := str;
+  Match := TRegEx.Match(ResultStr, Pattern);
+  while Match.Success do
+  begin
+    EnvValue := GetEnvironmentVariable(Match.Groups[1].Value);
+    if EnvValue <> '' then
+      ResultStr := StringReplace(ResultStr, '%' + Match.Groups[1].Value + '%', EnvValue, [rfReplaceAll]);
+    Match := Match.NextMatch;
   end;
+  Result := ResultStr;
 end;
 
 function IsVista: Boolean;

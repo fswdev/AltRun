@@ -25,7 +25,8 @@ uses
   RegisterTrayIcons in '3rdUnit\CoolTrayIcon\RegisterTrayIcons.pas',
   SimpleTimer in '3rdUnit\CoolTrayIcon\SimpleTimer.pas',
   TextTrayIcon in '3rdUnit\CoolTrayIcon\TextTrayIcon.pas',
-  HotKeyManager in '3rdUnit\HotKeyManager\HotKeyManager.pas';
+  HotKeyManager in '3rdUnit\HotKeyManager\HotKeyManager.pas',
+  untSysRegExpr in 'Unit\untSysRegExpr.pas';
 
 {$R *.res}
 

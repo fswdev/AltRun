@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Dialogs, SysUtils, Classes, Forms, Contnrs, ComCtrls, ShellAPI,
-  RegExpr, Controls, frmParam, untClipboard, untUtilities, untALTRunOption,
+  untSysRegExpr, Controls, frmParam, untClipboard, untUtilities, untALTRunOption,
   untLogger;
 
 const
@@ -1728,9 +1728,9 @@ begin
   m_Regex.Expression := '(%)(.*?)(%)';
 
   if m_Regex.Exec(str) then
-    if GetEnvironmentVariable(m_Regex.Match[2]) <> '' then
+    if GetEnvironmentVariable(m_Regex.MatchStr[2]) <> '' then
       //Result := m_Regex.Replace(str, GetEnvironmentVariable(m_Regex.Match[2]), True);
-      Result := StringReplace(str, '%' + m_Regex.Match[2] + '%', GetEnvironmentVariable(m_Regex.Match[2]), [rfReplaceAll]);
+      Result := StringReplace(str, '%' + m_Regex.MatchStr[2] + '%', GetEnvironmentVariable(m_Regex.MatchStr[2]), [rfReplaceAll]);
 end;
 
 function TShortCutMan.SaveFavoriteList: Boolean;
