@@ -117,6 +117,7 @@ const
   KEY_MENUSHOW = 'MenuShow';
   KEY_MENUSHORTCUT = 'MenuShortCut';
   KEY_MENUCONFIG = 'MenuConfig';
+  KEY_MENUOpenAltRunDir = 'MenuOpenAltRunDir';
   KEY_MENUABOUT = 'MenuAbout';
   KEY_MENUCLOSE = 'MenuClose';
   KEY_BTNOK = 'BtnOK';
@@ -411,6 +412,7 @@ var
   resMenuShow: string;
   resMenuShortCut: string;
   resMenuConfig: string;
+  resOpenAltRunDir:String;
   resMenuAbout: string;
   resMenuClose: string;
   resBtnOK: string;
@@ -885,6 +887,7 @@ begin
   resMenuShow := IniFile.ReadString(SECTION_COMMON, KEY_MENUSHOW, 'Show');
   resMenuShortCut := IniFile.ReadString(SECTION_COMMON, KEY_MENUSHORTCUT, 'ShortCut');
   resMenuConfig := IniFile.ReadString(SECTION_COMMON, KEY_MENUCONFIG, 'Config');
+  resOpenAltRunDir :=  IniFile.ReadString(SECTION_COMMON, KEY_MENUOpenAltRunDir, 'AltRun Dir');
   resMenuAbout := IniFile.ReadString(SECTION_COMMON, KEY_MENUABOUT, 'About');
   resMenuClose := IniFile.ReadString(SECTION_COMMON, KEY_MENUCLOSE, 'Close');
 

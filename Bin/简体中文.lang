@@ -9,6 +9,7 @@ WordAnd                   = 和
 MenuShow                  = 显示主界面(&W)
 MenuShortCut              = 快捷项管理(&S)
 MenuConfig                = 配置(&C)
+MenuOpenAltRunDir         = AltRun目录(&R)
 MenuAbout                 = 关于(&A)
 MenuClose                 = 退出(&X)
 

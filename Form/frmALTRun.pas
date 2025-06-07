@@ -61,6 +61,8 @@ type
     actDown: TAction;
     pmCommandLine: TPopupMenu;
     actCopyCommandLine: TAction;
+    OpenSelfDir: TMenuItem;
+    actOpenAltRunDir: TAction;
 
     procedure WndProc(var Msg: TMessage); override;
     procedure edtShortCutChange(Sender: TObject);
@@ -110,6 +112,7 @@ type
     procedure MiddleMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure actCopyCommandLineExecute(Sender: TObject);
     procedure hkmHotkey3HotKeyPressed(HotKey: Cardinal; Index: Word);
+    procedure actOpenAltRunDirExecute(Sender: TObject);
   private
     ntfMain: TCoolTrayIcon;
     hkmHotkey1: THotKeyManager;
@@ -707,6 +710,11 @@ begin
   evtMainMinimize(Sender);
 
   edtShortCut.Text := '';
+end;
+
+procedure TALTRunForm.actOpenAltRunDirExecute(Sender: TObject);
+begin
+  ShellExecute(GetDesktopWindow, nil, pchar(extractFilePath(ParamStr(0))), nil, nil, SW_SHOW);
 end;
 
 procedure TALTRunForm.actOpenDirExecute(Sender: TObject);
@@ -1885,6 +1893,7 @@ begin
   actShow.Caption := resMenuShow;
   actShortCut.Caption := resMenuShortCut;
   actConfig.Caption := resMenuConfig;
+  actOpenAltRunDir.Caption := resOpenAltRunDir;
   actAbout.Caption := resMenuAbout;
   actClose.Caption := resMenuClose;
 
