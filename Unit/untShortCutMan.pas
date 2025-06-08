@@ -223,6 +223,7 @@ begin
     ShowCmd := SW_HIDE
   end;
 
+
   //处理相对路径 ".\", "..\"，如果有，就将本程序的路径代入
   if (Pos('.\', cmdobj.Command) > 0) or (Pos('..\', cmdobj.Command) > 0) then
     cmdobj.WorkingDir := ExtractFileDir(Application.ExeName);
@@ -230,8 +231,11 @@ begin
   case cmdobj.ParamType of
     ptNone:
       begin
-        PCommandStr := PChar(cmdobj.Command);
-        PParamStr := nil;
+//        PCommandStr := PChar(cmdobj.Command);
+//        PParamStr := nil;
+        split_cmd_param(cmdobj.Command, s_cmd, s_param);
+        PCommandStr := PChar(s_cmd);
+        PParamStr := PChar(s_param);
         PWorkingDir := PChar(cmdobj.WorkingDir);
       end;
 
@@ -1491,17 +1495,17 @@ begin
           WriteLn(MyFile, ShortCutItemToString(scBlank));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'Windows', resDefault_ShortCut_Name_16, '%WINDIR%'));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'System32', resDefault_ShortCut_Name_17, '%WINDIR%\System32'));
-          WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'ProgramFiles', resDefault_ShortCut_Name_18, '%PROGRAMFILES%'));
+          WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'ProgramFiles', resDefault_ShortCut_Name_18, '"%PROGRAMFILES%"'));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'Recent', resDefault_ShortCut_Name_19, '%USERPROFILE%\Recent', 10));
           WriteLn(MyFile, ShortCutItemToString(scBlank));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptURLQuery, 'b', resDefault_ShortCut_Name_20, 'http://www.baidu.com/s?wd=', 12));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptUTF8Query, 'g', resDefault_ShortCut_Name_21, 'http://www.google.com/search?q=', 14));
-          WriteLn(MyFile, ShortCutItemToString(scItem, ptURLQuery, 's', resDefault_ShortCut_Name_22, 'http://mp3.sogou.com/music.so?query='));
+//          WriteLn(MyFile, ShortCutItemToString(scItem, ptURLQuery, 's', resDefault_ShortCut_Name_22, 'http://mp3.sogou.com/music.so?query='));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptURLQuery, 'zd', resDefault_ShortCut_Name_23, 'http://zhidao.baidu.com/q?ct=17&pn=0&tn=ikaslist&rn=10&word=', 9));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptUTF8Query, 'v', resDefault_ShortCut_Name_24, 'http://www.verycd.com/search/folders?kw='));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptUTF8Query, 'y', resDefault_ShortCut_Name_25, 'http://search.yahoo.com/search?p='));
           WriteLn(MyFile, ShortCutItemToString(scBlank));
-          WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'Upgrade', resDefault_ShortCut_Name_26, UPGRADE_URL, 15));
+//          WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'Upgrade', resDefault_ShortCut_Name_26, UPGRADE_URL, 15));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'Config', resDefault_ShortCut_Name_27, '.\ALTRun.ini'));
           WriteLn(MyFile, ShortCutItemToString(scBlank));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'AddRemoveProgram', resDefault_ShortCut_Name_28, 'appwiz.cpl', 0));
@@ -1871,7 +1875,7 @@ begin
   Result := False;
 
   backFileExt := ExtractFileExt(m_ShortCutFileName);
-  backFileName := replacestr(extractFileName(m_ShortCutFileName), backFileExt, '');
+  backFileName := StringReplace(extractFileName(m_ShortCutFileName), backFileExt, '', [rfReplaceAll]);
 
   backPath := extractfilepath(m_ShortCutFileName) + 'cfgbak\';
   if not DirectoryExists(backPath) then

@@ -32,8 +32,8 @@ object ShortCutManForm: TShortCutManForm
     ShowHint = True
     TabOrder = 4
     TabStop = False
-    ExplicitLeft = 547
-    ExplicitTop = 405
+    ExplicitLeft = 680
+    ExplicitTop = 463
   end
   object btnOK: TBitBtn
     Left = 601
@@ -67,8 +67,8 @@ object ShortCutManForm: TShortCutManForm
     ShowHint = True
     TabOrder = 1
     TabStop = False
-    ExplicitLeft = 466
-    ExplicitTop = 405
+    ExplicitLeft = 599
+    ExplicitTop = 463
   end
   object lvShortCut: TListView
     Left = 0
@@ -131,9 +131,10 @@ object ShortCutManForm: TShortCutManForm
     Caption = 'tlbShortCutMan'
     Images = ilShortCutMan
     List = True
+    ShowCaptions = True
     AllowTextButtons = True
     TabOrder = 2
-    ExplicitWidth = 624
+    Transparent = False
     object btnAdd: TToolButton
       Left = 0
       Top = 0
@@ -202,7 +203,6 @@ object ShortCutManForm: TShortCutManForm
     object btnCancel: TToolButton
       Left = 519
       Top = 0
-      Hint = 'Not save and close'
       Action = actCancel
       ParentShowHint = False
       ShowHint = True
@@ -216,8 +216,8 @@ object ShortCutManForm: TShortCutManForm
     Height = 19
     Panels = <>
     SimplePanel = True
-    ExplicitTop = 419
-    ExplicitWidth = 630
+    ExplicitTop = 477
+    ExplicitWidth = 763
   end
   object actlstShortCut: TActionList
     Images = ilShortCutMan

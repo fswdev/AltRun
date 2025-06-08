@@ -98,7 +98,6 @@ begin
 
   //----- 主程序开始
   Application.Initialize;
-
   IsRunFirstTime := not FileExists(ExtractFilePath(Application.ExeName) + TITLE + '.ini');
   LoadSettings;
   //SaveSettings;

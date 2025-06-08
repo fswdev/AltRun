@@ -1211,7 +1211,7 @@ end;
 
 function Utf8Encode(const WS: WideString): UTF8String;
 begin
-  Result := utf8Encode(WS);
+  Result := system.utf8Encode(WS);
 end;
 
 function GetUTF8QueryString(Keyword: string): string;

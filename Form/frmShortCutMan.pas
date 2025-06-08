@@ -1,4 +1,4 @@
-unit frmShortCutMan;
+ï»¿unit frmShortCutMan;
 
 interface
 
@@ -117,7 +117,7 @@ begin
         ListItem.ImageIndex := Ord(siInfo);
       end;
 
-      //ÈôÓĞÖØ¸´£¬Ôò±¨´í
+      //ï¿½ï¿½ï¿½ï¿½ï¿½Ø¸ï¿½ï¿½ï¿½ï¿½ò±¨´ï¿½
       if ExistListItem(ListItem) then
       begin
         Application.MessageBox('This ShortCut has already existed!', PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
@@ -126,18 +126,18 @@ begin
         Exit;
       end;
 
-      //Èç¹ûÃ»ÓĞÑ¡ÖĞ£¬¾Í¼Óµ½×îºóÒ»ĞĞ£¬·ñÔò¾Í²åÈëÑ¡ÖĞµÄÎ»ÖÃ
+      //ï¿½ï¿½ï¿½Ã»ï¿½ï¿½Ñ¡ï¿½Ğ£ï¿½ï¿½Í¼Óµï¿½ï¿½ï¿½ï¿½Ò»ï¿½Ğ£ï¿½ï¿½ï¿½ï¿½ï¿½Í²ï¿½ï¿½ï¿½Ñ¡ï¿½Ğµï¿½Î»ï¿½ï¿½
       if lvShortCut.ItemIndex < 0 then
         ListItem := lvShortCut.Items.AddItem(ListItem)
       else
         ListItem := lvShortCut.Items.AddItem(ListItem, lvShortCut.ItemIndex);
 
-      //Ê¹Æä¿É¼û
+      //Ê¹ï¿½ï¿½É¼ï¿½
       lvShortCut.SetFocus;
       ListItem.Selected := True;
       ListItem.MakeVisible(True);
 
-      //Èç¹ûCaptionÖ»ÊÇÒ»¸ö×ÖÄ¸£¬Èç"a"£¬Ôòµ±Ê±²»ÏÔÊ¾£¬Ö»ºÃ´¦ÀíÒ»ÏÂ²ÅÄÜË¢ĞÂÏÔÊ¾
+      //ï¿½ï¿½ï¿½CaptionÖ»ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½Ä¸ï¿½ï¿½ï¿½ï¿½"a"ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½Ö»ï¿½Ã´ï¿½ï¿½ï¿½Ò»ï¿½Â²ï¿½ï¿½ï¿½Ë¢ï¿½ï¿½ï¿½ï¿½Ê¾
       ListItem.Caption := lbledtShortCut.Text + ' ';
       ListItem.Caption := lbledtShortCut.Text;
     end;
@@ -220,7 +220,7 @@ begin
           itm.ImageIndex := Ord(siInfo);
         end;
 
-        //ÈôÓĞÖØ¸´£¬Ôò±¨´í
+        //ï¿½ï¿½ï¿½ï¿½ï¿½Ø¸ï¿½ï¿½ï¿½ï¿½ò±¨´ï¿½
         if ExistListItem(itm) then
         begin
           Application.MessageBox('This ShortCut has already existed!', PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
@@ -235,7 +235,7 @@ begin
         lvShortCut.Selected.SubItems[3] := itm.SubItems[3];
         lvShortCut.Selected.ImageIndex := itm.ImageIndex;
 
-        //Ê¹Æä¿É¼û
+        //Ê¹ï¿½ï¿½É¼ï¿½
         lvShortCut.Selected.MakeVisible(True);
       finally
         FreeAndNil(itm);
@@ -259,7 +259,7 @@ var
   IsAbsoluteToRelative: Boolean;
 begin
   IsAbsoluteToRelative := False;
-  //¿´¿´ÊÇ·ñÕæµÄĞèÒª
+  //ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òª
   case Application.MessageBox(PChar(Format(resPathConvertConfirm, [#13#10, #13#10])), PChar(resInfo), MB_YESNOCANCEL + MB_ICONQUESTION + MB_TOPMOST) of
     IDCANCEL:
       begin
@@ -267,12 +267,12 @@ begin
       end;
     IDYES:
       begin
-        //¾ø¶ÔÂ·¾¶ -> Ïà¶ÔÂ·¾¶
+        //ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½ -> ï¿½ï¿½ï¿½Â·ï¿½ï¿½
         IsAbsoluteToRelative := True;
       end;
     IDNO:
       begin
-        //Ïà¶ÔÂ·¾¶ -> ¾ø¶ÔÂ·¾¶
+        //ï¿½ï¿½ï¿½Â·ï¿½ï¿½ -> ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½
         IsAbsoluteToRelative := False;
       end;
   end;
@@ -282,7 +282,7 @@ begin
   Count := 0;
   for i := 0 to lvShortCut.Items.Count - 1 do
   begin
-    //½âÎö³ö¿ì½İÏî
+    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     CommandLine := lvShortCut.Items.Item[i].SubItems[3];
 
     if IsAbsoluteToRelative and (Pos(LowerCase(ExtractFileDir(Application.ExeName)), LowerCase(CommandLine)) > 1) then
@@ -312,7 +312,7 @@ begin
   if lvShortCut.Items.Count = 0 then
     Exit;
 
-  //¿´¿´ÊÇ·ñÕæµÄĞèÒª
+  //ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òª
   if Application.MessageBox(PChar(resValidateConfirm), PChar(resInfo), MB_YESNO + MB_ICONQUESTION + MB_TOPMOST) = IDNO then
   begin
     Exit;
@@ -325,7 +325,7 @@ begin
 
     for i := 0 to lvShortCut.Items.Count - 1 do
     begin
-      //½âÎö³ö¿ì½İÏî
+      //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
       CommandLine := lvShortCut.Items.Item[i].SubItems[2];
 
       if not IsValidCommandLine(CommandLine) then
@@ -340,14 +340,14 @@ begin
         lvwitm.ImageIndex := Ord(siItem);
         lvwitm.Checked := True;
 
-        //±£´æIndex
+        //ï¿½ï¿½ï¿½ï¿½Index
         lvwitm.Data := Pointer(i);
       end;
     end;
 
     Screen.Cursor := crDefault;
 
-    //ÈôÃ»ÓĞÕÒµ½ÓĞÎÊÌâµÄÏîÄ¿£¬ÔòÍË³ö
+    //ï¿½ï¿½Ã»ï¿½ï¿½ï¿½Òµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½Ë³ï¿½
     if InvalidForm.lvShortCut.Items.Count = 0 then
     begin
       Application.MessageBox(PChar(resNoInvalidShortCut), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
@@ -359,7 +359,7 @@ begin
     if InvalidForm.ModalResult = mrCancel then
       Exit;
 
-    //½«Ñ¡ÖĞµÄ¶¼É¾³ı
+    //ï¿½ï¿½Ñ¡ï¿½ĞµÄ¶ï¿½É¾ï¿½ï¿½
     for i := InvalidForm.lvShortCut.Items.Count - 1 downto 0 do
     begin
       if not InvalidForm.lvShortCut.Items[i].Checked then
@@ -381,7 +381,7 @@ var
 begin
   Result := True;
 
-  //È¥³ıÇ°µ¼µÄ@/@+/@-
+  //å»é™¤å‰å¯¼çš„@/@+/@-
   if Pos(SHOW_MAX_FLAG, strCommandLine) = 1 then
     strCommandLine := CutLeftString(strCommandLine, Length(SHOW_MAX_FLAG))
   else if Pos(SHOW_MIN_FLAG, strCommandLine) = 1 then
@@ -389,34 +389,34 @@ begin
   else if Pos(SHOW_HIDE_FLAG, strCommandLine) = 1 then
     strCommandLine := CutLeftString(strCommandLine, Length(SHOW_HIDE_FLAG));
 
-  //³öÏÖ'\\'ÈÏÎªÊÇÍøÂçÏà¹Ø£¬±ğ×ö¼ì²é
+  //å‡ºç°'\\'è®¤ä¸ºæ˜¯ç½‘ç»œç›¸å…³ï¼Œåˆ«åšæ£€æŸ¥
   if Pos('\\', strCommandLine) > 0 then
     Exit;
 
-  //³öÏÖ'\'²ÅÈÏÎªÊÇÎÄ¼ş»òÎÄ¼ş¼Ğ£¬²ÅÈ¥×ö¼ì²é
+  //å‡ºç°'\'æ‰è®¤ä¸ºæ˜¯æ–‡ä»¶æˆ–æ–‡ä»¶å¤¹ï¼Œæ‰å»åšæ£€æŸ¥
   if Pos('\', strCommandLine) = 0 then
     Exit;
 
-  //Ìæ»»»·¾³±äÁ¿
+  //æ›¿æ¢ç¯å¢ƒå˜é‡
   strCommandLine := ShortCutMan.ReplaceEnvStr(strCommandLine);
 
-  //Èç¹û±»""°üÎ§£¬¾ÍÈÏÎªÊÇÎÄ¼ş£¬»òÕßÎÄ¼ş¼Ğ
+  //å¦‚æœè¢«""åŒ…å›´ï¼Œå°±è®¤ä¸ºæ˜¯æ–‡ä»¶ï¼Œæˆ–è€…æ–‡ä»¶å¤¹
   if strCommandLine <> RemoveQuotationMark(strCommandLine, '"') then
     strCommandLine := RemoveQuotationMark(strCommandLine, '"');
 
-  //Èç¹ûÊÇ.\¿ªÍ·£¬Ìæ»»³öµ±Ç°Â·¾¶
+  //å¦‚æœæ˜¯.\å¼€å¤´ï¼Œæ›¿æ¢å‡ºå½“å‰è·¯å¾„
   if Pos('.\', strCommandLine) = 1 then
     strCommandLine := ExtractFilePath(Application.ExeName) + Copy(strCommandLine, 3, Length(strCommandLine) - 2);
 
-  //ÓĞÕâ¸öÎÄ¼ş£¬µ±È»Ã»ÎÊÌâ
+  //æœ‰è¿™ä¸ªæ–‡ä»¶ï¼Œå½“ç„¶æ²¡é—®é¢˜
   if FileExists(strCommandLine) then
     Exit;
 
-  //ÓĞÕâ¸öÎÄ¼ş¼Ğ£¬µ±È»Ã»ÎÊÌâ
+  //æœ‰è¿™ä¸ªæ–‡ä»¶å¤¹ï¼Œå½“ç„¶æ²¡é—®é¢˜
   if DirectoryExists(strCommandLine) then
     Exit;
 
-  //Èç¹û±»""°üÎ§£¬¾ÍÈÏÎªÊÇÎÄ¼ş£¬»òÕßÎÄ¼ş¼Ğ£¬ÒªÃ´ÓĞËü£¬ÒªÃ´Ã»ÓĞ
+  //å¦‚æœè¢«""åŒ…å›´ï¼Œå°±è®¤ä¸ºæ˜¯æ–‡ä»¶ï¼Œæˆ–è€…æ–‡ä»¶å¤¹ï¼Œè¦ä¹ˆæœ‰å®ƒï¼Œè¦ä¹ˆæ²¡æœ‰
   if strCommandLine <> RemoveQuotationMark(strCommandLine, '"') then
   begin
     strCommandLine := RemoveQuotationMark(strCommandLine, '"');
@@ -430,7 +430,7 @@ begin
     Exit;
   end;
 
-  // Ê£ÏÂµÄ¿ÉÄÜÊÇ´ø²ÎÊıµÄ£¬ÕÒ×îºóÒ»¸ö\
+  // å‰©ä¸‹çš„å¯èƒ½æ˜¯å¸¦å‚æ•°çš„ï¼Œæ‰¾æœ€åä¸€ä¸ª\
   SlashPos := 0;
   for i := Length(strCommandLine) downto 1 do
     if strCommandLine[i] = '\' then
@@ -441,24 +441,24 @@ begin
 
   if SlashPos > 0 then
   begin
-    // Èç¹ûµÚÒ»¸ö×Ö·ûÊÇ"
+    // å¦‚æœç¬¬ä¸€ä¸ªå­—ç¬¦æ˜¯"
     if strCommandLine[1] = '"' then
       Result := DirectoryExists(Copy(strCommandLine, 2, SlashPos - 1))
     else
       Result := DirectoryExists(Copy(strCommandLine, 1, SlashPos));
   end;
 
-  // »¹²»ĞĞ¾Í´Ó¿ªÍ·½øĞĞÑ°ÕÒ
+  // è¿˜ä¸è¡Œå°±ä»å¼€å¤´è¿›è¡Œå¯»æ‰¾
   if not Result then
   begin
     // "C:\Program Files\ChromePlus\chrome.exe" ".\Shit.txt"
     // C:\Program Files\IDM Computer Solutions\UltraEdit-32\uedit32.exe .\HandleList.txt
-    // C:\Program Files\IDM Computer Solutions\UltraEdit-32\uedit32.exe C:\Documents and Settings\to qqq\ÎÒĞèÒª¸ÉµÄÊÂ¶ù.txt
+    // C:\Program Files\IDM Computer Solutions\UltraEdit-32\uedit32.exe C:\Documents and Settings\to qqq\æˆ‘éœ€è¦å¹²çš„äº‹å„¿.txt
 
-    // Èç¹ûµÚÒ»¸ö×Ö·ûÊÇ"
+    // å¦‚æœç¬¬ä¸€ä¸ªå­—ç¬¦æ˜¯"
     if strCommandLine[1] = '"' then
     begin
-      //ÕÒÏÂÒ»¸ö"
+      //æ‰¾ä¸‹ä¸€ä¸ª"
       strTemp := Copy(strCommandLine, 2, Length(strCommandLine) - 1);
       FlagPos := Pos('"', strTemp);
       if FlagPos > 0 then
@@ -469,7 +469,7 @@ begin
     else
     begin
       // C:\Program Files\IDM Computer Solutions\UltraEdit-32\uedit32.exe .\HandleList.txt
-      // ÕâÖÖÂ·¾¶ºÜÄÑÊ¶±ğ£¬Èç¹ûÓĞ¸öexeÊÇ C:\Program Files\IDM.exe ÄØ£¿
+      // è¿™ç§è·¯å¾„å¾ˆéš¾è¯†åˆ«ï¼Œå¦‚æœæœ‰ä¸ªexeæ˜¯ C:\Program Files\IDM.exe å‘¢ï¼Ÿ
 
       Result := False;
     end;
@@ -481,12 +481,12 @@ begin
   //"C:\Program Files\D-Tools\daemon.exe" -lang 1033
   if Pos('"', strCommandLine) = 1 then Exit;
 
-  //´ø²ÎÊıµÄ£¬¶¼²»¼ì²é
-  //D:\Philips\Lenovo\Lenovo Status.xls ÕâÖÖ´øÓĞ¿Õ¸ñµÄ²Ğ·ÏÂ·¾¶£¬»áÔÚ´ËÌÓµô
+  //å¸¦å‚æ•°çš„ï¼Œéƒ½ä¸æ£€æŸ¥
+  //D:\Philips\Lenovo\Lenovo Status.xls è¿™ç§å¸¦æœ‰ç©ºæ ¼çš„æ®‹åºŸè·¯å¾„ï¼Œä¼šåœ¨æ­¤é€ƒæ‰
   if Pos(' ', strCommandLine) > 1 then Exit;
 
 
-  //TODO: ÆäËûµÄ£¬¶¼ÈÏÎª±È½Ï¿ÉÒÉ£¬ÊÇ·ñÔËĞĞÒ»ÏÂ¿´¿´£¿
+  //TODO: å…¶ä»–çš„ï¼Œéƒ½è®¤ä¸ºæ¯”è¾ƒå¯ç–‘ï¼Œæ˜¯å¦è¿è¡Œä¸€ä¸‹çœ‹çœ‹ï¼Ÿ
   Result := False;
   }
 end;
@@ -500,7 +500,7 @@ begin
   if lvShortCut.Items.Count = 0 then
     Exit;
 
-  //ÈôÊÇ¿ÕĞĞ
+  //ï¿½ï¿½ï¿½Ç¿ï¿½ï¿½ï¿½
   if itm.Caption = '' then
     Exit;
 
@@ -514,7 +514,15 @@ begin
 end;
 
 procedure TShortCutManForm.FormCreate(Sender: TObject);
+ 
 begin
+ tlbShortCutMan.DoubleBuffered := True;
+  tlbShortCutMan.ParentDoubleBuffered := True;
+  tlbShortCutMan.Transparent := False;
+  tlbShortCutMan.Flat := True;
+  tlbShortCutMan.ShowCaptions := True;
+  tlbShortCutMan.List := False; // å…³é—­Listæ¨¡å¼ï¼Œé¿å…å…¼å®¹æ€§é—®é¢˜
+ 
   // Disable Close Button
   EnableMenuItem(GetSystemMenu(Self.Handle, False), SC_CLOSE, MF_GRAYED);
 
@@ -574,7 +582,7 @@ procedure TShortCutManForm.FormShow(Sender: TObject);
 var
   i: Cardinal;
 begin
-  //ÉèÖÃ´°ÌåÎ»ÖÃ
+  //ï¿½ï¿½ï¿½Ã´ï¿½ï¿½ï¿½Î»ï¿½ï¿½
   LoadSettings;
 
   if (ManWinTop = 0) and (ManWinLeft = 0) then
@@ -582,7 +590,7 @@ begin
     try
       Self.Position := poScreenCenter;
     except
-      //²»ÓÃExcept£¬¾Í»á±Ä³öÀ´¡°Cannot change Visible in OnShow or OnHide¡±µÄ±¨´í
+      //ï¿½ï¿½ï¿½ï¿½Exceptï¿½ï¿½ï¿½Í»ï¿½Ä³ï¿½ï¿½ï¿½ï¿½ï¿½Cannot change Visible in OnShow or OnHideï¿½ï¿½ï¿½Ä±ï¿½ï¿½ï¿½
     end;
   end
   else
@@ -612,7 +620,7 @@ var
   tempItem1, tempItem2: TListItem;
 begin
   begin
-    //Èç¹ûÍÏµ½²»ÊÇÁĞ±íÏîµÄµØ·½£¬¾ÍÍË³ö
+    //ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ğ±ï¿½ï¿½ï¿½ÄµØ·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë³ï¿½
     if lvShortCut.GetItemAt(X, Y) = nil then
       Exit;
 
@@ -661,7 +669,7 @@ end;
 
 procedure TShortCutManForm.lvShortCutKeyPress(Sender: TObject; var Key: Char);
 begin
-  //»Ø³µ
+  //ï¿½Ø³ï¿½
   //if Key = #13 then actEditExecute(Sender);
 end;
 
@@ -727,7 +735,7 @@ begin
         ListItem.ImageIndex := Ord(siInfo);
       end;
 
-      //ÈôÓĞÖØ¸´£¬Ôò±¨´í
+      //ï¿½ï¿½ï¿½ï¿½ï¿½Ø¸ï¿½ï¿½ï¿½ï¿½ò±¨´ï¿½
       if ExistListItem(ListItem) then
       begin
         Application.MessageBox('This ShortCut has already existed!', PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
@@ -736,18 +744,18 @@ begin
         Exit;
       end;
 
-      //Èç¹ûÃ»ÓĞÑ¡ÖĞ£¬¾Í¼Óµ½×îºóÒ»ĞĞ£¬·ñÔò¾Í²åÈëÑ¡ÖĞµÄÎ»ÖÃ
+      //ï¿½ï¿½ï¿½Ã»ï¿½ï¿½Ñ¡ï¿½Ğ£ï¿½ï¿½Í¼Óµï¿½ï¿½ï¿½ï¿½Ò»ï¿½Ğ£ï¿½ï¿½ï¿½ï¿½ï¿½Í²ï¿½ï¿½ï¿½Ñ¡ï¿½Ğµï¿½Î»ï¿½ï¿½
       if lvShortCut.ItemIndex < 0 then
         ListItem := lvShortCut.Items.AddItem(ListItem)
       else
         ListItem := lvShortCut.Items.AddItem(ListItem, lvShortCut.ItemIndex);
 
-      //Ê¹Æä¿É¼û
+      //Ê¹ï¿½ï¿½É¼ï¿½
       lvShortCut.SetFocus;
       ListItem.Selected := True;
       ListItem.MakeVisible(True);
 
-      //Èç¹ûCaptionÖ»ÊÇÒ»¸ö×ÖÄ¸£¬Èç"a"£¬Ôòµ±Ê±²»ÏÔÊ¾£¬Ö»ºÃ´¦ÀíÒ»ÏÂ²ÅÄÜË¢ĞÂÏÔÊ¾
+      //ï¿½ï¿½ï¿½CaptionÖ»ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½Ä¸ï¿½ï¿½ï¿½ï¿½"a"ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½Ö»ï¿½Ã´ï¿½ï¿½ï¿½Ò»ï¿½Â²ï¿½ï¿½ï¿½Ë¢ï¿½ï¿½ï¿½ï¿½Ê¾
       ListItem.Caption := lbledtShortCut.Text + ' ';
       ListItem.Caption := lbledtShortCut.Text;
     end;

@@ -7,11 +7,6 @@ uses
   untUtilities, untLogger;
 
 const
-//  DEBUG_MODE = false;
-//  DEBUG_SORT = false;
-
-  //TITLE = 'HotRun';
-  //VERSION = 'V0.96';
   TITLE = 'ALTRun';
   ALTRUN_VERSION = 'V2.00.7';
   //第1贴 http://journeyboy.blog.sohu.com/79386735.html 已经超过40K字数;

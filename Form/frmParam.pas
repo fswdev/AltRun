@@ -176,6 +176,7 @@ begin
 
   m_ParamHistoryFileName := ExtractFilePath(Application.ExeName) + PARAM_HISTORY_FILE;
   LoadParamHistory;
+  self.ClientHeight:=cbbparam.Height;
 end;
 
 procedure TParamForm.FormDestroy(Sender: TObject);

@@ -3,7 +3,7 @@ object ParamForm: TParamForm
   Top = 0
   BorderStyle = bsDialog
   Caption = 'ng'
-  ClientHeight = 27
+  ClientHeight = 22
   ClientWidth = 563
   Color = clBtnFace
   Font.Charset = ANSI_CHARSET
@@ -26,7 +26,7 @@ object ParamForm: TParamForm
     Left = 0
     Top = 0
     Width = 513
-    Height = 27
+    Height = 22
     Align = alClient
     AutoCompleteOptions = [acoAutoSuggest, acoAutoAppend]
     ItemsEx = <>
@@ -37,13 +37,12 @@ object ParamForm: TParamForm
     OnKeyPress = cbbParamKeyPress
     OnKeyUp = cbbParamKeyUp
     ExplicitWidth = 511
-    ExplicitHeight = 22
   end
   object btnOK: TRzButton
     Left = 513
     Top = 0
     Width = 50
-    Height = 27
+    Height = 22
     Default = True
     ModalResult = 1
     Align = alRight
@@ -52,13 +51,12 @@ object ParamForm: TParamForm
     TabOrder = 1
     OnClick = btnOKClick
     ExplicitLeft = 511
-    ExplicitHeight = 19
+    ExplicitHeight = 14
   end
   object tmrHide: TTimer
     Enabled = False
     Interval = 10000
     OnTimer = tmrHideTimer
-    Left = 72
-    Top = 8
+    Left = 80
   end
 end

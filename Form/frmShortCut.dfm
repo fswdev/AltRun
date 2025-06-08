@@ -48,7 +48,7 @@ object ShortCutForm: TShortCutForm
     TabOrder = 2
     OnClick = btnOKClick
     ExplicitLeft = 328
-    ExplicitTop = 216
+    ExplicitTop = 261
   end
   object btnCancel: TBitBtn
     Left = 411
@@ -60,7 +60,7 @@ object ShortCutForm: TShortCutForm
     NumGlyphs = 2
     TabOrder = 3
     ExplicitLeft = 409
-    ExplicitTop = 216
+    ExplicitTop = 261
   end
   object grpShortCut: TGroupBox
     Left = 8
@@ -70,6 +70,7 @@ object ShortCutForm: TShortCutForm
     Anchors = [akLeft, akTop, akRight]
     Caption = 'ShortCut'
     TabOrder = 0
+    ExplicitWidth = 476
     DesignSize = (
       478
       137)
@@ -85,6 +86,7 @@ object ShortCutForm: TShortCutForm
       ShowHint = True
       TabOrder = 3
       OnClick = btnFileClick
+      ExplicitLeft = 360
     end
     object lbledtCommandLine: TLabeledEdit
       Left = 98
@@ -106,6 +108,7 @@ object ShortCutForm: TShortCutForm
       ShowHint = True
       TabOrder = 2
       Text = ''
+      ExplicitWidth = 256
     end
     object lbledtName: TLabeledEdit
       Left = 98
@@ -121,6 +124,7 @@ object ShortCutForm: TShortCutForm
       ParentCtl3D = False
       TabOrder = 1
       Text = ''
+      ExplicitWidth = 370
     end
     object lbledtShortCut: TLabeledEdit
       Left = 98
@@ -137,6 +141,7 @@ object ShortCutForm: TShortCutForm
       ParentCtl3D = False
       TabOrder = 0
       Text = ''
+      ExplicitWidth = 370
     end
     object btnDir: TButton
       Left = 418
@@ -150,11 +155,12 @@ object ShortCutForm: TShortCutForm
       ShowHint = True
       TabOrder = 4
       OnClick = btnDirClick
+      ExplicitLeft = 416
     end
     object cb_RunAsAdmin: TCheckBox
       Left = 98
       Top = 103
-      Width = 97
+      Width = 127
       Height = 17
       Caption = 'Run as admin'
       TabOrder = 5
@@ -176,6 +182,7 @@ object ShortCutForm: TShortCutForm
       'Param with UTF-8 encoding (e.g. Yahoo/MSN search query)')
     ParentCtl3D = False
     TabOrder = 1
+    ExplicitWidth = 476
   end
   object btnHelp: TBitBtn
     Left = 249
@@ -189,7 +196,7 @@ object ShortCutForm: TShortCutForm
     Visible = False
     OnClick = btnHelpClick
     ExplicitLeft = 247
-    ExplicitTop = 215
+    ExplicitTop = 260
   end
   object btnTest: TBitBtn
     Left = 8
@@ -218,7 +225,7 @@ object ShortCutForm: TShortCutForm
     NumGlyphs = 2
     TabOrder = 5
     OnClick = btnTestClick
-    ExplicitTop = 216
+    ExplicitTop = 261
   end
   object dlgOpenFile: TOpenDialog
     Left = 280
