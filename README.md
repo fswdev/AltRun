@@ -14,4 +14,4 @@ It runs under Windows system.
 Please add Dcu folder in root folder for compile.
 
 
-20250606:³¢ÊÔÊ¹ÓÃD12ĞøĞ´ ALTRUN
+20250606:å°è¯•ä½¿ç”¨D12ç»­å†™ ALTRUN

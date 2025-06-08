@@ -3420,9 +3420,9 @@ object ALTRunForm: TALTRunForm
   end
   object edtShortCut: TEdit
     Left = 8
-    Top = 30
+    Top = 32
     Width = 587
-    Height = 22
+    Height = 25
     Hint = 'Type shortcut here, then press ENTER'
     Anchors = [akLeft, akTop, akRight]
     BorderStyle = bsNone
@@ -3430,7 +3430,7 @@ object ALTRunForm: TALTRunForm
     Ctl3D = False
     Font.Charset = ANSI_CHARSET
     Font.Color = clRed
-    Font.Height = -16
+    Font.Height = -18
     Font.Name = #23435#20307
     Font.Style = []
     ImeMode = imClose
