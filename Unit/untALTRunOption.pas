@@ -387,7 +387,7 @@ var
   Lang: string;
   WinTop, WinLeft: Integer;
   ManWinTop, ManWinLeft, ManWinWidth, ManWinHeight: Integer;
-  ManColWidth: array[0..3] of Integer;
+  ManColWidth: array[0..4] of Integer;
   ShortCutRunCount: Integer;
   HandleID: Cardinal;
   ModifyTime: string;
@@ -743,7 +743,7 @@ begin
   ManWinWidth := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANWINWIDTH, 450);
   ManWinHeight := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANWINHEIGHT, 240);
 
-  for i := 0 to 3 do
+  for i := 0 to 4 do
     ManColWidth[i] := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANCOLWIDTH + IntToStr(i), 100);
 
   //É¾³ýÀÏµÄÅäÖÃ×Ö¶Î
@@ -834,7 +834,7 @@ begin
   IniFile.WriteInteger(SECTION_WINDOW, KEY_MANWINWIDTH, ManWinWidth);
   IniFile.WriteInteger(SECTION_WINDOW, KEY_MANWINHEIGHT, ManWinHeight);
 
-  for i := 0 to 3 do
+  for i := 0 to 4 do
     IniFile.WriteInteger(SECTION_WINDOW, KEY_MANCOLWIDTH + IntToStr(i), ManColWidth[i]);
 
   IniFile.WriteString(SECTION_GUI, KEY_BGFILENAME, BGFileName);

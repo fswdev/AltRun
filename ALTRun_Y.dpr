@@ -1,5 +1,8 @@
 program ALTRun_Y;
 
+{$ifdef DEBUG}
+{$APPTYPE CONSOLE}
+{$endif}
 uses
   Forms,
   SysUtils,
@@ -56,7 +59,9 @@ end;
 begin
 
   //----- Trace
-    InitLogger(true,true, False);
+  {$ifdef DEBUG_MODE}
+  InitLogger(true, true, False);
+  {$endif}
 
    //若有参数，则判断之
   if ParamStr(1) <> '' then

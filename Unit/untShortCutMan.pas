@@ -399,19 +399,18 @@ begin
     ret := ShellExecute(GetDesktopWindow, 'runas', PCommandStr, PParamStr, PWorkingDir, ShowCmd)
   else
     ret := ShellExecute(GetDesktopWindow, nil, PCommandStr, PParamStr, PWorkingDir, ShowCmd);
-  var ss := format('ShellExecute(%s,  %s,  %s)', [StrPas(PCommandStr), StrPas(PParamStr), StrPas(PWorkingDir)]);
-//  ShowMessage(ss);
+  var err := format('ShellExecute(%s,  %s,  %s) err:%s', [StrPas(PCommandStr), StrPas(PParamStr), StrPas(PWorkingDir), SysErrorMessage(GetLastError())]);
   if ret <= 32 then
   begin
     case ret of
       ERROR_FILE_NOT_FOUND:
-        ShowMessage('文件未找到！' + ss);
+        ShowMessage('文件未找到！' + err);
       ERROR_PATH_NOT_FOUND:
-        ShowMessage('路径未找到！' + ss);
+        ShowMessage('路径未找到！' + err);
       ERROR_ACCESS_DENIED:
-        ShowMessage('权限被拒绝，可能用户取消了 UAC 提示！');
+        ShowMessage('权限被拒绝，可能用户取消了 UAC 提示！' + err);
     else
-      ShowMessage('启动失败，错误代码: ' + IntToStr(ret));
+      ShowMessage('启动失败，错误代码: ' + IntToStr(ret) + err);
     end;
   end;
 
@@ -1400,7 +1399,8 @@ begin
     StringToParamType(lvw.Items.Item[i].SubItems[1], Item.ParamType);
     Item.ShortCut := lvw.Items.Item[i].Caption;
     Item.Name := lvw.Items.Item[i].SubItems[0];
-    Item.CommandLine := lvw.Items.Item[i].SubItems[2];
+    Item.RunAsAdmin := ShortCutMan.StringToRunAs(lvw.Items.Item[i].SubItems[2]);
+    Item.CommandLine := lvw.Items.Item[i].SubItems[3];
     Item.Freq := Integer(lvw.Items.Item[i].Data);
 
     if lvw.Items.Item[i].ImageIndex = Ord(siItem) then

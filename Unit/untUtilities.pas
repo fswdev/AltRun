@@ -88,13 +88,6 @@ function GetUTF8QueryString(Keyword: string): string;
 
 function GetURLQueryString(Keyword: string): string;
 
-//Trace
-//procedure InitLogger(IsAppendMode:Boolean = False);
-//procedure AddLog(const str: string);
-//procedure TraceErr(const Msg: string); overload;
-//procedure TraceMsg(const Msg: string); overload;
-//procedure TraceMsg(const AFormat: string; Args: array of const); overload;
-
 //ºÙÃ˘∞ÂUnicode÷ß≥÷
 procedure SetClipboardText(AStr: string);
 

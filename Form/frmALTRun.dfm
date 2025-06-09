@@ -732,7 +732,7 @@ object ALTRunForm: TALTRunForm
     Left = 0
     Top = 0
     Width = 603
-    Height = 391
+    Height = 336
     Align = alClient
     Picture.Data = {
       0A544A504547496D61676531220100FFD8FFE000104A46494600010100000100
@@ -3342,9 +3342,8 @@ object ALTRunForm: TALTRunForm
     Left = 8
     Top = 56
     Width = 587
-    Height = 164
+    Height = 266
     TabStop = False
-    Anchors = [akLeft, akTop, akRight]
     BorderStyle = bsNone
     Ctl3D = False
     Font.Charset = ANSI_CHARSET
@@ -3366,12 +3365,12 @@ object ALTRunForm: TALTRunForm
     OnMouseDown = lstShortCutMouseDown
   end
   object edtCommandLine: TEdit
-    Left = 8
-    Top = 226
-    Width = 587
-    Height = 157
+    Left = 0
+    Top = 336
+    Width = 603
+    Height = 55
     TabStop = False
-    Anchors = [akLeft, akTop, akRight, akBottom]
+    Align = alBottom
     BevelInner = bvNone
     BevelOuter = bvNone
     BorderStyle = bsNone
@@ -3391,6 +3390,9 @@ object ALTRunForm: TALTRunForm
     TabOrder = 3
     OnKeyDown = edtCommandLineKeyDown
     OnMouseDown = MiddleMouseDown
+    ExplicitLeft = 8
+    ExplicitTop = 328
+    ExplicitWidth = 587
   end
   object edtCopy: TEdit
     Left = 583
@@ -3424,7 +3426,6 @@ object ALTRunForm: TALTRunForm
     Width = 587
     Height = 25
     Hint = 'Type shortcut here, then press ENTER'
-    Anchors = [akLeft, akTop, akRight]
     BorderStyle = bsNone
     Color = clMoneyGreen
     Ctl3D = False

@@ -19,23 +19,6 @@ object ShortCutManForm: TShortCutManForm
     765
     504)
   TextHeight = 13
-  object btnCancel0: TBitBtn
-    Left = 682
-    Top = 471
-    Width = 75
-    Height = 25
-    Hint = 'Cancel all modification'
-    Anchors = [akRight, akBottom]
-    Caption = '&Cancel'
-    Kind = bkCancel
-    NumGlyphs = 2
-    ParentShowHint = False
-    ShowHint = True
-    TabOrder = 4
-    TabStop = False
-    ExplicitLeft = 680
-    ExplicitTop = 463
-  end
   object btnOK: TBitBtn
     Left = 601
     Top = 471
@@ -111,7 +94,6 @@ object ShortCutManForm: TShortCutManForm
     SmallImages = ilShortCutMan
     TabOrder = 0
     ViewStyle = vsReport
-    OnColumnClick = lvShortCutColumnClick
     OnDblClick = actEditExecute
     OnEdited = lvShortCutEdited
     OnEditing = lvShortCutEditing
