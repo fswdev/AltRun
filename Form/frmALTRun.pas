@@ -130,7 +130,6 @@ type
     m_LastActiveTime: Cardinal;
     m_IsExited: Boolean;
     m_NeedRefresh: Boolean;
-    m_IsTop: Boolean;
 
     function ApplyHotKey1: Boolean;
     function ApplyHotKey2: Boolean;
@@ -144,8 +143,15 @@ type
     procedure RestartMe;
     procedure DisplayShortCutItem(Item: TShortCutItem);
     procedure ShowLatestShortCutList;
+  private
+    function readIsTop: Boolean;
+    procedure writeTop(b: Boolean);
   public
-    property IsExited: Boolean read m_IsExited;
+    property IsExited: Boolean read m_IsExited write m_IsExited;
+
+  public
+    procedure UpdateFormLayout();
+    property IsTop: boolean read readIsTop write writeTop;
   end;
 
 var
@@ -155,7 +161,319 @@ implementation
 {$R *.dfm}
 
 uses
-  untLogger, frmConfig, frmAbout, frmShortCut, frmShortCutMan, frmLang;
+  untLogger, frmConfig, frmAbout, frmShortCut, frmShortCutMan, frmLang, math;
+
+procedure TALTRunForm.UpdateFormLayout;
+const
+  MARGIN = 8; // 控件间距
+  BUTTON_SIZE = 25; // 按钮宽高
+  LABEL_HEIGHT = 33; // 标签高度（固定值）
+  MIN_HEIGHT = 14; // 最小控件高度
+  PADDING = 4; // 控件内边距
+  VERTICAL_CENTER_OFFSET = 6; // 命令行文字垂直居中调整
+var
+  CurrentTop: Integer;
+  LabelWidth: Integer;
+  EditHeight, HintHeight, CommandHeight: Integer;
+  lg: Longint;
+  SkinFilePath: string;
+begin
+  // 应用字体
+  StrToFont(TitleFontStr, lblShortCut.Font);
+  StrToFont(KeywordFontStr, edtShortCut.Font);
+  StrToFont(ListFontStr, lstShortCut.Font);
+
+  // 计算控件高度（基于字体高度）
+  EditHeight := Max(Abs(edtShortCut.Font.Height) + 2 * PADDING, MIN_HEIGHT);
+  HintHeight := Max(Abs(edtHint.Font.Height) + 2 * PADDING, MIN_HEIGHT);
+  CommandHeight := Max(Abs(edtCommandLine.Font.Height) + 2 * PADDING + VERTICAL_CENTER_OFFSET, MIN_HEIGHT);
+
+  // 初始化顶部位置
+  CurrentTop := MARGIN;
+
+  // 1. 背景图片
+  SkinFilePath := ExtractFilePath(Application.ExeName) + BGFileName;
+  imgBackground.Picture := nil; // 先清空图片
+  if ShowSkin and FileExists(SkinFilePath) then
+  begin
+    try
+      imgBackground.Picture.LoadFromFile(SkinFilePath);
+    except
+      on E: Exception do
+        TraceMsg('Failed to load background image: ' + E.Message);
+    end;
+  end;
+  imgBackground.Left := 0;
+  imgBackground.Top := 0;
+  imgBackground.Width := Self.ClientWidth;
+  imgBackground.Height := Self.ClientHeight;
+
+  // 2. 按钮和标签（顶部）
+  btnShortCut.Visible := ShowShortCutButton;
+  btnConfig.Visible := ShowConfigButton;
+  btnClose.Visible := ShowCloseButton;
+
+  // 按钮位置
+  btnShortCut.Left := MARGIN;
+  btnShortCut.Top := CurrentTop;
+  btnShortCut.Width := BUTTON_SIZE;
+  btnShortCut.Height := BUTTON_SIZE;
+
+  btnClose.Left := Self.ClientWidth - BUTTON_SIZE - MARGIN;
+  btnClose.Top := CurrentTop;
+  btnClose.Width := BUTTON_SIZE;
+  btnClose.Height := BUTTON_SIZE;
+
+  btnConfig.Left := btnClose.Left - BUTTON_SIZE - MARGIN;
+  btnConfig.Top := CurrentTop;
+  btnConfig.Width := BUTTON_SIZE;
+  btnConfig.Height := BUTTON_SIZE;
+
+  // 标签位置
+  if ShowShortCutButton then
+    lblShortCut.Left := btnShortCut.Left + btnShortCut.Width + MARGIN
+  else
+    lblShortCut.Left := MARGIN;
+  lblShortCut.Top := CurrentTop;
+  if ShowConfigButton then
+    LabelWidth := btnConfig.Left - lblShortCut.Left
+  else if ShowCloseButton then
+    LabelWidth := btnClose.Left - lblShortCut.Left
+  else
+    LabelWidth := Self.ClientWidth - lblShortCut.Left - MARGIN;
+  lblShortCut.Width := LabelWidth;
+  lblShortCut.Height := LABEL_HEIGHT;
+
+  // 更新顶部位置
+  CurrentTop := CurrentTop + LABEL_HEIGHT + MARGIN;
+
+  // 3. 输入框 (edtShortCut)
+  edtShortCut.Left := MARGIN;
+  edtShortCut.Top := CurrentTop;
+  edtShortCut.Width := Self.ClientWidth - 2 * MARGIN;
+  edtShortCut.Height := EditHeight;
+
+  // 提示框 (edtHint，与edtShortCut部分重叠)
+  edtHint.Left := MARGIN + 74; // 与原DFM中Left=82对齐
+  edtHint.Top := CurrentTop + 3; // 略微偏移
+  edtHint.Width := Self.ClientWidth - 2 * MARGIN - 74;
+  edtHint.Height := HintHeight;
+  edtHint.Visible := ShowOperationHint;
+
+  // 更新顶部位置
+  CurrentTop := CurrentTop + EditHeight + MARGIN;
+
+  // 4. 列表框 (lstShortCut)
+  lstShortCut.Left := MARGIN;
+  lstShortCut.Top := CurrentTop;
+  lstShortCut.Width := Self.ClientWidth - 2 * MARGIN;
+  lstShortCut.Height := 10 * lstShortCut.ItemHeight; // 8项高度
+
+  // 更新顶部位置
+  CurrentTop := CurrentTop + lstShortCut.Height + MARGIN;
+
+  // 5. 命令行输入框 (edtCommandLine)
+  edtCommandLine.Left := MARGIN;
+  edtCommandLine.Top := CurrentTop;
+  edtCommandLine.Width := Self.ClientWidth - 2 * MARGIN;
+  edtCommandLine.Height := CommandHeight;
+  edtCommandLine.Visible := ShowCommandLine;
+
+  // 6. 调整窗体高度
+  if ShowCommandLine then
+    Self.ClientHeight := CurrentTop + CommandHeight + MARGIN
+  else
+    Self.ClientHeight := CurrentTop; // 精确到lstShortCut底部，避免空白
+
+  // 7. 复制提示框 (edtCopy)
+  edtCopy.Left := Self.ClientWidth - 16 - MARGIN;
+  edtCopy.Top := Self.ClientHeight - 16 - MARGIN;
+  edtCopy.Width := 16;
+  edtCopy.Height := 16;
+
+  // 8. 应用窗体样式（透明度和圆角）
+  lg := GetWindowLong(Handle, GWL_EXSTYLE);
+  lg := lg or WS_EX_LAYERED;
+  SetWindowLong(Handle, GWL_EXSTYLE, lg);
+  SetLayeredWindowAttributes(Handle, AlphaColor, Alpha, LWA_ALPHA or LWA_COLORKEY);
+  SetWindowRgn(Handle, CreateRoundRectRgn(0, 0, Width, Height, RoundBorderRadius, RoundBorderRadius), True);
+
+  // 强制刷新窗体
+  Self.Invalidate;
+  Self.Refresh;
+end;
+
+procedure TALTRunForm.actConfigExecute(Sender: TObject);
+var
+  ConfigForm: TConfigForm;
+  i: Cardinal;
+  LangList: TStringList;
+  IsNeedRestart: Boolean;
+begin
+  TraceMsg('actConfigExecute()');
+  //取消HotKey以免冲突
+  hkmHotkey1.ClearHotKeys;
+  hkmHotkey2.ClearHotKeys;
+
+  ConfigForm := TConfigForm.Create(Self);
+  IsNeedRestart := False;
+
+  try
+  	//调用当前配置
+    with ConfigForm do
+    begin
+      DisplayHotKey1(HotKeyStr1);
+      DisplayHotKey2(HotKeyStr2);
+      chklstConfig.Checked[0] := AutoRun;
+      chklstConfig.Checked[1] := AddToSendTo;
+      chklstConfig.Checked[2] := EnableRegex;
+      chklstConfig.Checked[3] := MatchAnywhere;
+      chklstConfig.Checked[4] := EnableNumberKey;
+      chklstConfig.Checked[5] := IndexFrom0to9;
+      chklstConfig.Checked[6] := RememberFavouratMatch;
+      chklstConfig.Checked[7] := ShowOperationHint;
+      chklstConfig.Checked[8] := ShowCommandLine;
+      chklstConfig.Checked[9] := ShowStartNotification;
+      chklstConfig.Checked[10] := ShowTopTen;
+      chklstConfig.Checked[11] := PlayPopupNotify;
+      chklstConfig.Checked[12] := ExitWhenExecute;
+      chklstConfig.Checked[13] := ShowSkin;
+      chklstConfig.Checked[14] := ShowMeWhenStart;
+      chklstConfig.Checked[15] := ShowTrayIcon;
+      chklstConfig.Checked[16] := ShowShortCutButton;
+      chklstConfig.Checked[17] := ShowConfigButton;
+      chklstConfig.Checked[18] := ShowCloseButton;
+      chklstConfig.Checked[19] := ExecuteIfOnlyOne;
+      StrToFont(TitleFontStr, lblTitleSample.Font);
+      StrToFont(KeywordFontStr, lblKeywordSample.Font);
+      StrToFont(ListFontStr, lblListSample.Font);
+
+      for i := Low(ListFormatList) to High(ListFormatList) do
+        cbbListFormat.Items.Add(ListFormatList[i]);
+      if cbbListFormat.Items.IndexOf(ListFormat) < 0 then
+        cbbListFormat.Items.Add(ListFormat);
+      cbbListFormat.ItemIndex := cbbListFormat.Items.IndexOf(ListFormat);
+      cbbListFormatChange(Sender);
+      lstAlphaColor.Selected := AlphaColor;
+      seAlpha.Value := Alpha;
+      seRoundBorderRadius.Value := RoundBorderRadius;
+      seFormWidth.Value := FormWidth;
+
+      LangList := TStringList.Create;
+      try
+        cbbLang.Items.Add(DEFAULT_LANG);
+        cbbLang.ItemIndex := 0;
+        if not GetLangList(LangList) then
+          Exit;
+        if LangList.Count > 0 then
+        begin
+          for i := 0 to LangList.Count - 1 do
+            if cbbLang.Items.IndexOf(LangList.Strings[i]) < 0 then
+              cbbLang.Items.Add(LangList.Strings[i]);
+          for i := 0 to cbbLang.Items.Count - 1 do
+            if cbbLang.Items[i] = Lang then
+            begin
+              cbbLang.ItemIndex := i;
+              Break;
+            end;
+        end;
+      finally
+        LangList.Free;
+      end;
+
+      self.IsTop := false;
+      ShowModal;
+      self.IsTop := True;
+
+      case ModalResult of
+        mrOk:
+          begin
+            HotKeyStr1 := GetHotKey1;
+            HotKeyStr2 := GetHotKey2;
+            AutoRun := chklstConfig.Checked[0];
+            AddToSendTo := chklstConfig.Checked[1];
+            EnableRegex := chklstConfig.Checked[2];
+            MatchAnywhere := chklstConfig.Checked[3];
+            EnableNumberKey := chklstConfig.Checked[4];
+            IndexFrom0to9 := chklstConfig.Checked[5];
+            RememberFavouratMatch := chklstConfig.Checked[6];
+            ShowOperationHint := chklstConfig.Checked[7];
+            ShowCommandLine := chklstConfig.Checked[8];
+            ShowStartNotification := chklstConfig.Checked[9];
+            ShowTopTen := chklstConfig.Checked[10];
+            PlayPopupNotify := chklstConfig.Checked[11];
+            ExitWhenExecute := chklstConfig.Checked[12];
+            ShowSkin := chklstConfig.Checked[13];
+            ShowMeWhenStart := chklstConfig.Checked[14];
+            ShowTrayIcon := chklstConfig.Checked[15];
+            ShowShortCutButton := chklstConfig.Checked[16];
+            ShowConfigButton := chklstConfig.Checked[17];
+            ShowCloseButton := chklstConfig.Checked[18];
+            ExecuteIfOnlyOne := chklstConfig.Checked[19];
+            TitleFontStr := FontToStr(lblTitleSample.Font);
+            KeywordFontStr := FontToStr(lblKeywordSample.Font);
+            ListFontStr := FontToStr(lblListSample.Font);
+            ListFormat := cbbListFormat.Text;
+            if not IsNeedRestart then
+              IsNeedRestart := (AlphaColor <> lstAlphaColor.Selected);
+            AlphaColor := lstAlphaColor.Selected;
+            if not IsNeedRestart then
+              IsNeedRestart := (Alpha <> seAlpha.Value);
+            Alpha := Round(seAlpha.Value);
+            if not IsNeedRestart then
+              IsNeedRestart := (RoundBorderRadius <> seRoundBorderRadius.Value);
+            RoundBorderRadius := Round(seRoundBorderRadius.Value);
+            if not IsNeedRestart then
+              IsNeedRestart := (FormWidth <> seFormWidth.Value);
+            FormWidth := Round(seFormWidth.Value);
+            if not IsNeedRestart then
+              IsNeedRestart := (Lang <> cbbLang.Text);
+            Lang := cbbLang.Text;
+
+            ShortCutMan.SaveShortCutList;
+            ShortCutMan.LoadShortCutList;
+            ShortCutMan.NeedRefresh := True;
+
+            // 重新注册热键
+            ApplyHotKey1;
+            ApplyHotKey2;
+          end;
+        mrRetry:
+          begin
+            DeleteFile(ExtractFilePath(Application.ExeName) + TITLE + '.ini');
+            LoadSettings;
+            IsNeedRestart := True;
+            // 重新注册热键
+            ApplyHotKey1;
+            ApplyHotKey2;
+          end;
+      else
+        ApplyHotKey1;
+        ApplyHotKey2;
+        Exit;
+      end;
+
+      SetAutoRunInStartUp(TITLE, Application.ExeName, AutoRun);
+      AddMeToSendTo(TITLE, AddToSendTo);
+      ntfMain.IconVisible := ShowTrayIcon;
+
+      // 更新布局和样式
+      UpdateFormLayout;
+
+      SetActiveLanguage;
+      edtShortCutChange(Sender);
+
+      SaveSettings;
+      if IsNeedRestart then
+      begin
+        Application.MessageBox(PChar(resRestartMeInfo), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
+        RestartMe;
+      end;
+    end;
+  finally
+    FreeAndNil(ConfigForm);
+  end;
+end;
 
 procedure TALTRunForm.actAboutExecute(Sender: TObject);
 var
@@ -175,9 +493,9 @@ procedure TALTRunForm.actAddItemExecute(Sender: TObject);
 begin
   TraceMsg('actAddItemExecute()');
 
-  m_IsTop := False;
+  self.IsTop := False;
   ShortCutMan.AddFileShortCut(edtShortCut.Text);
-  m_IsTop := True;
+  self.IsTop := True;
   if m_IsShow then
     edtShortCutChange(Self);
 end;
@@ -203,308 +521,6 @@ begin
   ShortCutMan.SaveShortCutList;
 
   Application.Terminate;
-end;
-
-procedure TALTRunForm.actConfigExecute(Sender: TObject);
-var
-  ConfigForm: TConfigForm;
-  lg: longint;
-  i: Cardinal;
-  LangList: TStringList;
-  IsNeedRestart: Boolean;
-begin
-  TraceMsg('actConfigExecute()');
-
-  try
-    //取消HotKey以免冲突
-    hkmHotkey1.ClearHotKeys;
-    hkmHotkey2.ClearHotKeys;
-
-    ConfigForm := TConfigForm.Create(Self);
-
-    IsNeedRestart := False;
-
-    //调用当前配置
-    with ConfigForm do
-    begin
-      DisplayHotKey1(HotKeyStr1);
-      DisplayHotKey2(HotKeyStr2);
-
-      //AutoRun
-      chklstConfig.Checked[0] := AutoRun;
-      //AddToSendTo
-      chklstConfig.Checked[1] := AddToSendTo;
-      //EnableRegex
-      chklstConfig.Checked[2] := EnableRegex;
-      //MatchAnywhere
-      chklstConfig.Checked[3] := MatchAnywhere;
-      //EnableNumberKey
-      chklstConfig.Checked[4] := EnableNumberKey;
-      //IndexFrom0to9
-      chklstConfig.Checked[5] := IndexFrom0to9;
-      //RememberFavouratMatch
-      chklstConfig.Checked[6] := RememberFavouratMatch;
-      //ShowOperationHint
-      chklstConfig.Checked[7] := ShowOperationHint;
-      //ShowCommandLine
-      chklstConfig.Checked[8] := ShowCommandLine;
-      //ShowStartNotification
-      chklstConfig.Checked[9] := ShowStartNotification;
-      //ShowTopTen
-      chklstConfig.Checked[10] := ShowTopTen;
-      //PlayPopupNotify
-      chklstConfig.Checked[11] := PlayPopupNotify;
-      //ExitWhenExecute
-      chklstConfig.Checked[12] := ExitWhenExecute;
-      //ShowSkin
-      chklstConfig.Checked[13] := ShowSkin;
-      //ShowMeWhenStart
-      chklstConfig.Checked[14] := ShowMeWhenStart;
-      //ShowTrayIcon
-      chklstConfig.Checked[15] := ShowTrayIcon;
-      //ShowShortCutButton
-      chklstConfig.Checked[16] := ShowShortCutButton;
-      //ShowConfigButton
-      chklstConfig.Checked[17] := ShowConfigButton;
-      //ShowCloseButton
-      chklstConfig.Checked[18] := ShowCloseButton;
-      //ExecuteIfOnlyOne
-      chklstConfig.Checked[19] := ExecuteIfOnlyOne;
-      //edtBGFileName.Text := BGFileName;
-
-      StrToFont(TitleFontStr, lblTitleSample.Font);
-      StrToFont(KeywordFontStr, lblKeywordSample.Font);
-      StrToFont(ListFontStr, lblListSample.Font);
-
-      for i := Low(ListFormatList) to High(ListFormatList) do
-        cbbListFormat.Items.Add(ListFormatList[i]);
-
-      if cbbListFormat.Items.IndexOf(ListFormat) < 0 then
-        cbbListFormat.Items.Add(ListFormat);
-
-      cbbListFormat.ItemIndex := cbbListFormat.Items.IndexOf(ListFormat);
-      cbbListFormatChange(Sender);
-
-      lstAlphaColor.Selected := AlphaColor;
-      seAlpha.Value := Alpha;
-      ShowModal;
-      seRoundBorderRadius.Value := RoundBorderRadius;
-      seFormWidth.Value := FormWidth;
-
-      //语言
-
-      LangList := TStringList.Create;
-      try
-        cbbLang.Items.Add(DEFAULT_LANG);
-        cbbLang.ItemIndex := 0;
-
-        if not GetLangList(LangList) then
-          Exit;
-
-        if LangList.Count > 0 then
-        begin
-          for i := 0 to LangList.Count - 1 do
-            if cbbLang.Items.IndexOf(LangList.Strings[i]) < 0 then
-              cbbLang.Items.Add(LangList.Strings[i]);
-
-          for i := 0 to cbbLang.Items.Count - 1 do
-            if cbbLang.Items[i] = Lang then
-            begin
-              cbbLang.ItemIndex := i;
-              Break;
-            end;
-        end;
-      finally
-        LangList.Free;
-      end;
-
-      m_IsTop := False;
-      ShowModal;
-      m_IsTop := True;
-
-      //如果确认
-      case ModalResult of
-        mrOk:
-          begin
-            HotKeyStr1 := GetHotKey1;
-            HotKeyStr2 := GetHotKey2;
-
-            AutoRun := chklstConfig.Checked[0];
-            AddToSendTo := chklstConfig.Checked[1];
-            EnableRegex := chklstConfig.Checked[2];
-            MatchAnywhere := chklstConfig.Checked[3];
-            EnableNumberKey := chklstConfig.Checked[4];
-            IndexFrom0to9 := chklstConfig.Checked[5];
-            RememberFavouratMatch := chklstConfig.Checked[6];
-            ShowOperationHint := chklstConfig.Checked[7];
-            ShowCommandLine := chklstConfig.Checked[8];
-            ShowStartNotification := chklstConfig.Checked[9];
-            ShowTopTen := chklstConfig.Checked[10];
-            PlayPopupNotify := chklstConfig.Checked[11];
-            ExitWhenExecute := chklstConfig.Checked[12];
-            ShowSkin := chklstConfig.Checked[13];
-            ShowMeWhenStart := chklstConfig.Checked[14];
-            ShowTrayIcon := chklstConfig.Checked[15];
-            ShowShortCutButton := chklstConfig.Checked[16];
-            ShowConfigButton := chklstConfig.Checked[17];
-            ShowCloseButton := chklstConfig.Checked[18];
-            ExecuteIfOnlyOne := chklstConfig.Checked[19];
-
-            TitleFontStr := FontToStr(lblTitleSample.Font);
-            KeywordFontStr := FontToStr(lblKeywordSample.Font);
-            ListFontStr := FontToStr(lblListSample.Font);
-
-            ListFormat := cbbListFormat.Text;
-
-            if not IsNeedRestart then
-              IsNeedRestart := (AlphaColor <> lstAlphaColor.Selected);
-            AlphaColor := lstAlphaColor.Selected;
-
-            if not IsNeedRestart then
-              IsNeedRestart := (Alpha <> seAlpha.Value);
-            Alpha := Round(seAlpha.Value);
-
-            if not IsNeedRestart then
-              IsNeedRestart := (RoundBorderRadius <> seRoundBorderRadius.Value);
-            RoundBorderRadius := Round(seRoundBorderRadius.Value);
-
-            if not IsNeedRestart then
-              IsNeedRestart := (FormWidth <> seFormWidth.Value);
-            FormWidth := Round(seFormWidth.Value);
-
-            if not IsNeedRestart then
-              IsNeedRestart := (Lang <> cbbLang.Text);
-            Lang := cbbLang.Text;
-
-            //不让修改背景图片的文件名
-            //BGFileName := edtBGFileName.Text;
-            //if BGFileName <> '' then
-            //begin
-            //  if FileExists(BGFileName) then
-            //    Self.imgBackground.Picture.LoadFromFile(BGFileName)
-            //  else if FileExists(ExtractFilePath(Application.ExeName) + BGFileName) then
-            //    Self.imgBackground.Picture.LoadFromFile(ExtractFilePath(Application.ExeName) + BGFileName)
-            //  else
-            //    Application.MessageBox(PChar(Format('File %s does not exist!',
-            //      [BGFileName])), resInfo, MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
-            //end;
-
-            //保存新的项目
-            ShortCutMan.SaveShortCutList;
-            ShortCutMan.LoadShortCutList;
-
-            ShortCutMan.NeedRefresh := True;
-          end;
-
-        mrRetry:
-          begin
-            DeleteFile(ExtractFilePath(Application.ExeName) + TITLE + '.ini');
-            LoadSettings;
-            IsNeedRestart := True;
-          end;
-
-      else
-        ApplyHotKey1;
-        ApplyHotKey2;
-
-        Exit;
-      end;
-
-      //应用修改的配置
-      if (ModalResult = mrOk) or (ModalResult = mrRetry) then
-      begin
-        //SetAutoRun(TITLE, Application.ExeName, AutoRun);
-        SetAutoRunInStartUp(TITLE, Application.ExeName, AutoRun);
-        AddMeToSendTo(TITLE, AddToSendTo);
-
-        StrToFont(TitleFontStr, Self.lblShortCut.Font);
-        StrToFont(KeywordFontStr, Self.edtShortCut.Font);
-        StrToFont(ListFontStr, Self.lstShortCut.Font);
-
-        //应用快捷键
-        ApplyHotKey1;
-        ApplyHotKey2;
-        ntfMain.Hint := ansistring(Format(resMainHint, [TITLE, ALTRUN_VERSION, #13#10, GetHotKeyString]));
-
-        if ShowSkin then
-          imgBackground.Picture.LoadFromFile(ExtractFilePath(Application.ExeName) + BGFileName)
-        else
-          imgBackground.Picture := nil;
-
-        //显示图标
-        ntfMain.IconVisible := ShowTrayIcon;
-
-        //按钮是否显示
-        btnShortCut.Visible := ShowShortCutButton;
-        btnConfig.Visible := ShowConfigButton;
-        btnClose.Visible := ShowCloseButton;
-
-        //根据按钮显示决定标题栏显示长度
-        //快捷项管理按钮
-        if ShowShortCutButton then
-          lblShortCut.Left := btnShortCut.Left + btnShortCut.Width
-        else
-          lblShortCut.Left := 0;
-
-        //配置按钮和关闭按钮
-        if ShowCloseButton then
-        begin
-          if ShowConfigButton then
-          begin
-            btnConfig.Left := btnClose.Left - btnConfig.Width - 10;
-            lblShortCut.Width := btnConfig.Left - lblShortCut.Left;
-          end
-          else
-          begin
-            lblShortCut.Width := btnClose.Left - lblShortCut.Left;
-          end;
-        end
-        else
-        begin
-          if ShowConfigButton then
-          begin
-            btnConfig.Left := Self.Width - btnConfig.Width - 10;
-            lblShortCut.Width := btnConfig.Left - lblShortCut.Left;
-          end
-          else
-          begin
-            lblShortCut.Width := Self.Width - lblShortCut.Left;
-          end
-        end;
-
-        //半透明效果
-        lg := getWindowLong(Handle, GWL_EXSTYLE);
-        lg := lg or WS_EX_LAYERED;
-        SetWindowLong(handle, GWL_EXSTYLE, lg);
-        SetLayeredWindowAttributes(handle, AlphaColor, Alpha, LWA_ALPHA or LWA_COLORKEY);
-
-        //圆角矩形窗体
-        SetWindowRgn(Handle, CreateRoundRectRgn(0, 0, Width, Height, RoundBorderRadius, RoundBorderRadius), True);
-
-        //应用语言修改
-        SetActiveLanguage;
-
-        //数字编号顺序
-        edtShortCutChange(Sender);
-
-        //显示命令行
-        if ShowCommandLine then
-          Self.Height := 250
-        else
-          Self.Height := 230;
-
-        SaveSettings;
-
-        if IsNeedRestart then
-        begin
-          Application.MessageBox(PChar(resRestartMeInfo), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
-          RestartMe;
-        end;
-      end;
-    end;
-  finally
-    freeandnil(ConfigForm);
-  end;
 end;
 
 procedure TALTRunForm.actCopyCommandLineExecute(Sender: TObject);
@@ -592,9 +608,9 @@ begin
       lbledtCommandLine.Text := itm.CommandLine;
       rgParam.ItemIndex := Ord(itm.ParamType);
 
-      m_IsTop := False;
+      self.IsTop := False;
       ShowModal;
-      m_IsTop := True;
+      self.IsTop := True;
 
       if ModalResult = mrCancel then
         Exit;
@@ -831,10 +847,10 @@ begin
     ShortCutManForm := TShortCutManForm.Create(Self);
     with ShortCutManForm do
     begin
-      m_IsTop := False;
+      self.IsTop := False;
       StopTimer;
       ShowModal;
-      m_IsTop := True;
+      self.IsTop := True;
 
       if ModalResult = mrOk then
       begin
@@ -864,11 +880,9 @@ end;
 
 procedure TALTRunForm.actShowExecute(Sender: TObject);
 var
-  lg: longint;
   PopupFileName: string;
 begin
   TraceMsg('actShowExecute()');
-
   Self.Caption := TITLE;
 
   if ParamForm <> nil then
@@ -876,7 +890,6 @@ begin
 
   ShortCutMan.LoadShortCutList;
 
-  //如果输入框有字，则清空再刷新
   if (edtShortCut.Text <> '') then
   begin
     edtShortCut.Text := '';
@@ -892,7 +905,6 @@ begin
     else
     begin
       RefreshOperationHint;
-
       if lstShortCut.Items.Count > 0 then
       begin
         lstShortCut.ItemIndex := 0;
@@ -901,115 +913,28 @@ begin
           lblShortCut.Caption := '[' + lblShortCut.Caption + ']';
       end;
     end;
-
   end;
 
-  Self.Show;
-
+  // 设置窗体位置
   if m_IsFirstShow then
   begin
     m_IsFirstShow := False;
-
-    //设置窗体位置
     if (WinTop <= 0) or (WinLeft <= 0) then
-    begin
-      Self.Position := poScreenCenter;
-    end
+      Self.Position := poScreenCenter
     else
     begin
       Self.Top := WinTop;
       Self.Left := WinLeft;
       Self.Width := FormWidth;
     end;
-
-    //字体
-    StrToFont(TitleFontStr, lblShortCut.Font);
-    StrToFont(KeywordFontStr, edtShortCut.Font);
-    StrToFont(ListFontStr, lstShortCut.Font);
-
-    //修改背景图
-    if not FileExists(ExtractFilePath(Application.ExeName) + BGFileName) then
-      imgBackground.Picture.SaveToFile(ExtractFilePath(Application.ExeName) + BGFileName);
-
-    if ShowSkin then
-      imgBackground.Picture.LoadFromFile(ExtractFilePath(Application.ExeName) + BGFileName)
-    else
-      imgBackground.Picture := nil;
-
-    //按钮是否显示
-    btnShortCut.Visible := ShowShortCutButton;
-    btnConfig.Visible := ShowConfigButton;
-    btnClose.Visible := ShowCloseButton;
-
-    //根据按钮显示决定标题栏显示长度
-    //快捷项管理按钮
-    if ShowShortCutButton then
-      lblShortCut.Left := btnShortCut.Left + btnShortCut.Width
-    else
-      lblShortCut.Left := 0;
-
-    //配置按钮和关闭按钮
-    if ShowCloseButton then
-    begin
-      if ShowConfigButton then
-      begin
-        btnConfig.Left := btnClose.Left - btnConfig.Width - 10;
-        lblShortCut.Width := btnConfig.Left - lblShortCut.Left;
-      end
-      else
-      begin
-        lblShortCut.Width := btnClose.Left - lblShortCut.Left;
-      end;
-    end
-    else
-    begin
-      if ShowConfigButton then
-      begin
-        btnConfig.Left := Self.Width - btnConfig.Width - 10;
-        lblShortCut.Width := btnConfig.Left - lblShortCut.Left;
-      end
-      else
-      begin
-        lblShortCut.Width := Self.Width - lblShortCut.Left;
-      end
-    end;
-
-    //半透明效果
-    lg := getWindowLong(Handle, GWL_EXSTYLE);
-    lg := lg or WS_EX_LAYERED;
-    SetWindowLong(handle, GWL_EXSTYLE, lg);
-
-    //第二个参数是指定透明颜色
-    //第二个参数若为0则使用第四个参数设置alpha值，从0到255
-    SetLayeredWindowAttributes(handle, AlphaColor, Alpha, LWA_ALPHA or LWA_COLORKEY);
-
-    //圆角矩形窗体
-    SetWindowRgn(Handle, CreateRoundRectRgn(0, 0, Width, Height, RoundBorderRadius, RoundBorderRadius), True);
-
-    //获得最近使用快捷方式的列表
+    // 获得最近使用快捷方式的列表
     ShortCutMan.SetLatestShortCutIndexList(LatestList);
-
-    lstShortCut.Height := 10 * lstShortCut.ItemHeight;
-
-    //显示命令行
-    if ShowCommandLine then
-      Self.Height := 250 {Self.Height + 20}
-    else
-      Self.Height := 230 {Self.Height - 20};
-
-    {
-    edtCommandLine.Top := lstShortCut.Top + lstShortCut.Height + 6;
-
-    if ShowCommandLine then
-    begin
-      Self.Height := edtCommandLine.Top + edtCommandLine.Height + 6;
-    end
-    else
-      Self.Height := edtCommandLine.Top;
-    }
   end;
 
-  //把窗体放到顶端
+  // 更新布局和样式
+  UpdateFormLayout;
+
+  Self.Show;
   Application.Restore;
   SetForegroundWindow(Application.Handle);
   m_IsShow := True;
@@ -1018,24 +943,16 @@ begin
   RestartHideTimer(HideDelay);
   tmrFocus.Enabled := True;
 
-  //保存窗体位置
   WinTop := Self.Top;
   WinLeft := Self.Left;
-
-  //取得最近一次击键时间
   m_LastActiveTime := GetTickCount;
+  self.IsTop := True;
 
-  m_IsTop := True;
-
-  //播放声音
   if PlayPopupNotify then
   begin
     PopupFileName := ExtractFilePath(Application.ExeName) + 'Popup.wav';
-    //WinMediaFileName := GetEnvironmentVariable('windir') + '\Media\ding.wav';
     if not FileExists(PopupFileName) then
-      //CopyFile(PChar(WinMediaFileName), PChar(PopupFileName), True);
       ExtractRes('WAVE', 'PopupWav', 'Popup.wav');
-
     if FileExists(PopupFileName) then
       PlaySound(PChar(PopupFileName), 0, snd_ASYNC)
     else
@@ -1682,7 +1599,7 @@ begin
 
     WM_MOUSEWHEEL:
       begin
-        if m_IsTop then
+        if self.IsTop then
         begin
           if Msg.wParam > 0 then
             PostMessage(lstShortCut.Handle, WM_KEYDOWN, VK_UP, 0)
@@ -2591,6 +2508,19 @@ begin
   end;
 end;
 
+function TALTRunForm.readIsTop: Boolean;
+begin
+  result := self.formStyle = fsStayOnTop;
+end;
+
+procedure TALTRunForm.writeTop(b: Boolean);
+begin
+  if b then
+    self.formStyle := fsStayOnTop
+  else
+    self.formStyle := fsNormal;
+end;
+
 procedure TALTRunForm.Receive_SendTo_Filename(var Msg: TWMCopyData);
 var
   FileList: string;
@@ -2599,9 +2529,9 @@ begin
   // 接收 WM_COPYDATA 消息中的文件列表
   FileList := PChar(Msg.CopyDataStruct.lpData);
 
-  m_IsTop := False;
+  self.IsTop := False;
   ShortCutMan.AddFileShortCut(FileList);
-  m_IsTop := True;
+  self.IsTop := True;
   if m_IsShow then
     edtShortCutChange(Self);
 

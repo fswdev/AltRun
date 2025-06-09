@@ -3,7 +3,7 @@ object ALTRunForm: TALTRunForm
   Top = -300
   BorderStyle = bsNone
   Caption = 'ALTRun'
-  ClientHeight = 391
+  ClientHeight = 399
   ClientWidth = 603
   Color = clMaroon
   TransparentColor = True
@@ -726,13 +726,13 @@ object ALTRunForm: TALTRunForm
   OnKeyPress = FormKeyPress
   DesignSize = (
     603
-    391)
+    399)
   TextHeight = 16
   object imgBackground: TImage
     Left = 0
     Top = 0
     Width = 603
-    Height = 336
+    Height = 399
     Align = alClient
     Picture.Data = {
       0A544A504547496D61676531220100FFD8FFE000104A46494600010100000100
@@ -3342,7 +3342,7 @@ object ALTRunForm: TALTRunForm
     Left = 8
     Top = 56
     Width = 587
-    Height = 266
+    Height = 200
     TabStop = False
     BorderStyle = bsNone
     Ctl3D = False
@@ -3365,20 +3365,19 @@ object ALTRunForm: TALTRunForm
     OnMouseDown = lstShortCutMouseDown
   end
   object edtCommandLine: TEdit
-    Left = 0
-    Top = 336
+    Left = 8
+    Top = 320
     Width = 603
-    Height = 55
+    Height = 72
     TabStop = False
-    Align = alBottom
     BevelInner = bvNone
     BevelOuter = bvNone
     BorderStyle = bsNone
     Color = clMoneyGreen
     Ctl3D = False
     Font.Charset = ANSI_CHARSET
-    Font.Color = clGray
-    Font.Height = -13
+    Font.Color = clBlack
+    Font.Height = -15
     Font.Name = #23435#20307
     Font.Style = []
     ParentCtl3D = False
@@ -3390,13 +3389,10 @@ object ALTRunForm: TALTRunForm
     TabOrder = 3
     OnKeyDown = edtCommandLineKeyDown
     OnMouseDown = MiddleMouseDown
-    ExplicitLeft = 8
-    ExplicitTop = 328
-    ExplicitWidth = 587
   end
   object edtCopy: TEdit
     Left = 583
-    Top = 367
+    Top = 375
     Width = 16
     Height = 16
     TabStop = False
@@ -3450,7 +3446,7 @@ object ALTRunForm: TALTRunForm
     Left = 82
     Top = 35
     Width = 511
-    Height = 14
+    Height = 15
     TabStop = False
     Anchors = [akLeft, akTop, akRight]
     BevelInner = bvNone
