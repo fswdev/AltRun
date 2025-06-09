@@ -40,6 +40,7 @@ type
     ShortCut: string;
     Name: string;
     CommandLine: string;
+    WorkingDir: string;
     Rank: Integer;
     Freq: Integer;
     RunAsAdmin: bool;
@@ -140,7 +141,7 @@ var
 implementation
 
 uses
-  frmShortCut, AnsiStrings;
+  frmShortCut, AnsiStrings, untPinYin;
 
 procedure split_cmd_param(cmd_param: string; out cmd: string; out param: string);
 var
@@ -399,7 +400,7 @@ begin
     ret := ShellExecute(GetDesktopWindow, 'runas', PCommandStr, PParamStr, PWorkingDir, ShowCmd)
   else
     ret := ShellExecute(GetDesktopWindow, nil, PCommandStr, PParamStr, PWorkingDir, ShowCmd);
-  var err := format('ShellExecute(%s,  %s,  %s) err:%s', [StrPas(PCommandStr), StrPas(PParamStr), StrPas(PWorkingDir), SysErrorMessage(GetLastError())]);
+  var err := format('ShellExecute('#13#10'%s,'#13#10'%s,'#13#10'%s)'#13#10'err:%s', [StrPas(PCommandStr), StrPas(PParamStr), StrPas(PWorkingDir), SysErrorMessage(GetLastError())]);
   if ret <= 32 then
   begin
     case ret of
@@ -1007,7 +1008,7 @@ var
   i: Cardinal;
   Item: TShortCutItem;
   CostTick: Cardinal;
-  SearchKey: string; // 新增
+  SearchKey, Pinyin: string; // 新增
 begin
   Result := False;
 
@@ -1080,7 +1081,9 @@ begin
       begin
         m_Regex.Expression := SearchKey;
         try
-          if not m_Regex.Exec(LowerCase(Item.ShortCut)) then
+          Pinyin := HanziToPinyin(Item.ShortCut).ToLower;
+          if (not m_Regex.Exec(LowerCase(Item.ShortCut))) and //
+            (not m_Regex.Exec(Pinyin)) then
             Continue;
         except
           on E: Exception do

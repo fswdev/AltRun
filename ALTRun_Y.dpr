@@ -29,7 +29,9 @@ uses
   SimpleTimer in '3rdUnit\CoolTrayIcon\SimpleTimer.pas',
   TextTrayIcon in '3rdUnit\CoolTrayIcon\TextTrayIcon.pas',
   HotKeyManager in '3rdUnit\HotKeyManager\HotKeyManager.pas',
-  untSysRegExpr in 'Unit\untSysRegExpr.pas';
+  untSysRegExpr in 'Unit\untSysRegExpr.pas',
+  untShortCutScanner in 'Unit\untShortCutScanner.pas',
+  untPinyin in 'Unit\untPinyin.pas';
 
 {$R *.res}
 

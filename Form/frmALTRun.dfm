@@ -3391,10 +3391,10 @@ object ALTRunForm: TALTRunForm
     OnMouseDown = MiddleMouseDown
   end
   object edtCopy: TEdit
-    Left = 583
-    Top = 375
-    Width = 16
-    Height = 16
+    Left = 542
+    Top = 368
+    Width = 57
+    Height = 23
     TabStop = False
     Anchors = [akRight, akBottom]
     BevelInner = bvNone
@@ -3908,5 +3908,11 @@ object ALTRunForm: TALTRunForm
     OnPopup = pmListPopup
     Left = 488
     Top = 80
+  end
+  object tmrScanner: TTimer
+    Interval = 50000
+    OnTimer = tmrScannerTimer
+    Left = 472
+    Top = 184
   end
 end

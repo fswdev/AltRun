@@ -8,7 +8,7 @@ uses
   Dialogs, StdCtrls, AppEvnts, CoolTrayIcon, ActnList, Menus, HotKeyManager,
   ExtCtrls, Buttons, ImgList, ShellAPI, MMSystem, frmParam, frmAutoHide,
   untShortCutMan, untClipboard, untALTRunOption, untUtilities, jpeg,
-  System.ImageList, System.Actions;
+  System.ImageList, System.Actions, system.Generics.Collections;
 
 const
   WM_ALTRUN_ADD_SHORTCUT = WM_USER + 2000;
@@ -63,6 +63,7 @@ type
     actCopyCommandLine: TAction;
     OpenSelfDir: TMenuItem;
     actOpenAltRunDir: TAction;
+    tmrScanner: TTimer;
 
     procedure WndProc(var Msg: TMessage); override;
     procedure edtShortCutChange(Sender: TObject);
@@ -113,6 +114,7 @@ type
     procedure actCopyCommandLineExecute(Sender: TObject);
     procedure hkmHotkey3HotKeyPressed(HotKey: Cardinal; Index: Word);
     procedure actOpenAltRunDirExecute(Sender: TObject);
+    procedure tmrScannerTimer(Sender: TObject);
   private
     ntfMain: TCoolTrayIcon;
     hkmHotkey1: THotKeyManager;
@@ -161,7 +163,8 @@ implementation
 {$R *.dfm}
 
 uses
-  untLogger, frmConfig, frmAbout, frmShortCut, frmShortCutMan, frmLang, math;
+  untLogger, frmConfig, frmAbout, frmShortCut, frmShortCutMan, frmLang, math,
+  untShortCutScanner, dateutils;
 
 procedure TALTRunForm.UpdateFormLayout;
 const
@@ -252,6 +255,7 @@ begin
   edtShortCut.Top := CurrentTop;
   edtShortCut.Width := Self.ClientWidth - 2 * MARGIN;
   edtShortCut.Height := EditHeight;
+  SendMessage(edtShortCut.Handle, EM_SETMARGINS, EC_LEFTMARGIN, MakeLong(26, 0));
 
   // 提示框 (edtHint，与edtShortCut部分重叠)
   edtHint.Left := MARGIN + 74; // 与原DFM中Left=82对齐
@@ -1166,7 +1170,6 @@ begin
   //m_LastShortCutText := edtShortCut.Text;
 
   TraceMsg('edtShortCutChange(%s)', [edtShortCut.Text]);
-
   lblShortCut.Caption := '';
   lblShortCut.Hint := '';
   lstShortCut.Hint := '';
@@ -1177,9 +1180,7 @@ begin
   //更新列表
   try
     StringList := TStringList.Create;
-
     //lstShortCut.Hide;
-
     if ShortCutMan.FilterKeyWord(edtShortCut.Text, StringList) then
     begin
       if ShowTopTen then
@@ -1490,52 +1491,6 @@ begin
   evtMainMinimize(Sender);
   edtShortCut.Text := '';
 
-//如果失去焦点，且离上一次击键超过一定时间，就隐藏
-//  if (GetTickCount - m_LastActiveTime) > 500 then
-//  begin
-//    TraceMsg('Lost focus for a long time, so hide me');
-//
-//    evtMainMinimize(Sender);
-//    edtShortCut.Text := '';
-//  end
-//  else
-//  begin
-//    if m_IsShow then
-//    begin
-//      //TraceMsg('Lost focus, try to activate me');
-//
-//      //tmrFocus.Enabled := True;
-//      Exit;
-//      {
-//      IsActivated := False;
-//      while not IsActivated do
-//      begin
-//        TraceMsg('SetForegroundWindow failed, try again');
-//        IsActivated := SetForegroundWindow(Application.Handle);
-//        Sleep(100);
-//        Application.HandleMessage;
-//      end;
-//
-//      TraceMsg('Application.Active = %s', [BoolToStr(Application.Active)]);
-//
-//      edtShortCut.SetFocus;
-//      RestartHideTimer(HideDelay);
-//      }
-//    end;
-//
-//    //SetActiveWindow(Application.Handle);
-//    //SetForegroundWindow(Application.Handle);
-//    //Self.Show;
-//    //Self.SetFocus;
-////    try
-////      edtShortCut.SetFocus;
-////    except
-////      TraceErr('edtShortCut.SetFocus = Fail');
-////    end;
-////
-////    RestartHideTimer(1);
-//  end;
-
 end;
 
 procedure TALTRunForm.evtMainIdle(Sender: TObject; var Done: Boolean);
@@ -1545,34 +1500,6 @@ end;
 
 procedure TALTRunForm.evtMainMessage(var Msg: tagMSG; var Handled: Boolean);
 begin
-{
-  // 本来想防止用户乱用输入法的，现在看来没必要
-  case Msg.message of
-    WM_INPUTLANGCHANGEREQUEST:
-    begin
-      TraceMsg('WM_INPUTLANGCHANGEREQUEST(%d, %d)',[Msg.wParam, Msg.lParam]);
-
-      if AllowIMEinEditShortCut then
-        Handled := False
-      else
-      begin
-        if edtShortCut.Focused then
-        begin
-          TraceMsg('edtShortCut.Focused = True');
-
-          Handled := True;
-        end
-        else
-        begin
-          TraceMsg('edtShortCut.Focused = False');
-
-          Handled := False;
-        end;
-      end;
-    end;
-  end;
-}
-
   case Msg.message of
     WM_SYSCOMMAND:                                     //点击关闭按钮
       if Msg.WParam = SC_CLOSE then
@@ -2461,6 +2388,51 @@ begin
   edtShortCut.Text := '';
 end;
 
+procedure TALTRunForm.tmrScannerTimer(Sender: TObject);
+
+  function IsTime1205: Boolean;
+  var
+    CurrentTime: TDateTime;
+  begin
+    CurrentTime := Now;
+    Result := (HourOf(CurrentTime) = 12) and (MinuteOf(CurrentTime) = 5) or true;
+  end;
+
+var
+  lst: TList<TShortCutItem>;
+  item: TShortCutItem;
+  bAdded: boolean;
+begin   // 50s 一次
+  if IsTime1205() then
+  begin
+    bAdded := false;
+
+    try
+      lst := ScanShortCutItems;
+      // 遍历并添加未存在的项
+      for item in lst do
+      begin
+        if not ShortCutMan.ContainShortCutItem(item) then
+        begin
+          ShortCutMan.AppendShortCutItem(item);
+          bAdded := TRUE;
+        end
+        else
+        begin
+          item.free;
+        end;
+      end;
+      if bAdded then
+      begin
+        ShortCutMan.SaveShortCutList;
+        ShortCutMan.LoadShortCutList;
+      end;
+    finally
+      lst.Free; // 自动释放未被 Append 的 TShortCutItem
+    end;
+  end;
+end;
+
 procedure TALTRunForm.WndProc(var Msg: TMessage);
 var
   FileName: string;
@@ -2536,6 +2508,7 @@ begin
     edtShortCutChange(Self);
 
   ShortCutMan.SaveShortCutList;
+  ShortCutMan.LoadShortCutList;
 
   // Msg.Result := 1; 表示消息被成功处理（成功接收并处理数据）。
   // Msg.Result := 0; 表示消息未被处理或处理失败。
