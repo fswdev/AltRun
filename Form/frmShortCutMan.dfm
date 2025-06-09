@@ -5,6 +5,7 @@ object ShortCutManForm: TShortCutManForm
   ClientHeight = 504
   ClientWidth = 765
   Color = clBtnFace
+  DoubleBuffered = True
   Font.Charset = ANSI_CHARSET
   Font.Color = clWindowText
   Font.Height = -13
@@ -129,12 +130,15 @@ object ShortCutManForm: TShortCutManForm
     AutoSize = True
     ButtonWidth = 111
     Caption = 'tlbShortCutMan'
+    DoubleBuffered = False
     Images = ilShortCutMan
     List = True
+    ParentDoubleBuffered = False
     ShowCaptions = True
     AllowTextButtons = True
     TabOrder = 2
     Transparent = False
+    ExplicitWidth = 757
     object btnAdd: TToolButton
       Left = 0
       Top = 0

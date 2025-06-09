@@ -514,15 +514,14 @@ begin
 end;
 
 procedure TShortCutManForm.FormCreate(Sender: TObject);
- 
 begin
- tlbShortCutMan.DoubleBuffered := True;
+  tlbShortCutMan.DoubleBuffered := True;
   tlbShortCutMan.ParentDoubleBuffered := True;
   tlbShortCutMan.Transparent := False;
   tlbShortCutMan.Flat := True;
   tlbShortCutMan.ShowCaptions := True;
   tlbShortCutMan.List := False; // 关闭List模式，避免兼容性问题
- 
+
   // Disable Close Button
   EnableMenuItem(GetSystemMenu(Self.Handle, False), SC_CLOSE, MF_GRAYED);
 
