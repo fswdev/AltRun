@@ -152,6 +152,7 @@ type
     property IsExited: Boolean read m_IsExited write m_IsExited;
 
   public
+    FNeedLayoutRefresh: Boolean; // 新增：是否需要刷新布局
     procedure UpdateFormLayout();
     property IsTop: boolean read readIsTop write writeTop;
   end;
@@ -307,6 +308,92 @@ begin
   Self.Refresh;
 end;
 
+procedure TALTRunForm.actShowExecute(Sender: TObject);
+var
+  PopupFileName: string;
+begin
+  TraceMsg('actShowExecute()');
+  Self.Caption := TITLE;
+
+  if ParamForm <> nil then
+    ParamForm.ModalResult := mrCancel;
+
+  // 仅在初次显示或需要刷新时加载快捷方式列表
+  if m_IsFirstShow or ShortCutMan.NeedRefresh then
+    ShortCutMan.LoadShortCutList;
+
+  if (edtShortCut.Text <> '') then
+  begin
+    edtShortCut.Text := '';
+  end
+  else
+  begin
+    if m_IsFirstShow or m_NeedRefresh or ShortCutMan.NeedRefresh then
+    begin
+      m_NeedRefresh := False;
+      ShortCutMan.NeedRefresh := False; // 加载后重置标志
+      edtShortCutChange(Sender);
+    end
+    else
+    begin
+      RefreshOperationHint;
+      if lstShortCut.Items.Count > 0 then
+      begin
+        lstShortCut.ItemIndex := 0;
+        lblShortCut.Caption := TShortCutItem(lstShortCut.Items.Objects[0]).Name;
+        if DirAvailable then
+          lblShortCut.Caption := '[' + lblShortCut.Caption + ']';
+      end;
+    end;
+  end;
+
+  // 设置窗体位置
+  if m_IsFirstShow then
+  begin
+    m_IsFirstShow := False;
+    if (WinTop <= 0) or (WinLeft <= 0) then
+      Self.Position := poScreenCenter
+    else
+    begin
+      Self.Top := WinTop;
+      Self.Left := WinLeft;
+      Self.Width := FormWidth;
+    end;
+    // 获得最近使用快捷方式的列表
+    ShortCutMan.SetLatestShortCutIndexList(LatestList);
+    FNeedLayoutRefresh := True; // 初次显示需要刷新布局
+  end;
+
+  // 仅在需要时更新布局
+  if FNeedLayoutRefresh then
+    UpdateFormLayout;
+
+  Self.Show;
+  Application.Restore;
+  SetForegroundWindow(Application.Handle);
+  m_IsShow := True;
+  edtShortCut.SetFocus;
+  GetLastCmdList;
+  RestartHideTimer(HideDelay);
+  tmrFocus.Enabled := True;
+
+  WinTop := Self.Top;
+  WinLeft := Self.Left;
+  m_LastActiveTime := GetTickCount;
+  self.IsTop := True;
+
+  if PlayPopupNotify then
+  begin
+    PopupFileName := ExtractFilePath(Application.ExeName) + 'Popup.wav';
+    if not FileExists(PopupFileName) then
+      ExtractRes('WAVE', 'PopupWav', 'Popup.wav');
+    if FileExists(PopupFileName) then
+      PlaySound(PChar(PopupFileName), 0, snd_ASYNC)
+    else
+      PlaySound(PChar('PopupWav'), HInstance, snd_ASYNC or SND_RESOURCE);
+  end;
+end;
+
 procedure TALTRunForm.actConfigExecute(Sender: TObject);
 var
   ConfigForm: TConfigForm;
@@ -437,7 +524,7 @@ begin
             ShortCutMan.SaveShortCutList;
             ShortCutMan.LoadShortCutList;
             ShortCutMan.NeedRefresh := True;
-
+            FNeedLayoutRefresh := True; // 设置更新后需要刷新布局
             // 重新注册热键
             ApplyHotKey1;
             ApplyHotKey2;
@@ -447,6 +534,7 @@ begin
             DeleteFile(ExtractFilePath(Application.ExeName) + TITLE + '.ini');
             LoadSettings;
             IsNeedRestart := True;
+            FNeedLayoutRefresh := True; // 重置设置需要刷新布局
             // 重新注册热键
             ApplyHotKey1;
             ApplyHotKey2;
@@ -879,88 +967,6 @@ begin
     end;
   finally
     freeandnil(ShortCutManForm);
-  end;
-end;
-
-procedure TALTRunForm.actShowExecute(Sender: TObject);
-var
-  PopupFileName: string;
-begin
-  TraceMsg('actShowExecute()');
-  Self.Caption := TITLE;
-
-  if ParamForm <> nil then
-    ParamForm.ModalResult := mrCancel;
-
-  ShortCutMan.LoadShortCutList;
-
-  if (edtShortCut.Text <> '') then
-  begin
-    edtShortCut.Text := '';
-  end
-  else
-  begin
-    if m_IsFirstShow or m_NeedRefresh or ShortCutMan.NeedRefresh then
-    begin
-      m_NeedRefresh := False;
-      edtShortCutChange(Sender);
-      ShortCutMan.NeedRefresh := False;
-    end
-    else
-    begin
-      RefreshOperationHint;
-      if lstShortCut.Items.Count > 0 then
-      begin
-        lstShortCut.ItemIndex := 0;
-        lblShortCut.Caption := TShortCutItem(lstShortCut.Items.Objects[0]).Name;
-        if DirAvailable then
-          lblShortCut.Caption := '[' + lblShortCut.Caption + ']';
-      end;
-    end;
-  end;
-
-  // 设置窗体位置
-  if m_IsFirstShow then
-  begin
-    m_IsFirstShow := False;
-    if (WinTop <= 0) or (WinLeft <= 0) then
-      Self.Position := poScreenCenter
-    else
-    begin
-      Self.Top := WinTop;
-      Self.Left := WinLeft;
-      Self.Width := FormWidth;
-    end;
-    // 获得最近使用快捷方式的列表
-    ShortCutMan.SetLatestShortCutIndexList(LatestList);
-  end;
-
-  // 更新布局和样式
-  UpdateFormLayout;
-
-  Self.Show;
-  Application.Restore;
-  SetForegroundWindow(Application.Handle);
-  m_IsShow := True;
-  edtShortCut.SetFocus;
-  GetLastCmdList;
-  RestartHideTimer(HideDelay);
-  tmrFocus.Enabled := True;
-
-  WinTop := Self.Top;
-  WinLeft := Self.Left;
-  m_LastActiveTime := GetTickCount;
-  self.IsTop := True;
-
-  if PlayPopupNotify then
-  begin
-    PopupFileName := ExtractFilePath(Application.ExeName) + 'Popup.wav';
-    if not FileExists(PopupFileName) then
-      ExtractRes('WAVE', 'PopupWav', 'Popup.wav');
-    if FileExists(PopupFileName) then
-      PlaySound(PChar(PopupFileName), 0, snd_ASYNC)
-    else
-      PlaySound(PChar('PopupWav'), HInstance, snd_ASYNC or SND_RESOURCE);
   end;
 end;
 

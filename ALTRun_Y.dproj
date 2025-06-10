@@ -1164,6 +1164,7 @@
         <DCCReference Include="Unit\untSysRegExpr.pas"/>
         <DCCReference Include="Unit\untShortCutScanner.pas"/>
         <DCCReference Include="Unit\untPinyin.pas"/>
+        <DCCReference Include="Unit\untStringAlign.pas"/>
         <RcCompile Include="Res\ALTRun.rc">
             <Form>Res\ALTRun.res</Form>
         </RcCompile>

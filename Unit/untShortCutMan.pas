@@ -30,6 +30,8 @@ type
     Param: string;
     ParamType: TParamType;
     RunAsAdmin: bool;
+  public
+    constructor Create;
   end;
 
   //快捷项
@@ -65,12 +67,12 @@ type
     m_Param: array[0..5] of string;
     function GetParam(Index: Integer): string;
     procedure SetParam(Index: Integer; const Value: string);
-
+    procedure set_NeedRefresh(b: Boolean);
   public
     property WriteDefaultShortCutList: Boolean read m_WriteDefaultShortCutList write m_WriteDefaultShortCutList;
     property ShortCutFileName: string read m_ShortCutFileName write m_ShortCutFileName;
     property ShortCutList: TShortCutList read m_ShortCutList write m_ShortCutList;
-    property NeedRefresh: Boolean read m_NeedRefresh write m_NeedRefresh;
+    property NeedRefresh: Boolean read m_NeedRefresh write set_NeedRefresh;
     property Param[Index: Integer]: string read GetParam write SetParam;
 
     constructor Create;
@@ -102,7 +104,6 @@ type
     procedure AppendShortCutItem(ShortCutType: TShortCutType; ShortCut, Name: string; RunAsAdmin: Boolean; CommandLine: string); overload;
     procedure AppendShortCutItem(ShortCutItem: TShortCutItem); overload;
     procedure ModifyShortCutItem(ShortCutType: TShortCutType; ShortCut, Name: string; RunAsAdmin: boolean; CommandLine: string; Index: Integer); overload;
-    procedure ModifyShortCutItem(ShortCutItem: TShortCutItem; Index: Integer); overload;
     function ContainShortCutItem(ShortCutType: TShortCutType; ParamType: TParamType; ShortCut, Name, CommandLine: string; RunAsAdmin: boolean): Boolean; overload;
     function ContainShortCutItem(ShortCutItem: TShortCutItem): Boolean; overload;
     function DeleteShortCutItem(Index: Integer): Boolean; overload;
@@ -123,8 +124,8 @@ type
     procedure Sort;
 
     //Execute
-    function Execute(ShortCutItem: TShortCutItem): Boolean; overload;
     function Execute(cmdobj: TCmdObject): Boolean; overload;
+    function Execute(ShortCutItem: TShortCutItem): Boolean; overload;
     function Execute(ShortCutItem: TShortCutItem; KeyWord: string): Boolean; overload;
 
     function AddFileShortCut(FileName: string): Boolean;
@@ -141,9 +142,26 @@ var
 implementation
 
 uses
-  frmShortCut, AnsiStrings, untPinYin;
+  frmShortCut, AnsiStrings, untPinYin, untStringAlign;
 
-procedure split_cmd_param(cmd_param: string; out cmd: string; out param: string);
+function ReplaceCommandFlags(Command: string; Param: string; Flag: string): string;
+var
+  Regex: TRegExpr;
+begin
+  Result := Command;
+  if Pos(Flag, Command) > 0 then
+  begin
+    Regex := TRegExpr.Create;
+    try
+      Regex.Expression := Flag;
+      Result := Regex.Replace(Command, Param, False);
+    finally
+      freeandNil(Regex);
+    end;
+  end;
+end;
+
+procedure split_cmd_param(cmd_param: string; out cmd: string; out param: string; out workdir: string);
 var
   i: Integer;
   InQuote: Boolean;
@@ -152,6 +170,7 @@ begin
   // 初始化输出参数
   cmd := '';
   param := '';
+  workdir := '';
 
   // 去除首尾空格
   TrimmedCmd := Trim(cmd_param);
@@ -191,6 +210,7 @@ begin
   // 移除命令部分的引号（如果有）
   if (Length(cmd) >= 2) and (cmd[1] = '"') and (cmd[Length(cmd)] = '"') then
     cmd := Copy(cmd, 2, Length(cmd) - 2);
+  workdir := ExtractFilePath(cmd);
 end;
 
 function ExecuteCmd(cmd: Pointer): LongInt; stdcall;
@@ -198,7 +218,7 @@ var
   PCommandStr, PParamStr, PWorkingDir: PChar;
   cmdobj: TCmdObject;
   Regex: TRegExpr;
-  strCommand, strTemp, s_cmd, s_param: string;
+  strCommand, strTemp, s_cmd, s_param, s_workdir: string;
   ret: Integer;
   ShowCmd: Integer;
 begin
@@ -226,15 +246,18 @@ begin
 
 
   //处理相对路径 ".\", "..\"，如果有，就将本程序的路径代入
-  if (Pos('.\', cmdobj.Command) > 0) or (Pos('..\', cmdobj.Command) > 0) then
-    cmdobj.WorkingDir := ExtractFileDir(Application.ExeName);
+//  if (Pos('.\', cmdobj.Command) > 0) or (Pos('..\', cmdobj.Command) > 0) then
+//    cmdobj.WorkingDir := ExtractFileDir(Application.ExeName);
+  if cmdobj.WorkingDir = '' then
+  begin
+    split_cmd_param(cmdobj.Command, s_cmd, s_param, s_workdir);
+    cmdobj.WorkingDir := s_workdir;
+  end;
 
   case cmdobj.ParamType of
     ptNone:
       begin
-//        PCommandStr := PChar(cmdobj.Command);
-//        PParamStr := nil;
-        split_cmd_param(cmdobj.Command, s_cmd, s_param);
+        split_cmd_param(cmdobj.Command, s_cmd, s_param, s_workdir);
         PCommandStr := PChar(s_cmd);
         PParamStr := PChar(s_param);
         PWorkingDir := PChar(cmdobj.WorkingDir);
@@ -245,100 +268,43 @@ begin
         //如果命令行有参数标志，则替换参数
         if Pos(NEW_PARAM_FLAG, cmdobj.Command) > 0 then
         begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := NEW_PARAM_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            freeandNil(Regex);
-          end;
-
-          split_cmd_param(cmdobj.Command, s_cmd, s_param);
-          PCommandStr := PChar(s_cmd);
-          PParamStr := PChar(s_param);
+          cmdobj.Command := ReplaceCommandFlags(cmdobj.Command, cmdobj.Param, NEW_PARAM_FLAG);
+          split_cmd_param(cmdobj.Command, s_cmd, s_param, s_workdir);
         end
         else if Pos(PARAM_FLAG, cmdobj.Command) > 0 then
         begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := PARAM_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, false);
-          finally
-            Regex.Free;
-          end;
-
-          split_cmd_param(cmdobj.Command, s_cmd, s_param);
-          PCommandStr := PChar(s_cmd);
-          PParamStr := PChar(s_param);
+          cmdobj.Command := ReplaceCommandFlags(cmdobj.Command, cmdobj.Param, PARAM_FLAG);
+          split_cmd_param(cmdobj.Command, s_cmd, s_param, s_workdir);
         end
         else if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then
         begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := CLIPBOARD_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
+          cmdobj.Command := ReplaceCommandFlags(cmdobj.Command, cmdobj.Param, CLIPBOARD_FLAG);
 
-          split_cmd_param(cmdobj.Command, s_cmd, s_param);
-          PCommandStr := PChar(s_cmd);
-          PParamStr := PChar(s_param);
+          split_cmd_param(cmdobj.Command, s_cmd, s_param, s_workdir);
         end
         else if Pos(FOREGROUND_WINDOW_ID_FLAG, cmdobj.Command) > 0 then
         begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := FOREGROUND_WINDOW_ID_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
+          cmdobj.Command := ReplaceCommandFlags(cmdobj.Command, cmdobj.Param, FOREGROUND_WINDOW_ID_FLAG);
 
-//          PCommandStr := PChar(cmdobj.Command);
-//          PParamStr := nil;
-          split_cmd_param(cmdobj.Command, s_cmd, s_param);
-          PCommandStr := PChar(s_cmd);
-          PParamStr := PChar(s_param);
+          split_cmd_param(cmdobj.Command, s_cmd, s_param, s_workdir);
         end
         else if Pos(FOREGROUND_WINDOW_TEXT_FLAG, cmdobj.Command) > 0 then
         begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := FOREGROUND_WINDOW_TEXT_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
-//          PCommandStr := PChar(cmdobj.Command);
-//          PParamStr := nil;
-          split_cmd_param(cmdobj.Command, s_cmd, s_param);
-          PCommandStr := PChar(s_cmd);
-          PParamStr := PChar(s_param);
+          cmdobj.Command := ReplaceCommandFlags(cmdobj.Command, cmdobj.Param, FOREGROUND_WINDOW_TEXT_FLAG);
+          split_cmd_param(cmdobj.Command, s_cmd, s_param, s_workdir);
         end
         else if Pos(FOREGROUND_WINDOW_CLASS_FLAG, cmdobj.Command) > 0 then
         begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := FOREGROUND_WINDOW_CLASS_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
-//          PCommandStr := PChar(cmdobj.Command);
-//          PParamStr := nil;
-          split_cmd_param(cmdobj.Command, s_cmd, s_param);
-          PCommandStr := PChar(s_cmd);
-          PParamStr := PChar(s_param);
+          cmdobj.Command := ReplaceCommandFlags(cmdobj.Command, cmdobj.Param, FOREGROUND_WINDOW_CLASS_FLAG);
+          split_cmd_param(cmdobj.Command, s_cmd, s_param, s_workdir);
         end
         else
         begin
-          PCommandStr := PChar(cmdobj.Command);
-          PParamStr := PChar(cmdobj.Param);
+          s_cmd := cmdobj.Command;
+          s_param := cmdobj.Param;
         end;
-
+        PCommandStr := PChar(s_cmd);
+        PParamStr := PChar(s_param);
         PWorkingDir := PChar((cmdobj.WorkingDir));
       end;
 
@@ -347,38 +313,17 @@ begin
         //如果命令行有参数标志，则替换参数
         if Pos(NEW_PARAM_FLAG, cmdobj.Command) > 0 then
         begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := NEW_PARAM_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
+          cmdobj.Command := ReplaceCommandFlags(cmdobj.Command, cmdobj.Param, NEW_PARAM_FLAG);
           PCommandStr := PChar((cmdobj.Command));
         end
         else if Pos(PARAM_FLAG, cmdobj.Command) > 0 then
         begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := PARAM_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
+          cmdobj.Command := ReplaceCommandFlags(cmdobj.Command, cmdobj.Param, PARAM_FLAG);
           PCommandStr := PChar((cmdobj.Command));
         end
         else if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then
         begin
-          try
-            Regex := TRegExpr.Create;
-            Regex.Expression := CLIPBOARD_FLAG;
-            cmdobj.Command := Regex.Replace(cmdobj.Command, cmdobj.Param, False);
-          finally
-            Regex.Free;
-          end;
-
+          cmdobj.Command := ReplaceCommandFlags(cmdobj.Command, cmdobj.Param, CLIPBOARD_FLAG);
           PCommandStr := PChar((cmdobj.Command));
         end
         else
@@ -394,7 +339,6 @@ begin
   //替换环境变量
   PCommandStr := PChar(ReplaceEnvStr(string(StrPas(PCommandStr))));
 
-  // ret := ShellExecute(GetDesktopWindow, nil, PCommandStr, PParamStr, PWorkingDir, ShowCmd);
   // 以管理员权限运行
   if cmdobj.RunAsAdmin then
     ret := ShellExecute(GetDesktopWindow, 'runas', PCommandStr, PParamStr, PWorkingDir, ShowCmd)
@@ -748,134 +692,6 @@ begin
   m_FavoriteList.Free;
 end;
 
-function TShortCutMan.Execute(ShortCutItem: TShortCutItem): Boolean;
-var
-  str: string;
-  cmdobj: TCmdObject;
-  FlagPos: Integer;
-  TrueCmdFile: string;
-begin
-  Result := False;
-
-  if ShortCutItem.ShortCutType <> scItem then
-    Exit;
-
-  //注意: 这个对象不在这里释放，需要在线程里面释放！
-  cmdobj := TCmdObject.Create;
-
-  //先初始化清空
-  cmdobj.Command := '';
-  cmdobj.WorkingDir := '';
-  cmdobj.Param := '';
-  cmdobj.ParamType := ptNone;
-  cmdobj.RunAsAdmin := ShortCutItem.RunAsAdmin;
-
-  //赋值
-  cmdobj.Command := ShortCutItem.CommandLine;
-
-  //替换环境变量
-  cmdobj.Command := ReplaceEnvStr(cmdobj.Command);
-
-  //对于"..."这样的文件名，先剥去两端的""
-  str := RemoveQuotationMark(Trim(ShortCutItem.CommandLine), '"');
-
-  //对于"\\"开头的，不要去查找FileExist，否则很慢！
-  if Pos('\\', str) <> 1 then
-  begin
-    if FileExists(str) then
-      cmdobj.WorkingDir := ExtractFileDir(str)
-    else
-    begin
-      //这种的也要正确处理
-      //"C:\Program Files\Mozilla Firefox\firefox.exe" -Profile "Profiles"
-      if str[1] = '"' then
-      begin
-        //先初始化为空白
-        cmdobj.WorkingDir := '';
-
-        // 去掉开头的"
-        TrueCmdFile := Copy(str, 2, Length(str) - 1);
-
-        FlagPos := Pos('"', TrueCmdFile);
-        if FlagPos > 0 then
-        begin
-          //取得第一个"之前的内容
-          TrueCmdFile := Copy(TrueCmdFile, 1, FlagPos - 1);
-
-          if FileExists(TrueCmdFile) then
-          begin
-            cmdobj.Command := TrueCmdFile;
-            cmdobj.WorkingDir := ExtractFileDir(TrueCmdFile);
-            cmdobj.Param := Trim(Copy(str, FlagPos + 2, Length(str) - FlagPos - 1));
-          end;
-
-        end;
-      end;
-    end;
-  end;
-
-  if ShortCutItem.ParamType = ptNone then
-  begin
-    //cmdobj.Param := '';
-    //cmdobj.ParamType := ptNone;
-
-    if cmdobj.Param = '' then
-      cmdobj.ParamType := ptNone
-    else
-      cmdobj.ParamType := ptNoEncoding;
-
-    Result := Execute(cmdobj);
-  end
-  else
-  begin
-    if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then               // 剪贴板
-    begin
-      cmdobj.Param := m_Param[0];
-    end
-    else if Pos(FOREGROUND_WINDOW_ID_FLAG, cmdobj.Command) > 0 then    // 前台窗口ID
-    begin
-      cmdobj.Param := m_Param[1];
-    end
-    else if Pos(FOREGROUND_WINDOW_TEXT_FLAG, cmdobj.Command) > 0 then  // 前台窗口Text
-    begin
-      cmdobj.Param := m_Param[2];
-    end
-    else if Pos(FOREGROUND_WINDOW_CLASS_FLAG, cmdobj.Command) > 0 then  // 前台窗口Class
-    begin
-      cmdobj.Param := m_Param[3];
-    end
-    else
-    begin
-      ParamForm := TParamForm.create(nil);
-      ParamForm.Caption := ShortCutItem.Name;
-      if ParamForm <> nil then
-        if ParamForm.ShowModal = mrCancel then
-        begin
-          cmdobj.Free;
-          Exit;
-        end;
-
-      cmdobj.Param := ParamForm.cbbParam.Text;
-      ParamForm.free;
-    end;
-
-    cmdobj.ParamType := ShortCutItem.ParamType;
-
-    case ShortCutItem.ParamType of
-      ptNoEncoding:
-        ;
-
-      ptURLQuery:
-        cmdobj.Param := GetURLQueryString(cmdobj.Param);
-
-      ptUTF8Query:
-        cmdobj.Param := GetUTF8QueryString(cmdobj.Param);
-    end;
-
-    Result := Execute(cmdobj);
-  end;
-end;
-
 function TShortCutMan.ExtractShortCutItemFromFileName(var ShortCutItem: TShortCutItem; FileName: string): Boolean;
 var
   TempFileName: string;
@@ -921,9 +737,15 @@ begin
         else
           ShortCut := FileName;
       end
+      else if FileName = '.\' then
+      begin
+        ShortCut := extractfilepath(application.ExeName);
+      end
       else
       begin
+
         FileName := ExtractFileName(FileName);
+        
 
         //对于前后都是""的文件名或目录名，删掉最后的"
         if FileName[Length(FileName)] = '"' then
@@ -1117,8 +939,12 @@ begin
 
         TraceMsg('FilterKeyWord - 40');
 
-        StringList.AddObject(Format(ListFormat, [Item.ShortCut, Item.Name]), TObject(Item));
+//        StringList.AddObject(Format(ListFormat, [Item.ShortCut, Item.Name]), TObject(Item));
         //StringList.AddObject(Format('%s - %d/%d (%s)', [Item.ShortCut, Item.Rank, Item.Freq, Item.Name]), TObject(Item));
+
+        StringList.AddObject(Format('%s %s', [FormatAligned(Item.ShortCut, 35), Item.Name])
+//                        Format(ListFormat, [Item.ShortCut, Item.Name])
+, TObject(Item));
 
         TraceMsg('FilterKeyWord - 50');
       end;
@@ -1607,12 +1433,6 @@ begin
   LoadShortCutList(m_ShortCutFileName);
 end;
 
-procedure TShortCutMan.ModifyShortCutItem(ShortCutItem: TShortCutItem; Index: Integer);
-begin
-  with ShortCutItem do
-    ModifyShortCutItem(ShortCutType, ShortCut, Name, RunAsAdmin, CommandLine, Index);
-end;
-
 function TShortCutMan.RunAsToString(RunAsAdmin: bool): string;
 begin
   if RunAsAdmin then
@@ -1995,6 +1815,12 @@ begin
   m_Param[Index] := Value;
 end;
 
+procedure TShortCutMan.set_NeedRefresh(b: Boolean);
+begin
+  showmessage(booltostr(b));
+  self.m_NeedRefresh := b;
+end;
+
 function TShortCutMan.StringToShortCutItem(str: string; var ShortCutItem: TShortCutItem): Boolean;
 var
   ShortCutSubItemList: TStringList;
@@ -2166,17 +1992,6 @@ begin
   Result := True;
 end;
 
-function TShortCutMan.Execute(ShortCutItem: TShortCutItem; KeyWord: string): Boolean;
-begin
-  m_FavoriteList.Values[LowerCase(KeyWord)] := ShortCutItem.Name;
-
-  ShortCutItem.RunAsAdmin := KeyWord.StartsWith('#') or ShortCutItem.RunAsAdmin;
-
-  AddLatestShortCutItem(ShortCutItem);
-  Inc(ShortCutItem.Freq);
-  Result := Execute(ShortCutItem);
-end;
-
 function TShortCutMan.Execute(cmdobj: TCmdObject): Boolean;
 var
   hThread: THandle;
@@ -2196,6 +2011,133 @@ begin
     Application.MessageBox(PChar(Format(resCongratulations, [ShortCutRunCount])), PChar(resInfo), MB_OK + MB_ICONINFORMATION + MB_TOPMOST);
 
   Result := hThread > 0;
+end;
+
+function TShortCutMan.Execute(ShortCutItem: TShortCutItem): Boolean;
+var
+  str: string;
+  cmdobj: TCmdObject;
+  FlagPos: Integer;
+  TrueCmdFile: string;
+begin
+  Result := False;
+
+  if ShortCutItem.ShortCutType <> scItem then
+    Exit;
+  ShortCutItem.CommandLine := Trim(ShortCutItem.CommandLine);
+  ShortCutItem.WorkingDir := trim(ShortCutItem.WorkingDir);
+  //注意: 这个对象不在这里释放，需要在线程里面释放！
+  cmdobj := TCmdObject.Create;
+  //赋值
+  cmdobj.Command := ShortCutItem.CommandLine;
+  //替换环境变量
+  cmdobj.Command := ReplaceEnvStr(cmdobj.Command);
+  cmdobj.WorkingDir := ShortCutItem.WorkingDir;
+  cmdobj.RunAsAdmin := ShortCutItem.RunAsAdmin;
+
+  //对于"..."这样的文件名，先剥去两端的""
+  str := RemoveQuotationMark(ShortCutItem.CommandLine, '"');
+
+  //对于"\\"开头的，不要去查找FileExist，否则很慢！
+  if Pos('\\', str) <> 1 then
+  begin
+    if not FileExists(str) then
+    begin
+      //这种的也要正确处理
+      //"C:\Program Files\Mozilla Firefox\firefox.exe" -Profile "Profiles"
+      if str[1] = '"' then
+      begin
+        // 去掉开头的"
+        TrueCmdFile := Copy(str, 2, Length(str) - 1);
+
+        FlagPos := Pos('"', TrueCmdFile);
+        if FlagPos > 0 then
+        begin
+          //取得第一个"之前的内容
+          TrueCmdFile := Copy(TrueCmdFile, 1, FlagPos - 1);
+
+          if FileExists(TrueCmdFile) then
+          begin
+            cmdobj.Command := TrueCmdFile;
+            cmdobj.Param := Trim(Copy(str, FlagPos + 2, Length(str) - FlagPos - 1));
+          end;
+        end;
+      end;
+    end;
+  end;
+
+  if ShortCutItem.ParamType = ptNone then
+  begin
+    if cmdobj.Param = '' then
+      cmdobj.ParamType := ptNone
+    else
+      cmdobj.ParamType := ptNoEncoding;
+
+    Result := Execute(cmdobj);
+  end
+  else
+  begin
+    if Pos(CLIPBOARD_FLAG, cmdobj.Command) > 0 then               // 剪贴板
+      cmdobj.Param := m_Param[0]
+    else if Pos(FOREGROUND_WINDOW_ID_FLAG, cmdobj.Command) > 0 then    // 前台窗口ID
+      cmdobj.Param := m_Param[1]
+    else if Pos(FOREGROUND_WINDOW_TEXT_FLAG, cmdobj.Command) > 0 then  // 前台窗口Text
+      cmdobj.Param := m_Param[2]
+    else if Pos(FOREGROUND_WINDOW_CLASS_FLAG, cmdobj.Command) > 0 then  // 前台窗口Class
+      cmdobj.Param := m_Param[3]
+    else
+    begin
+      ParamForm := TParamForm.create(nil);
+      try
+        ParamForm.Caption := ShortCutItem.Name;
+        if ParamForm.ShowModal = mrCancel then
+        begin
+          cmdobj.Free;
+          Exit;
+        end;
+
+        cmdobj.Param := ParamForm.cbbParam.Text;
+      finally
+        ParamForm.free;
+      end;
+    end;
+
+    cmdobj.ParamType := ShortCutItem.ParamType;
+
+    case ShortCutItem.ParamType of
+      ptNoEncoding:
+        ;
+
+      ptURLQuery:
+        cmdobj.Param := GetURLQueryString(cmdobj.Param);
+
+      ptUTF8Query:
+        cmdobj.Param := GetUTF8QueryString(cmdobj.Param);
+    end;
+
+    Result := Execute(cmdobj);
+  end;
+end;
+
+function TShortCutMan.Execute(ShortCutItem: TShortCutItem; KeyWord: string): Boolean;
+begin
+  m_FavoriteList.Values[LowerCase(KeyWord)] := ShortCutItem.Name;
+
+  ShortCutItem.RunAsAdmin := KeyWord.StartsWith('#') or ShortCutItem.RunAsAdmin;
+
+  AddLatestShortCutItem(ShortCutItem);
+  Inc(ShortCutItem.Freq);
+  Result := Execute(ShortCutItem);
+end;
+{ TCmdObject }
+
+constructor TCmdObject.Create;
+begin
+  Command := '';
+  WorkingDir := '';
+  Param := '';
+  ParamType := ptNone;
+  RunAsAdmin := false;
 end;
 
 end.

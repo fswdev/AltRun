@@ -77,7 +77,7 @@ const
   DEFAULT_TITLE_FONT_STR = 'ËÎÌו|[]|12|65535|0';
   DEFAULT_KEYWORD_FONT_STR = 'ËÎÌו|[]|12|255|0';
   DEFAULT_LIST_FONT_STR = 'ËÎÌו|[]|12|8388608|0';
-  DEFAULT_LIST_FORMAT = '%-25s| %s';
+  DEFAULT_LIST_FORMAT = '%-35s| %s';
   DEFAULT_ALPHACOLOR = clBlack;
   DEFAULT_ALPHA = 240;
   DEFAULT_ROUNDBORDERRADIUS = 12;
@@ -610,7 +610,7 @@ var
   ('You can disable the CMD line in config')
   )};
   ConfigDescList: array[0..19] of string;
-  ListFormatList: array[0..2] of string = (('%-25s| %s'), ('%s (%s)'), ('%s [%s]'));
+  ListFormatList: array[0..2] of string = (('%-35s| %s'), ('%s (%s)'), ('%s [%s]'));
 
 procedure LoadSettings;
 

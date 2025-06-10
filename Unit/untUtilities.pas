@@ -240,6 +240,7 @@ begin
   Result := Copy(str, Num + 1, Length(str) - Num);
 end;
 
+// È¥µô ÒýºÅ
 function RemoveQuotationMark(str: string; QuotationMark: string): string;
 var
   QuotationLen: Integer;
