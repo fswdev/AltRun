@@ -10,7 +10,7 @@ function ScanShortCutItems: TList<TShortCutItem>;
 implementation
 
 uses
-  Winapi.Windows, Winapi.ShlObj, System.IOUtils, untPinYin, Winapi.ActiveX;
+  Winapi.Windows, Winapi.ShlObj, System.IOUtils, untPinYin, Winapi.ActiveX,strutils;
 
 const
   SLGP_RAWPATHNAME = 4; // 手动定义，IShellLink.GetPath的标志
@@ -90,7 +90,7 @@ begin
       begin
         Item := TShortCutItem.Create;
         try
-          s_name := TPath.ChangeExtension(FileName, ''); // 去掉 .lnk 扩展名
+          s_name :=replacestr(fileName,extractfileExt(fileName),'');// TPath.ChangeExtension(FileName, ''); // 去掉 .lnk 扩展名
           ExtractLnkInfo(FilePath, TargetPath, WorkingDirectory);
           Item.ShortCutType := scItem;
           Item.ParamType := ptNone;

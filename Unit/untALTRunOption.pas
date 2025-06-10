@@ -79,9 +79,9 @@ const
   DEFAULT_LIST_FONT_STR = 'ËÎÌו|[]|12|8388608|0';
   DEFAULT_LIST_FORMAT = '%-35s| %s';
   DEFAULT_ALPHACOLOR = clBlack;
-  DEFAULT_ALPHA = 240;
+  DEFAULT_ALPHA = 250;
   DEFAULT_ROUNDBORDERRADIUS = 12;
-  DEFAULT_FORMWIDTH = 420;
+  DEFAULT_FORMWIDTH = 630;
   DEFAULT_BGFILENAME = 'BG.jpg';
   DEFAULT_LANG = 'EN';
   KEY_TRACEENABLE = 'TraceEnable';
@@ -714,7 +714,7 @@ begin
   LastItemHotKeyStr := IniFile.ReadString(SECTION_CONFIG, KEY_LASTITEMHOTKEY, 'ALT+L');
   AutoRun := IniFile.ReadBool(SECTION_CONFIG, KEY_AUTORUN, True);
   AddToSendTo := IniFile.ReadBool(SECTION_CONFIG, KEY_ADDTOSENDTO, True);
-  EnableRegex := IniFile.ReadBool(SECTION_CONFIG, KEY_REGEX, True);
+  EnableRegex := IniFile.ReadBool(SECTION_CONFIG, KEY_REGEX, true);
   HideDelay := IniFile.ReadInteger(SECTION_CONFIG, KEY_HIDEDELAY, 15);
   MatchAnywhere := IniFile.ReadBool(SECTION_CONFIG, KEY_MATCHANYWHERE, True);
   EnableNumberKey := IniFile.ReadBool(SECTION_CONFIG, KEY_NUMBERKEY, True);
@@ -740,8 +740,8 @@ begin
 
   ManWinTop := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANWINTOP, 0);
   ManWinLeft := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANWINLEFT, 0);
-  ManWinWidth := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANWINWIDTH, 450);
-  ManWinHeight := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANWINHEIGHT, 240);
+  ManWinWidth := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANWINWIDTH, 1672);
+  ManWinHeight := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANWINHEIGHT, 521);
 
   for i := 0 to 4 do
     ManColWidth[i] := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANCOLWIDTH + IntToStr(i), 100);

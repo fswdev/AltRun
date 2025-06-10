@@ -1035,24 +1035,13 @@ procedure TALTRunForm.btnShortCutClick(Sender: TObject);
 begin
   TraceMsg('btnShortCutClick()');
 
-  {$ifdef DEBUG_MODE}
-  begin
-    if ShortCutMan.Test then
-      ShowMessage('True')
-    else
-      ShowMessage('False');
+  actShortCutExecute(Sender);
+  if m_IsShow then
+  try
+    edtShortCut.SetFocus;
+  except
+    TraceMsg('edtShortCut.SetFocus failed');
   end;
-  {$else}
-  begin
-    actShortCutExecute(Sender);
-    if m_IsShow then
-    try
-      edtShortCut.SetFocus;
-    except
-      TraceMsg('edtShortCut.SetFocus failed');
-    end;
-  end;
-  {$endif}
 end;
 
 function TALTRunForm.DirAvailable: Boolean;

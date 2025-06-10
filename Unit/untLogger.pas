@@ -1,13 +1,9 @@
 unit untLogger;
 
 interface
+
 uses
-  Windows,
-  Forms,
-  SysUtils,
-  Variants,
-  Classes,
-  CnDebug;
+  Windows, Forms, SysUtils, Variants, Classes, CnDebug;
 
 var
   MutexHandle: THandle;
@@ -17,11 +13,16 @@ var
   CriticalSection: TRTLCriticalSection;
 
 //Traceº¯Êý
-procedure InitLogger(IsTraceEnable:Boolean = False; IsCnDebugEnable: Boolean = False; IsAppendMode:Boolean = False);
+procedure InitLogger(IsTraceEnable: Boolean = False; IsCnDebugEnable: Boolean = False; IsAppendMode: Boolean = False);
+
 procedure AddLog(const str: string);
+
 procedure TraceErr(const Msg: string); overload;
+
 procedure TraceErr(const AFormat: string; Args: array of const); overload;
+
 procedure TraceMsg(const Msg: string); overload;
+
 procedure TraceMsg(const AFormat: string; Args: array of const); overload;
 
 implementation
@@ -40,7 +41,7 @@ begin
   Result := sUserName;
 end;
 
-procedure InitLogger(IsTraceEnable:Boolean = False; IsCnDebugEnable: Boolean = False; IsAppendMode:Boolean = False);
+procedure InitLogger(IsTraceEnable: Boolean = False; IsCnDebugEnable: Boolean = False; IsAppendMode: Boolean = False);
 var
   LogFile: TextFile;
 begin
@@ -119,12 +120,15 @@ begin
 
   if CnDebugEnable then
     CnDebugger.TraceFmt(AFormat, Args);
+//    writeln( format(AFormat, Args));
 end;
 
 initialization
   InitializeCriticalSection(CriticalSection);
 
+
 finalization
   DeleteCriticalSection(CriticalSection);
 
 end.
+

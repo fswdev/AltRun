@@ -3,6 +3,9 @@ program ALTRun_Y;
 {$ifdef DEBUG}
 {$APPTYPE CONSOLE}
 {$endif}
+
+ {$I Defines.inc} // °üº¬ºê¶¨Òå
+
 uses
   Forms,
   SysUtils,

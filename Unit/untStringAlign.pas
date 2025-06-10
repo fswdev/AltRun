@@ -3,7 +3,8 @@ unit untStringAlign;
 interface
 
 function GetDisplayWidth(const S: string): Integer;
-function FormatAligned(const S: string; TotalWidth: Integer): string;
+
+function FormatAligned( S: string; TotalWidth: Integer): string;
 
 implementation
 
@@ -29,10 +30,12 @@ begin
 end;
 
 // 格式化字符串，确保总显示宽度为TotalWidth，左对齐，后接|
-function FormatAligned(const S: string; TotalWidth: Integer): string;
+function FormatAligned( S: string; TotalWidth: Integer): string;
 var
   DisplayWidth, SpacesNeeded: Integer;
 begin
+  if length(S) > TotalWidth then
+    delete(S, TotalWidth - 1, length(S));
   DisplayWidth := GetDisplayWidth(S);
   // 计算需要的空格数（按显示宽度）
   SpacesNeeded := TotalWidth - DisplayWidth;
@@ -42,3 +45,4 @@ begin
 end;
 
 end.
+

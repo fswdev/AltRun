@@ -1,6 +1,7 @@
 ﻿unit untShortCutMan;
 
 interface
+ {$I Defines.inc} // 包含宏定义
 
 uses
   Windows, Dialogs, SysUtils, Classes, Forms, Contnrs, ComCtrls, ShellAPI,
@@ -64,6 +65,7 @@ type
     m_LatestList: TStringList;
     m_Regex: TRegExpr;
     m_NeedRefresh: Boolean;
+    m_NeedSort: Boolean; // 新增：标记是否需要重新排序
     m_Param: array[0..5] of string;
     function GetParam(Index: Integer): string;
     procedure SetParam(Index: Integer; const Value: string);
@@ -743,7 +745,6 @@ begin
       end
       else
       begin
-
         FileName := ExtractFileName(FileName);
         
 
@@ -785,6 +786,12 @@ var
   ShortCutItem: TShortCutItem;
   lvwitm: TListItem;
 begin
+  if m_NeedSort then
+  begin
+    Sort;
+    m_NeedSort := False;
+  end;
+
   lvw.Clear;
   if m_ShortCutList.Count = 0 then
     Exit;
@@ -935,18 +942,17 @@ begin
         //加权系数作为排列值
         //Item.Rank := Item.Rank * 10000 + (Length(Item.ShortCut) - Length(KeyWord));
         //Item.Rank := Item.Rank * 100 + (Length(Item.ShortCut) - Length(KeyWord)) * 2 - Item.Freq * 5;
-        Item.Rank := 1024 + Item.Freq * 4 - Item.Rank * 128 - (Length(Item.ShortCut) - Length(SearchKey)) * 16;
+//        Item.Rank := 1024 + Item.Freq * 4 - Item.Rank * 128 - (Length(Item.ShortCut) - Length(SearchKey)) * 16;
+//        TraceMsg('FilterKeyWord - 40');
 
-        TraceMsg('FilterKeyWord - 40');
-
-//        StringList.AddObject(Format(ListFormat, [Item.ShortCut, Item.Name]), TObject(Item));
+        //StringList.AddObject(Format(ListFormat, [Item.ShortCut, Item.Name]), TObject(Item));
         //StringList.AddObject(Format('%s - %d/%d (%s)', [Item.ShortCut, Item.Rank, Item.Freq, Item.Name]), TObject(Item));
 
-        StringList.AddObject(Format('%s %s', [FormatAligned(Item.ShortCut, 35), Item.Name])
-//                        Format(ListFormat, [Item.ShortCut, Item.Name])
-, TObject(Item));
-
+        Item.Rank := Item.Freq * 1000 - Item.Rank; // Freq 为主，匹配位置为次
+        TraceMsg('FilterKeyWord - 40: ShortCut=%s, Freq=%d, Rank=%d', [Item.ShortCut, Item.Freq, Item.Rank]);
+        StringList.AddObject(Format('%s %s', [FormatAligned(Item.ShortCut, 35), Item.Name]), TObject(Item));
         TraceMsg('FilterKeyWord - 50');
+
       end;
     end;
 
@@ -1048,7 +1054,8 @@ begin
     begin
       try
         Item := TShortCutItem(m_LatestList.Objects[i]);
-        StringList.AddObject(Format(ListFormat, [Item.ShortCut, Item.Name]), TObject(Item));
+//        StringList.AddObject(Format(ListFormat, [Item.ShortCut, Item.Name]), TObject(Item));
+        StringList.AddObject(Format('%s %s', [FormatAligned(Item.ShortCut, 35), Item.Name]), TObject(Item));
       except
         TraceErr('StringList.AddObject Error = %d', [i]);
       end;
@@ -1347,6 +1354,7 @@ begin
           WriteLn(MyFile, ShortCutItemToString(scItem, ptNoEncoding, 'ShowOnly', resDefault_ShortCut_Name_35, '@.\WinCtl.exe ShowOnly ' + FOREGROUND_WINDOW_ID_FLAG, 15));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptNoEncoding, 'Hide', resDefault_ShortCut_Name_36, '@.\WinCtl.exe Hide ' + FOREGROUND_WINDOW_ID_FLAG, 20));
           WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, 'UnHide', resDefault_ShortCut_Name_37, '@.\WinCtl.exe UnHide', 20));
+          WriteLn(MyFile, ShortCutItemToString(scItem, ptNone, '.\', '打开AltRun目录', '.\', 20));
         end;
       except
         Exit;
@@ -1597,7 +1605,7 @@ begin
   begin
     Item := TShortCutItem(StringList.Objects[i]);
     with Item do
-      TraceMsg('  - [%d] = %d', [i, Freq]);
+      TraceMsg('  - [%d] Rank=%d, Freq=%d, ShortCut=%s', [i, Rank, Freq, ShortCut]);
   end;
 end;
 
@@ -1817,7 +1825,6 @@ end;
 
 procedure TShortCutMan.set_NeedRefresh(b: Boolean);
 begin
-  showmessage(booltostr(b));
   self.m_NeedRefresh := b;
 end;
 
@@ -1977,8 +1984,8 @@ begin
       end;
 
       Item.Rank := Item.Rank - Length(Item.ShortCut);
-
-      m_SortedShortCutList.AddObject(Format(ListFormat, [Item.ShortCut, Item.Name]), TObject(Item));
+      m_SortedShortCutList.AddObject(Format('%s %s', [FormatAligned(Item.ShortCut, 35), Item.Name]), TObject(Item));
+//      m_SortedShortCutList.AddObject(Format(ListFormat, [Item.ShortCut, Item.Name]), TObject(Item));
     end;
   end;
 
@@ -1988,7 +1995,6 @@ end;
 
 function TShortCutMan.Test: Boolean;
 begin
-
   Result := True;
 end;
 
@@ -2127,6 +2133,7 @@ begin
 
   AddLatestShortCutItem(ShortCutItem);
   Inc(ShortCutItem.Freq);
+  m_NeedSort := True; // 标记需要重新排序
   Result := Execute(ShortCutItem);
 end;
 { TCmdObject }
