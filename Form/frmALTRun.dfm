@@ -3492,9 +3492,6 @@ object ALTRunForm: TALTRunForm
     object Config1: TMenuItem
       Action = actConfig
     end
-    object OpenSelfDir: TMenuItem
-      Action = actOpenAltRunDir
-    end
     object About1: TMenuItem
       Action = actAbout
     end
@@ -3577,10 +3574,6 @@ object ALTRunForm: TALTRunForm
     object actCopyCommandLine: TAction
       Caption = #22797#21046
       OnExecute = actCopyCommandLineExecute
-    end
-    object actOpenAltRunDir: TAction
-      Caption = 'Alt&RunDir'
-      OnExecute = actOpenAltRunDirExecute
     end
   end
   object pmList: TPopupMenu

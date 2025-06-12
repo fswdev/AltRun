@@ -61,8 +61,6 @@ type
     actDown: TAction;
     pmCommandLine: TPopupMenu;
     actCopyCommandLine: TAction;
-    OpenSelfDir: TMenuItem;
-    actOpenAltRunDir: TAction;
     tmrScanner: TTimer;
 
     procedure WndProc(var Msg: TMessage); override;
@@ -1732,7 +1730,6 @@ begin
   actShow.Caption := resMenuShow;
   actShortCut.Caption := resMenuShortCut;
   actConfig.Caption := resMenuConfig;
-  actOpenAltRunDir.Caption := resOpenAltRunDir;
   actAbout.Caption := resMenuAbout;
   actClose.Caption := resMenuClose;
 
