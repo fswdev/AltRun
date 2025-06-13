@@ -746,7 +746,7 @@ begin
       else
       begin
         FileName := ExtractFileName(FileName);
-        
+
 
         //对于前后都是""的文件名或目录名，删掉最后的"
         if FileName[Length(FileName)] = '"' then
@@ -906,11 +906,11 @@ begin
       if Length(SearchKey) > Length(Item.ShortCut) then
         Continue;
 
+      Pinyin := HanziToPinyin(Item.ShortCut).ToLower;
       if EnableRegex then
       begin
         m_Regex.Expression := SearchKey;
         try
-          Pinyin := HanziToPinyin(Item.ShortCut).ToLower;
           if (not m_Regex.Exec(LowerCase(Item.ShortCut))) and //
             (not m_Regex.Exec(Pinyin)) then
             Continue;
@@ -929,6 +929,8 @@ begin
       else
       begin
         Item.Rank := Pos(LowerCase(SearchKey), LowerCase(Item.ShortCut));
+        if not (Item.Rank > 1) then
+          Item.Rank := Pos(LowerCase(SearchKey), LowerCase(Pinyin));
 
         //如果必须从头匹配
         if (not MatchAnywhere) and (Item.Rank > 1) then
