@@ -107,6 +107,11 @@ begin
     end;
   end;
 
+//  // 设置 DPI 感知（Windows Vista 及以上）
+//  if Win32MajorVersion >= 6 then
+//  begin
+//    SetProcessDPIAware; // 禁用系统 DPI 缩放
+//  end;
   //----- 主程序开始
   Application.Initialize;
   IsRunFirstTime := not FileExists(ExtractFilePath(Application.ExeName) + TITLE + '.ini');

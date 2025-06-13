@@ -742,6 +742,7 @@ begin
   ManWinWidth := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANWINWIDTH, 1672);
   ManWinHeight := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANWINHEIGHT, 521);
 
+
   for i := 0 to 4 do
     ManColWidth[i] := IniFile.ReadInteger(SECTION_WINDOW, KEY_MANCOLWIDTH + IntToStr(i), 100);
 

@@ -172,7 +172,7 @@ const
   LABEL_HEIGHT = 33; // 标签高度（固定值）
   MIN_HEIGHT = 14; // 最小控件高度
   PADDING = 4; // 控件内边距
-  VERTICAL_CENTER_OFFSET = 6; // 命令行文字垂直居中调整
+  VERTICAL_CENTER_OFFSET = 4; // 命令行文字垂直居中调整
 var
   CurrentTop: Integer;
   LabelWidth: Integer;
@@ -180,6 +180,7 @@ var
   lg: Longint;
   SkinFilePath: string;
 begin
+  FNeedLayoutRefresh := false;
   // 应用字体
   StrToFont(TitleFontStr, lblShortCut.Font);
   StrToFont(KeywordFontStr, edtShortCut.Font);
@@ -188,7 +189,7 @@ begin
   // 计算控件高度（基于字体高度）
   EditHeight := Max(Abs(edtShortCut.Font.Height) + 2 * PADDING, MIN_HEIGHT);
   HintHeight := Max(Abs(edtHint.Font.Height) + 2 * PADDING, MIN_HEIGHT);
-  CommandHeight := Max(Abs(edtCommandLine.Font.Height) + 2 * PADDING + VERTICAL_CENTER_OFFSET, MIN_HEIGHT);
+  CommandHeight := Max(Abs(edtCommandLine.Font.Height) + 0 * PADDING + VERTICAL_CENTER_OFFSET, MIN_HEIGHT);
 
   // 初始化顶部位置
   CurrentTop := MARGIN;
@@ -353,6 +354,7 @@ begin
       Self.Position := poScreenCenter
     else
     begin
+      Self.Position := poDesigned;
       Self.Top := WinTop;
       Self.Left := WinLeft;
       Self.Width := FormWidth;
@@ -366,17 +368,19 @@ begin
   if FNeedLayoutRefresh then
     UpdateFormLayout;
 
+  Self.Left := WinLeft;
+  GetLastCmdList;
+  Self.WindowState := wsNormal;
   Self.Show;
-  Application.Restore;
+//  Application.Restore;
   SetForegroundWindow(Application.Handle);
   m_IsShow := True;
   edtShortCut.SetFocus;
-  GetLastCmdList;
   RestartHideTimer(HideDelay);
   tmrFocus.Enabled := True;
 
-  WinTop := Self.Top;
-  WinLeft := Self.Left;
+//  WinTop := Self.Top;
+//  WinLeft := Self.Left;
   m_LastActiveTime := GetTickCount;
   self.IsTop := True;
 
@@ -1619,9 +1623,6 @@ begin
   edtCommandLine.DoubleBuffered := True;
   edtCopy.DoubleBuffered := True;
 
-  //Load 配置
-  //LoadSettings;
-
   m_IsExited := False;
 
   //如果是第一次使用，提示选择语言
@@ -1759,9 +1760,11 @@ begin
   //添加到发送到
   AddMeToSendTo(TITLE, AddToSendTo);
 
-  //保存设置
-  HandleID := Self.Handle;
-  SaveSettings;
+  if IsRunFirstTime then     //保存设置
+  begin
+    HandleID := Self.Handle;
+    SaveSettings;
+  end;
 
   //如果是第一次使用，重启一次以保证右键发送到不受影响
   if IsRunFirstTime then

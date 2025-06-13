@@ -51,14 +51,12 @@ object ShortCutManForm: TShortCutManForm
     ShowHint = True
     TabOrder = 1
     TabStop = False
-    ExplicitLeft = 599
-    ExplicitTop = 463
   end
   object lvShortCut: TListView
     Left = 0
     Top = 28
     Width = 765
-    Height = 457
+    Height = 449
     Align = alClient
     Columns = <
       item
@@ -94,14 +92,15 @@ object ShortCutManForm: TShortCutManForm
     SmallImages = ilShortCutMan
     TabOrder = 0
     ViewStyle = vsReport
+    OnClick = lvShortCutClick
     OnDblClick = actEditExecute
     OnEdited = lvShortCutEdited
     OnEditing = lvShortCutEditing
     OnDragDrop = lvShortCutDragDrop
     OnDragOver = lvShortCutDragOver
     OnKeyDown = lvShortCutKeyDown
-    OnKeyPress = lvShortCutKeyPress
     OnMouseDown = lvShortCutMouseDown
+    ExplicitHeight = 445
   end
   object tlbShortCutMan: TToolBar
     AlignWithMargins = True
@@ -120,7 +119,6 @@ object ShortCutManForm: TShortCutManForm
     AllowTextButtons = True
     TabOrder = 2
     Transparent = False
-    ExplicitWidth = 757
     object btnAdd: TToolButton
       Left = 0
       Top = 0
@@ -197,13 +195,11 @@ object ShortCutManForm: TShortCutManForm
   end
   object statShortCutMan: TStatusBar
     Left = 0
-    Top = 485
+    Top = 477
     Width = 765
-    Height = 19
+    Height = 27
     Panels = <>
     SimplePanel = True
-    ExplicitTop = 477
-    ExplicitWidth = 763
   end
   object actlstShortCut: TActionList
     Images = ilShortCutMan

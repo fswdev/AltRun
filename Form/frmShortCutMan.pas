@@ -45,7 +45,6 @@ type
     procedure lvShortCutDragOver(Sender, Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
     procedure actEditExecute(Sender: TObject);
     procedure actDeleteExecute(Sender: TObject);
-    procedure lvShortCutKeyPress(Sender: TObject; var Key: Char);
     procedure lvShortCutKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormShow(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -56,6 +55,7 @@ type
     procedure lvShortCutEdited(Sender: TObject; Item: TListItem; var S: string);
     procedure lvShortCutEditing(Sender: TObject; Item: TListItem; var AllowEdit: Boolean);
     procedure actPathConvertExecute(Sender: TObject);
+    procedure lvShortCutClick(Sender: TObject);
   private
     //m_ShortCutList: TShortCutList;
     m_SrcItem: TListItem;
@@ -70,6 +70,8 @@ type
     function NormalizePath(const ACommandLine: string; AResolveRelative: Boolean = True): string;
     function CheckPathValidity(const APath: string): Boolean;
     function ConvertPath(const ACommandLine: string; AToRelative: Boolean): string;
+  private
+    function GetDPIScaledWidth(AWidth: Integer; ToPhysical: Boolean): Integer;
   end;
 
 var
@@ -79,7 +81,7 @@ implementation
 {$R *.dfm}
 
 uses
-  frmInvalid, untLogger;
+  frmInvalid, untLogger, untStringAlign, math;
 { 新的公共方法：处理 TShortCutForm 的初始化、显示和数据提取 }
 
 function TShortCutManForm.ProcessShortCutForm(AForm: TShortCutForm; AMode: string; AShortCutItem: TShortCutItem = nil): Boolean;
@@ -155,8 +157,6 @@ begin
       ListItem.ImageIndex := Ord(siInfo);
     end;
 
-    // 调试：确认 Caption 设置
-    //    ShowMessage('Caption set to: ' + ListItem.Caption);
 
     // 检查重复
     if ExistListItem(ListItem) then
@@ -195,11 +195,11 @@ begin
     ListItem.Caption := AForm.lbledtShortCut.Text;
 
     // 确保第一列宽度足够（可选，保留以防万一）
-    MinColumnWidth := lvShortCut.Canvas.TextWidth(ListItem.Caption + '    ') + 20;
+    lvShortCut.Canvas.Font.Assign(lvShortCut.Font); // 确保使用 TListView 的字体
+    // 213  设置最大宽度限制
+    MinColumnWidth := min(lvShortCut.Canvas.TextWidth(ListItem.Caption + '    ') + 20, 213);
     if lvShortCut.Columns[0].Width < MinColumnWidth then
-    begin
       lvShortCut.Columns[0].Width := MinColumnWidth;
-    end;
 
     // 简化刷新，模拟原始代码行为
     lvShortCut.Update; // 仅调用 Update，匹配原始代码的隐式刷新
@@ -523,8 +523,20 @@ begin
       end;
 end;
 
+function TShortCutManForm.GetDPIScaledWidth(AWidth: Integer; ToPhysical: Boolean): Integer;
+var
+  ScaleFactor: Double;
+begin
+  ScaleFactor := Screen.PixelsPerInch / 96; // 125% DPI 时，ScaleFactor = 120 / 96 = 1.25
+  if ToPhysical then
+    Result := Round(AWidth * ScaleFactor) // 逻辑像素 -> 物理像素
+  else
+    Result := Round(AWidth / ScaleFactor); // 物理像素 -> 逻辑像素
+end;
+
 procedure TShortCutManForm.FormCreate(Sender: TObject);
 begin
+
   tlbShortCutMan.DoubleBuffered := false;
   tlbShortCutMan.ParentDoubleBuffered := false;
   tlbShortCutMan.Transparent := False;
@@ -534,10 +546,6 @@ begin
 
   // Disable Close Button
   EnableMenuItem(GetSystemMenu(Self.Handle, False), SC_CLOSE, MF_GRAYED);
-
-  //mniCut.Enabled := False;
-  //mniInsert.Enabled := False;
-  //m_Cutted := False;
 
   Self.DoubleBuffered := false;
   Self.Caption := resShortCutManFormCaption;
@@ -576,6 +584,15 @@ procedure TShortCutManForm.FormShow(Sender: TObject);
 var
   i: Cardinal;
 begin
+  begin
+    ManColWidth[0] := 213; // 默认宽度
+    ManColWidth[1] := 172;
+    ManColWidth[2] := 105;
+    ManColWidth[3] := 125;
+    ManColWidth[4] := 973;
+  end;
+
+
   //设置窗体位置
   LoadSettings;
 
@@ -595,21 +612,27 @@ begin
     Self.Height := ManWinHeight;
   end;
 
+
+   // 加载列宽（逻辑像素 -> 物理像素）
   for i := 0 to lvShortCut.Columns.Count - 1 do
     lvShortCut.Columns.Items[i].Width := ManColWidth[i];
+
 end;
 
 procedure TShortCutManForm.FormDestroy(Sender: TObject);
 var
   i: Cardinal;
 begin
+
   ManWinTop := Self.Top;
   ManWinLeft := Self.Left;
   ManWinWidth := Self.Width;
   ManWinHeight := Self.Height;
 
+
+  // 保存列宽（物理像素 -> 逻辑像素）
   for i := 0 to lvShortCut.Columns.Count - 1 do
-    ManColWidth[i] := lvShortCut.Columns.Items[i].Width;
+    ManColWidth[i] := GetDPIScaledWidth(lvShortCut.Columns.Items[i].Width, false);
 
   SaveSettings;
 end;
@@ -617,6 +640,17 @@ end;
 procedure TShortCutManForm.LoadShortCutList;
 begin
   ShortCutMan.FillListView(lvShortCut);
+end;
+
+procedure TShortCutManForm.lvShortCutClick(Sender: TObject);
+var
+  item: TListItem;
+begin
+  item := lvshortCut.Selected;
+  if item <> nil then
+  begin
+    statShortCutMan.simpleText := FormatAligned(item.SubItems[0], 60) + '   ' + item.SubItems[3];
+  end;
 end;
 
 procedure TShortCutManForm.lvShortCutDragDrop(Sender, Source: TObject; X, Y: Integer);
@@ -671,16 +705,9 @@ begin
   end;
 end;
 
-procedure TShortCutManForm.lvShortCutKeyPress(Sender: TObject; var Key: Char);
-begin
-  //回车
-  //if Key = #13 then actEditExecute(Sender);
-end;
-
 procedure TShortCutManForm.lvShortCutMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   m_SrcItem := lvShortCut.GetItemAt(X, Y);
-  //mniCut.Enabled := True;
 end;
 
 procedure TShortCutManForm.MyDrag(var Msg: TWMDropFiles);
