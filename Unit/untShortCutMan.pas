@@ -136,6 +136,9 @@ type
     function Test: Boolean;
     procedure PrintStringList(Title: string; StringList: TStringList; p, q: Integer); overload;
     procedure PrintStringList(Title: string; StringList: TObjectList; p, q: Integer); overload;
+  private
+    function CalculateRank(Item: TShortCutItem; SearchKey: string; MatchPos: Integer; IsPinyinMatch: Boolean): Integer;
+
   end;
 
 var
@@ -832,26 +835,55 @@ begin
   end;
 end;
 
+function TShortCutMan.CalculateRank(Item: TShortCutItem; SearchKey: string; MatchPos: Integer; IsPinyinMatch: Boolean): Integer;
+  // 优先级：匹配位置（从头匹配最高） > 使用频率 > 字符串长度差异
+ {
+  如果 MatchPos = 1（从头匹配），Rank 以 100000 为基础，确保优先级最高。
+  使用 Freq * 100 作为次要权重，确保高频率项在相同匹配位置下优先。
+  减去 Length(Item.ShortCut) * 10 作为次次要权重，较短的快捷项略优先。
+  如果 MatchPos > 1，减去 MatchPos * 1000，确保非开头匹配的项排在后面。
+}
+const
+  MATCH_POS_WEIGHT = 10000;  // 匹配位置权重，确保前端匹配优先
+  FREQ_WEIGHT = 100;         // 使用频率权重
+  LENGTH_PENALTY = 10;       // 长度惩罚权重
+begin
+  Result := 0;
+  // 前端匹配优先：MatchPos = 1（从头匹配）获得最高权重
+  if MatchPos = 1 then
+    Result := Result + MATCH_POS_WEIGHT
+  else
+    Result := Result + MATCH_POS_WEIGHT div MatchPos; // 匹配位置越靠后，权重越低
+
+  // 使用频率次之
+  Result := Result + Item.Freq * FREQ_WEIGHT;
+
+  // 拼音匹配略微降低优先级（可选，保持与英文一致可忽略）
+  if IsPinyinMatch then
+    Result := Result - 10;
+
+  // 长度惩罚：较长的 Shortcut 排名略低
+  Result := Result - Length(Item.ShortCut) * LENGTH_PENALTY;
+end;
+
 function TShortCutMan.FilterKeyWord(KeyWord: string; var StringList: TStringList): Boolean;
 var
   i: Cardinal;
   Item: TShortCutItem;
   CostTick: Cardinal;
-  SearchKey, Pinyin: string; // 新增
+  SearchKey, Pinyin: string;
+  MatchPos: Integer;
+  IsPinyinMatch: Boolean;
 begin
   Result := False;
-
   CostTick := GetTickCount;
-
   TraceMsg('FilterKeyWord(%s)', [KeyWord]);
-
   //清空结果列表
   StringList.Clear;
 
   //如果没有东西，退出
   if m_SortedShortCutList.Count = 0 then
     Exit;
-
   //如果KeyWord为' '，则退出
   if KeyWord = ' ' then
     Exit;
@@ -869,7 +901,6 @@ begin
     SearchKey := LowerCase(SearchKey);
 
     TraceMsg('FilterKeyWord - 10');
-
     //如果支持Regex，对KeyWord进行预处理，对单独的*都替换为.*, 对单独的?都替换为.?
     if EnableRegex then
     begin
@@ -893,80 +924,71 @@ begin
     end;
 
     TraceMsg('FilterKeyWord - 20, m_SortedShortCutList.Count = %d', [m_SortedShortCutList.Count]);
-
     for i := 0 to m_SortedShortCutList.Count - 1 do
     begin
       Item := TShortCutItem(m_SortedShortCutList.Objects[i]);
-
       //不是快捷项，不理
       if Item.ShortCutType <> scItem then
         Continue;
-
       //如果长度太小，不理
       if Length(SearchKey) > Length(Item.ShortCut) then
         Continue;
+      MatchPos := 0;
+      IsPinyinMatch := False;
 
-      Pinyin := HanziToPinyin(Item.ShortCut).ToLower;
       if EnableRegex then
       begin
         m_Regex.Expression := SearchKey;
         try
-          if (not m_Regex.Exec(LowerCase(Item.ShortCut))) and //
-            (not m_Regex.Exec(Pinyin)) then
+          // 先尝试英文匹配
+          if m_Regex.Exec(LowerCase(Item.ShortCut)) then
+            MatchPos := m_Regex.MatchPos[0]
+          else
+          begin
+            // 再尝试拼音匹配
+            Pinyin := HanziToPinyin(Item.ShortCut).ToLower;
+            if m_Regex.Exec(Pinyin) then
+            begin
+              MatchPos := m_Regex.MatchPos[0];
+              IsPinyinMatch := True;
+            end;
+          end;
+
+          if MatchPos = 0 then
+            Continue;
+          if (not MatchAnywhere) and (MatchPos > 1) then
             Continue;
         except
-          on E: Exception do
-            Continue; // 直接跳到下一个循环迭代
-//            Result := False;
+          Continue;
         end;
-
-        //如果必须从头匹配
-        if (not MatchAnywhere) and (m_Regex.MatchPos[0] > 1) then
-          Continue
-        else
-          Item.Rank := m_Regex.MatchPos[0];
       end
       else
       begin
-        Item.Rank := Pos(LowerCase(SearchKey), LowerCase(Item.ShortCut));
-        if not (Item.Rank > 1) then
-          Item.Rank := Pos(LowerCase(SearchKey), LowerCase(Pinyin));
-
-        //如果必须从头匹配
-        if (not MatchAnywhere) and (Item.Rank > 1) then
+        // 非正则匹配，先尝试英文
+        MatchPos := Pos(LowerCase(SearchKey), LowerCase(Item.ShortCut));
+        if MatchPos = 0 then
+        begin
+          // 再尝试拼音
+          Pinyin := HanziToPinyin(Item.ShortCut).ToLower;
+          MatchPos := Pos(LowerCase(SearchKey), Pinyin);
+          IsPinyinMatch := True;
+        end;
+        if MatchPos = 0 then
+          Continue;
+        if (not MatchAnywhere) and (MatchPos > 1) then
           Continue;
       end;
 
-      TraceMsg('FilterKeyWord - 30');
+      // 计算 Rank
+      Item.Rank := CalculateRank(Item, SearchKey, MatchPos, IsPinyinMatch);
 
-      if Item.Rank > 0 then
-      begin
-        //加权系数作为排列值
-        //Item.Rank := Item.Rank * 10000 + (Length(Item.ShortCut) - Length(KeyWord));
-        //Item.Rank := Item.Rank * 100 + (Length(Item.ShortCut) - Length(KeyWord)) * 2 - Item.Freq * 5;
-//        Item.Rank := 1024 + Item.Freq * 4 - Item.Rank * 128 - (Length(Item.ShortCut) - Length(SearchKey)) * 16;
-//        TraceMsg('FilterKeyWord - 40');
-
-        //StringList.AddObject(Format(ListFormat, [Item.ShortCut, Item.Name]), TObject(Item));
-        //StringList.AddObject(Format('%s - %d/%d (%s)', [Item.ShortCut, Item.Rank, Item.Freq, Item.Name]), TObject(Item));
-
-        Item.Rank := Item.Freq * 1000 - Item.Rank; // Freq 为主，匹配位置为次
-        TraceMsg('FilterKeyWord - 40: ShortCut=%s, Freq=%d, Rank=%d', [Item.ShortCut, Item.Freq, Item.Rank]);
-        StringList.AddObject(Format('%s %s', [FormatAligned(Item.ShortCut, 35), Item.Name]), TObject(Item));
-        TraceMsg('FilterKeyWord - 50');
-
-      end;
+      StringList.AddObject(Format('%s %s', [FormatAligned(Item.ShortCut, 35), Item.Name]), TObject(Item));
     end;
 
-    TraceMsg('FilterKeyWord - 60');
-
-    //对StringList进行快速排序
     QuickSort(StringList, 0, StringList.Count - 1);
   end;
 
-  TraceMsg('FilterKeyWord - 70');
-
-  //如果KeyWord出现在FavoriteList内，且当前列表内也有它对应的名称，则将其移到第一项
+  // 保留原有的 FavoriteList 和 EnableNumberKey 逻辑
   if RememberFavouratMatch then
     if StringList.Count > 0 then
       if m_FavoriteList.IndexOfName(KeyWord) >= 0 then
@@ -976,7 +998,6 @@ begin
             StringList.Move(i, 0);
             Break;
           end;
-
   TraceMsg('FilterKeyWord - 80');
 
   if EnableNumberKey then
@@ -1006,9 +1027,7 @@ begin
 
   CostTick := GetTickCount - CostTick;
   TraceMsg('FilterKeyWord(%s) = %d', [KeyWord, CostTick]);
-
   TraceMsg('FilterKeyWord - Exit');
-
   Result := StringList.Count > 0;
 end;
 
@@ -1528,25 +1547,6 @@ begin
   PrintStringList(Format('After Partition(%d, %d) = %d', [p, r, Result]), StringList, p, r);
 end;
 
-procedure TShortCutMan.PrintStringList(Title: string; StringList: TObjectList; p, q: Integer);
-var
-  i: Cardinal;
-  Item: TShortCutItem;
-begin
-  {$ifndef DEBUG_SORT}
-  Exit;
-  {$endif}
-
-  TraceMsg('  - %s', [Title]);
-
-  for i := p to q do
-  begin
-    Item := TShortCutItem(StringList.Items[i]);
-    with Item do
-      TraceMsg('  - [%d] = %d', [i, Freq]);
-  end;
-end;
-
 function TShortCutMan.Partition(var StringList: TStringList; p, r: Integer): Integer;
 var
   PivotIndex, PivotValue: Integer;
@@ -1592,6 +1592,26 @@ begin
   PrintStringList(Format('After Partition(%d, %d) = %d', [p, r, Result]), StringList, p, r);
 end;
 
+procedure TShortCutMan.PrintStringList(Title: string; StringList: TObjectList; p, q: Integer);
+var
+  i: Cardinal;
+  Item: TShortCutItem;
+begin
+  {$ifndef DEBUG_SORT}
+  Exit;
+  {$endif}
+
+  TraceMsg('  - %s', [Title]);
+
+  for i := p to q do
+  begin
+    Item := TShortCutItem(StringList.Items[i]);
+    with Item do
+//      TraceMsg('  - [%d] = %d', [i, Freq]);
+      TraceMsg('  - [%d] Rank=%d, Freq=%d, ShortCut=%s, Name=%s', [i, Rank, Freq, ShortCut, Name]);
+  end;
+end;
+
 procedure TShortCutMan.PrintStringList(Title: string; StringList: TStringList; p, q: Integer);
 var
   i: Cardinal;
@@ -1607,7 +1627,9 @@ begin
   begin
     Item := TShortCutItem(StringList.Objects[i]);
     with Item do
-      TraceMsg('  - [%d] Rank=%d, Freq=%d, ShortCut=%s', [i, Rank, Freq, ShortCut]);
+//      TraceMsg('  - [%d] Rank=%d, Freq=%d, ShortCut=%s', [i, Rank, Freq, ShortCut]);
+
+      TraceMsg('  - [%d] Rank=%d, Freq=%d, ShortCut=%s, Name=%s', [i, Rank, Freq, ShortCut, Name]);
   end;
 end;
 
