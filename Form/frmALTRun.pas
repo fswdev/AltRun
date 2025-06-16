@@ -1585,6 +1585,7 @@ var
   LangForm: TLangForm;
   LangList: TStringList;
   i: Cardinal;
+  SelfExeName, reg_SelfExeName: string;
 begin
   ntfMain := TCoolTrayIcon.Create(self);
   ntfmain.CycleInterval := 0;
@@ -1699,26 +1700,28 @@ begin
   TraceMsg('OS is Vista = %s', [BoolToStr(IsVista)]);
 
   //干掉老的HotRun的启动项和SendTo
-  if LowerCase(ExtractFilePath(GetAutoRunItemPath('HotRun'))) = LowerCase(ExtractFilePath(Application.ExeName)) then
-    SetAutoRun('HotRun', '', False);
-
-  if LowerCase(ExtractFilePath(GetAutoRunItemPath('HotRun.exe'))) = LowerCase(ExtractFilePath(Application.ExeName)) then
-  begin
-    SetAutoRun('HotRun.exe', '', False);
-    SetAutoRunInStartUp('HotRun.exe', '', False);
-  end;
-
-  if LowerCase(ExtractFilePath(ResolveLink(GetSendToDir + '\HotRun.lnk'))) = LowerCase(ExtractFilePath(Application.ExeName)) then
-    AddMeToSendTo('HotRun', False);
-
-  if FileExists(ExtractFilePath(Application.ExeName) + 'HotRun.ini') then
-    RenameFile(ExtractFilePath(Application.ExeName) + 'HotRun.ini', ExtractFilePath(Application.ExeName) + TITLE + '.ini');
-
-  if LowerCase(ExtractFilePath(GetAutoRunItemPath('ALTRun.exe'))) = LowerCase(ExtractFilePath(Application.ExeName)) then
-  begin
-    SetAutoRun('ALTRun.exe', '', False);
-    SetAutoRunInStartUp('ALTRun.exe', '', False);
-  end;
+//  if LowerCase(ExtractFilePath(GetAutoRunItemPath('HotRun'))) = LowerCase(ExtractFilePath(Application.ExeName)) then
+//    SetAutoRun('HotRun', '', False);
+//
+//  if LowerCase(ExtractFilePath(GetAutoRunItemPath('HotRun.exe'))) = LowerCase(ExtractFilePath(Application.ExeName)) then
+//  begin
+//    SetAutoRun('HotRun.exe', '', False);
+//    SetAutoRunInStartUp('HotRun.exe', '', False);
+//  end;
+//
+//  if LowerCase(ExtractFilePath(ResolveLink(GetSendToDir + '\HotRun.lnk'))) = LowerCase(ExtractFilePath(Application.ExeName)) then
+//    AddMeToSendTo('HotRun', False);
+//
+//  if FileExists(ExtractFilePath(Application.ExeName) + 'HotRun.ini') then
+//    RenameFile(ExtractFilePath(Application.ExeName) + 'HotRun.ini', ExtractFilePath(Application.ExeName) + TITLE + '.ini');
+//
+//  SelfExeName := LowerCase(Application.ExeName );
+//  reg_SelfExeName := LowerCase(ExtractFilePath(GetAutoRunItemPath('ALTRun.exe')));
+//  if reg_SelfExeName = SelfExeName then
+//  begin
+//    SetAutoRun(SelfExeName, '', False);
+//    SetAutoRunInStartUp(SelfExeName, '', False);
+//  end;
 
   //配置设置
   ApplyHotKey1;

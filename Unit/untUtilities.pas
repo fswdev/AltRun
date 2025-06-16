@@ -166,6 +166,7 @@ begin
   if AutoRun then
   begin
     Result := CreateLink(ExecutablePath, '', GetSpecialFolderDir(CSIDL_COMMON_STARTUP), ApplicationName, '');
+    Result := CreateLink(ExecutablePath, '', GetSpecialFolderDir(CSIDL_STARTUP), ApplicationName, '');
 
 //    Result := CreateLink(ExecutablePath, '', ExtractFilePath(ExecutablePath), ApplicationName, '');
 //    if Result then
@@ -175,6 +176,7 @@ begin
   else
   begin
     Result := DeleteFile(GetSpecialFolderDir(CSIDL_COMMON_STARTUP) + '\' + ApplicationName + '.lnk');
+    Result := DeleteFile(GetSpecialFolderDir(CSIDL_STARTUP) + '\' + ApplicationName + '.lnk');
   end;
 end;
 
@@ -1122,8 +1124,6 @@ begin
   end;
 end;
 
-
-
 function ReplaceEnvStr(str: string): string;
 var
   Match: TMatch;
@@ -1312,7 +1312,7 @@ var
 begin
   Result := 0;
   {$ifdef DEBUG_MODE}
-    WindowList := TStringList.Create;
+  WindowList := TStringList.Create;
   {$endif}
   try
     h := GetWindow(Application.Handle, GW_HWNDFIRST);
@@ -1322,7 +1322,7 @@ begin
       begin
         s := p;
         {$ifdef    DEBUG_MODE}
-          WindowList.Add(Format('%s : %d', [s, h]));
+        WindowList.Add(Format('%s : %d', [s, h]));
         {$endif}
         if s = Caption then
         begin
