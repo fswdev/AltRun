@@ -11,7 +11,8 @@ uses
   Winapi.ShlObj,
   System.IOUtils,
   System.Classes,
-  SHDocVw;
+  SHDocVw,
+  RustProjectProcessor in 'RustProjectProcessor.pas';
 
 const
   // 手动定义 IID_IServiceProvider
@@ -266,7 +267,8 @@ begin
     result := NewFolderPath;
 
     // 4. 获取所有文件（包括子目录）
-    Files := TDirectory.GetFiles(SourcePath + 'src\', '*.*', TSearchOption.soAllDirectories);
+//    Files := TDirectory.GetFiles(SourcePath + 'src\', '*.*', TSearchOption.soAllDirectories);
+    Files := TDirectory.GetFiles(SourcePath, '*.*', TSearchOption.soAllDirectories);
     len := Length(Files);
     SetLength(Files, len + 1);
     Files[len] := SourcePath + 'Cargo.toml';
@@ -274,40 +276,45 @@ begin
     // 5. 遍历处理每个文件
     for FileName in Files do
     try
+      if FileName.EndsWith('.rs') or FileName.EndsWith('.toml') then
+      begin
       // 6. 生成新文件名：路径+文件名+.txt
-      PathPrefix := StringReplace(FileName, SourcePath, '', [rfReplaceAll]);
-      NewFileName := TPath.ChangeExtension(FileName, '.txt');
-      NewFileName := StringReplace(NewFileName, SourcePath, '', [rfReplaceAll]);
-      NewFileName := StringReplace(NewFileName, PathDelim, '-', [rfReplaceAll]);
-      NewFileName := TPath.Combine(NewFolderPath, NewFileName);
+        PathPrefix := StringReplace(FileName, SourcePath, '', [rfReplaceAll]);
+//      NewFileName := TPath.ChangeExtension(FileName, '.txt');
+        NewFileName := FileName + '.txt';
+        NewFileName := StringReplace(NewFileName, SourcePath, '', [rfReplaceAll]);
+        NewFileName := StringReplace(NewFileName, PathDelim, '、', [rfReplaceAll]);
+        NewFileName := TPath.Combine(NewFolderPath, NewFileName);
 
+        writeln(NewFileName);
       // 7. 读取文件内容并检测编码
-      Content := TStringList.Create;
-      try
-        FileStream := TFileStream.Create(FileName, fmOpenRead);
+        Content := TStringList.Create;
         try
-          Reader := TStreamReader.Create(FileStream, TEncoding.UTF8, True);
+          FileStream := TFileStream.Create(FileName, fmOpenRead);
           try
+            Reader := TStreamReader.Create(FileStream, TEncoding.UTF8, True);
+            try
             // 保存编码以避免释放后访问
-            FileEncoding := Reader.CurrentEncoding;
+              FileEncoding := Reader.CurrentEncoding;
             // 重置流位置以确保正确读取
-            FileStream.Position := 0;
-            Content.LoadFromStream(FileStream, FileEncoding);
+              FileStream.Position := 0;
+              Content.LoadFromStream(FileStream, FileEncoding);
+            finally
+              Reader.Free;
+            end;
           finally
-            Reader.Free;
+            FileStream.Free;
           end;
-        finally
-          FileStream.Free;
-        end;
 
         // 8. 如果是 .rs 文件，插入注释
-        if SameText(TPath.GetExtension(FileName), '.rs') then
-          Content.Insert(0, '// ' + PathPrefix);
+          if SameText(TPath.GetExtension(FileName), '.rs') then
+            Content.Insert(0, '// ' + PathPrefix);
 
         // 9. 写入新文件，保留原始编码
-        Content.SaveToFile(NewFileName, FileEncoding);
-      finally
-        Content.Free;
+          Content.SaveToFile(NewFileName, FileEncoding);
+        finally
+          Content.Free;
+        end;
       end;
     except
       on E: Exception do
@@ -338,7 +345,8 @@ begin
     try
       // 获取并输出资源管理器窗口的路径
       curr_path := GetExplorerPath();
-      curr_path := CopyAndRenameFiles(curr_path);
+//      curr_path := CopyAndRenameFiles(curr_path);
+      ProcessRustProject(curr_path,'z:\');
       Writeln('资源管理器路径: ', curr_path);
       ShellExecute(GetDesktopWindow, nil, pchar(curr_path), nil, pchar(curr_path), sw_show);
     finally
@@ -350,7 +358,7 @@ begin
       Writeln('错误: ', E.Message);
   end;
   // 防止窗口立即关闭
-  Writeln('按 Enter 键退出...');
-  Readln;
+  Writeln('5s后 退出...');
+  sleep(5000);
 end.
 
